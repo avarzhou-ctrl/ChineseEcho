@@ -1,0 +1,61 @@
+# AGENTS.md
+
+## Project Structure
+### Function
+- Chinese language learning assistant (Product Name: **TingXieFlow**)
+    - Smart 听写: The app uses native Apple TTS to read out dictation content using `AVSpeechSynthesizer`.
+    - 错词 organization: Local Ollama (llama3 / gemma2) generates modern contextual sentences containing the user's specific 错词 via local JSON streaming.
+    - 成语 logs: When an idiom is saved, the local LLM generates a casual sentence using it, adding custom tags (e.g., #joy, #sad, #humorous) and a breakdown of individual character meanings.
+    - Smart Audio Controls: Allows language learners to dynamically speed up/slow down the TTS voice or add pronunciation profile variations (Mainland vs. Taiwanese Mandarin).
+    - Automatic Anki Export: One-click button compiles collected words, generated sentences, and audio paths, packaging them into an `.apkg` file for Anki.
+- **Audience:** Foreign speakers learning Chinese OR elementary to early middle school students working on Chinese learning.
+
+### Structure
+- Environment: Native macOS Application (Xcode project utilizing Swift 6 and SwiftUI).
+- Storage: Local persistence managed exclusively via **SwiftData**. No cloud backends.
+
+### Design Style
+- **Theme:** Clean, native macOS desktop aesthetic (supports Light/Dark mode).
+- **Layout:** `NavigationSplitView` architecture featuring a standard Sidebar navigation and a Main workspace dashboard.
+
+## Commands
+### GitHub Commits
+When told to reformat commits, follow the Conventional Commits (https://www.conventionalcommits.org/en/v1.0.0/) format.
+
+**Structure:** <type>[optional scope]: <description>
+- **Type:** Define the nature of the change.
+    * feat: Adding a new feature.
+    * fix: Resolving a bug.
+    * docs: Changes to documentation or README.
+    * refactor: Code restructuring without changing behavior.
+    * perf: Performance-related improvements.
+    * test: Adding or updating tests.
+- **Scope (optional):** The specific area of the project affected (audio, models, views, db, network, packaging)
+- **Summary:** A concise, imperative sentence (e.g., Add support for...). Use the imperative mood (e.g., "Add," not "Added").
+
+## Boundaries
+### Do
+- Write modular, highly reusable SwiftUI components.
+- Use explicit async/await patterns for local LLM networking calls to keep the main UI thread responsive.
+- Utilize native Apple symbols (`Image(systemName: ...)`) for iconography.
+
+### Don't
+- Do not import heavy external web wrappers or cross-platform dependencies.
+- Do not commit local sensitive system paths or hardcoded developer configurations.
+- Do not mutate SwiftData contexts directly on the Main Thread without explicit background handling.
+
+### Safety & Permissions
+Allowed without prompt:
+- Read local project files, inspect directory hierarchies.
+
+Ask first:
+- Changing target macOS deployment build versions or modifying underlying build build settings.
+
+## Documentation
+- **Helpful Commenting:** Keep comments concise and focused on "Why" something is being done.
+    - Use single-line explanations that provide property wrapper context (e.g., explaining `@State` vs `@Binding`).
+- After completing any coding or design task, you must update the "# Project Log" section of this file. Include date, action, and files affected.
+- Format: "**YYYY-MM-DD**: [Brief description of changes with which files were edited]"
+
+# Project Log
+- **2026-07-10**: Initialized native macOS Xcode project skeleton with SwiftData storage containers. Authenticated Git control origins to GitHub remote repository.
