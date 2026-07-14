@@ -58,4 +58,6 @@ Ask first:
 - Format: "**YYYY-MM-DD**: [Brief description of changes with which files were edited]"
 
 # Project Log
+- **2026-07-14**: Refined speech testing to use a curated natural Chinese voice list and removed accent-grouped voice selection. Files edited: `TingXieFlow/Services/SpeechAudioEngine.swift`, `TingXieFlow/Views/SpeechTestView.swift`, `AGENTS.md`.
+- **2026-07-14**: Added native speech scratchpad UI with Mandarin voice selection, speed/pitch sliders, and playback controls. Files edited: `TingXieFlow/Views/SpeechTestView.swift`, `AGENTS.md`.
 - **2026-07-10**: Initialized native macOS Xcode project skeleton with SwiftData storage containers. Authenticated Git control origins to GitHub remote repository.
