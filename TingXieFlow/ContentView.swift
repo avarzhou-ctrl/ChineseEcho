@@ -9,7 +9,9 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
+    // SwiftData context used for local inserts and deletes.
     @Environment(\.modelContext) private var modelContext
+    // Live SwiftData query backing the sidebar list.
     @Query private var items: [Item]
 
     var body: some View {

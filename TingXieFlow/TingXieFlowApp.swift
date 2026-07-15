@@ -10,6 +10,7 @@ import SwiftData
 
 @main
 struct TingXieFlowApp: App {
+    // Shared SwiftData container for app-wide local persistence.
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,

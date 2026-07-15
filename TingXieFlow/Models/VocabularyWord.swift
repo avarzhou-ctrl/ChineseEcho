@@ -13,15 +13,16 @@ class VocabularyWord {
     var englishTranslation: String
     var pinyin: String
     
-    // additional uses
+    // Tracks review state and idiom-specific generation paths.
     var isMissedWord: Bool
     var isIdiom: Bool
     
-    // LLM content
+    // Optional because LLM enrichment happens after the word is saved.
     var generatedSentence: String?
     var generatedBreakdown: String?
     var tags: [String]
     
+    // Inverse link back to the owning dictation session.
     var session: DictationSet?
     
     init(chinese: String, englishTranslation: String, pinyin: String, isMissedWord: Bool = false, isIdiom: Bool = false, tags: [String] = []) {

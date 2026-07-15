@@ -9,7 +9,9 @@ import AVFoundation
 import SwiftUI
 
 struct SpeechTestView: View {
+    // @State owns the observable engine for this scratchpad view.
     @State private var audioEngine = SpeechAudioEngine()
+    // Pickers bind best to stable String identifiers, not AVSpeechSynthesisVoice objects.
     @State private var selectedVoiceIdentifier = ""
 
     private let sampleText = "今天我们练习听写。请仔细听，然后写下来。"
@@ -117,6 +119,7 @@ struct SpeechTestView: View {
 
     @ViewBuilder
     private func voiceOptions(voices: [AVSpeechSynthesisVoice]) -> some View {
+        // Tags must match selectedVoiceIdentifier for Picker selection to work.
         ForEach(voices, id: \.identifier) { voice in
             Text(voice.name).tag(voice.identifier)
         }
@@ -159,6 +162,7 @@ struct SpeechTestView: View {
     }
 
     private func selectDefaultVoice() {
+        // Avoid resetting the user's picker choice when the view reappears.
         guard selectedVoiceIdentifier.isEmpty else { return }
 
         let defaultVoice = availableVoices.first

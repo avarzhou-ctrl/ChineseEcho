@@ -13,6 +13,7 @@ class DictationSet {
     var title: String
     var dateCreated: Date
     
+    // Deleting a set also removes its saved words.
     @Relationship(deleteRule: .cascade)
     var vocabularyWords: [VocabularyWord] = []
     

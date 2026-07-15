@@ -7,23 +7,27 @@
 
 import Foundation
 
+// Plain DTOs must decode outside the MainActor URLSession callback.
 nonisolated struct OllamaRequest: Encodable {
     let model: String
     let prompt: String
     let stream: Bool
 }
 
+// Matches Ollama's non-streaming /api/generate response shape.
 nonisolated struct OllamaResponse: Decodable {
     let response: String
 }
 
 func generateText(prompt: String, completion: @escaping (String?) -> Void) {
+    // Ollama runs locally, so this request never leaves the user's Mac.
     guard let url = URL(string: "http://localhost:11434/api/generate") else { return }
     
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     
+    // Disable streaming so JSONDecoder receives one complete JSON object.
     let payload = OllamaRequest(model: "llama3", prompt: prompt, stream: false)
     
     do {
@@ -41,6 +45,7 @@ func generateText(prompt: String, completion: @escaping (String?) -> Void) {
         
         do {
             let result = try JSONDecoder().decode(OllamaResponse.self, from: data)
+            // Return generated text on the main queue for SwiftUI state updates.
             DispatchQueue.main.async {
                 completion(result.response)
             }
