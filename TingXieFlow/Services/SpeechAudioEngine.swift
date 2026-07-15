@@ -23,6 +23,7 @@ final class SpeechAudioEngine {
             .filter { preferredVoiceNames.contains($0.name) }
             .filter { !$0.identifier.contains("com.apple.eloquence") }
             .sorted { lhs, rhs in
+                // sort in given order
                 let lhsIndex = preferredVoiceNames.firstIndex(of: lhs.name) ?? Int.max
                 let rhsIndex = preferredVoiceNames.firstIndex(of: rhs.name) ?? Int.max
                 return lhsIndex < rhsIndex
