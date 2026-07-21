@@ -122,6 +122,7 @@ actor LocalLanguageModel {
         )
         let session = ChatSession(
             container,
+            generateParameters: GenerateParameters(temperature: 0.7),
             additionalContext: ["enable_thinking": false]
         )
         self.session = session

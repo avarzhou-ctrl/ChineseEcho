@@ -58,6 +58,7 @@ Ask first:
 - Format: "**YYYY-MM-DD**: [Brief description of changes with which files were edited]"
 
 # Project Log
+- **2026-07-20**: Set Qwen generation temperature explicitly to 0.7 for more varied non-thinking responses. Files edited: `TingXieFlow/Services/LLM.swift`, `AGENTS.md`.
 - **2026-07-20**: Disabled Qwen reasoning output and filtered residual `<think>` blocks from generated responses. Files edited: `TingXieFlow/Services/LLM.swift`, `AGENTS.md`.
 - **2026-07-20**: Replaced the external Ollama HTTP dependency with in-process MLX Swift inference using a cached Qwen 3 0.6B 4-bit model and updated the LLM test interface. Files edited: `TingXieFlow.xcodeproj/project.pbxproj`, `TingXieFlow/Services/LLM.swift`, `TingXieFlow/Views/LLMTestView.swift`, `AGENTS.md`.
 - **2026-07-20**: Added an interactive local Ollama test view with editable prompts, response and error states, and async generation; modernized the LLM helper to use async/await with HTTP error handling. Files edited: `TingXieFlow/Views/LLMTestView.swift`, `TingXieFlow/Services/LLM.swift`, `AGENTS.md`.
