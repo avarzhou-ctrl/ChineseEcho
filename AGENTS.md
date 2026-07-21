@@ -58,6 +58,9 @@ Ask first:
 - Format: "**YYYY-MM-DD**: [Brief description of changes with which files were edited]"
 
 # Project Log
+- **2026-07-20**: Disabled Qwen reasoning output and filtered residual `<think>` blocks from generated responses. Files edited: `TingXieFlow/Services/LLM.swift`, `AGENTS.md`.
+- **2026-07-20**: Replaced the external Ollama HTTP dependency with in-process MLX Swift inference using a cached Qwen 3 0.6B 4-bit model and updated the LLM test interface. Files edited: `TingXieFlow.xcodeproj/project.pbxproj`, `TingXieFlow/Services/LLM.swift`, `TingXieFlow/Views/LLMTestView.swift`, `AGENTS.md`.
+- **2026-07-20**: Added an interactive local Ollama test view with editable prompts, response and error states, and async generation; modernized the LLM helper to use async/await with HTTP error handling. Files edited: `TingXieFlow/Views/LLMTestView.swift`, `TingXieFlow/Services/LLM.swift`, `AGENTS.md`.
 - **2026-07-14**: Fixed Swift 6 actor isolation for Ollama request/response DTOs and disabled Ollama response streaming for single-response decoding. Files edited: `TingXieFlow/Services/LLM.swift`, `AGENTS.md`.
 - **2026-07-14**: Refined speech testing to use a curated natural Chinese voice list and removed accent-grouped voice selection. Files edited: `TingXieFlow/Services/SpeechAudioEngine.swift`, `TingXieFlow/Views/SpeechTestView.swift`, `AGENTS.md`.
 - **2026-07-14**: Added native speech scratchpad UI with Mandarin voice selection, speed/pitch sliders, and playback controls. Files edited: `TingXieFlow/Views/SpeechTestView.swift`, `AGENTS.md`.
