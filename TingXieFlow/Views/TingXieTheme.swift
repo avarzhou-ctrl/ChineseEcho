@@ -8,41 +8,47 @@ enum TingXiePalette {
     static let accent = Color(red: 39 / 255, green: 101 / 255, blue: 37 / 255)
     static let wordOfDay = Color(red: 253 / 255, green: 251 / 255, blue: 167 / 255)
     static let missed = Color(red: 196 / 255, green: 31 / 255, blue: 35 / 255)
+    static let tableStripe = Color(red: 165 / 255, green: 198 / 255, blue: 162 / 255).opacity(0.4)
 }
 
 struct AppSidebar: View {
     @Binding var selection: AppSection
     let activeSet: DictationSet?
+    let isCollapsed: Bool
+    let onToggleCollapse: () -> Void
     let onShowDictationHome: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("TingXieFlow")
-                .font(.system(size: 32, weight: .bold))
-                .padding(.top, 45)
-                .padding(.horizontal, 15)
+            if !isCollapsed {
+                Text("TingXieFlow")
+                    .font(.system(size: 32, weight: .bold))
+                    .padding(.top, 45)
+                    .padding(.horizontal, 15)
 
-            WordOfDayCard()
-                .padding(.top, 10)
-                .padding(.horizontal, 15)
+                WordOfDayCard()
+                    .padding(.top, 10)
+                    .padding(.horizontal, 15)
+            }
 
             VStack(spacing: 8) {
                 SidebarButton(
                     title: "Smart Dictation",
                     symbol: "waveform.badge.microphone",
-                    isSelected: selection == .dictation
+                    isSelected: selection == .dictation,
+                    isCollapsed: isCollapsed
                 ) {
                     onShowDictationHome()
                 }
 
-                if let activeSet {
+                if let activeSet, !isCollapsed {
                     HStack(spacing: 8) {
                         Rectangle()
                             .frame(width: 1, height: 20)
                         Text(activeSet.title)
                             .lineLimit(1)
                     }
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .padding(.leading, 16)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -50,28 +56,43 @@ struct AppSidebar: View {
                 SidebarButton(
                     title: "Your Vocabulary Hub",
                     symbol: "character.book.closed.fill",
-                    isSelected: selection == .vocabulary
+                    isSelected: selection == .vocabulary,
+                    isCollapsed: isCollapsed
                 ) {
                     selection = .vocabulary
                 }
             }
-            .padding(.horizontal, 15)
-            .padding(.top, 16)
+            .padding(.horizontal, isCollapsed ? 6 : 15)
+            .padding(.top, isCollapsed ? 58 : 16)
 
             Spacer()
 
             SidebarButton(
                 title: "Settings",
                 symbol: "gearshape.fill",
-                isSelected: selection == .settings
+                isSelected: selection == .settings,
+                isCollapsed: isCollapsed
             ) {
                 selection = .settings
             }
-            .padding(.horizontal, 15)
+            .padding(.horizontal, isCollapsed ? 6 : 15)
             .padding(.bottom, 12)
         }
         .foregroundStyle(.white)
         .background(TingXiePalette.sidebar)
+        .overlay(alignment: .topTrailing) {
+            Button(action: onToggleCollapse) {
+                Image(systemName: isCollapsed ? "sidebar.right" : "sidebar.left")
+                    .font(.system(size: 20, weight: .medium))
+                    .frame(width: 32, height: 32)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.white)
+            .padding(.top, 10)
+            .padding(.trailing, isCollapsed ? 16 : 10)
+            .help(isCollapsed ? "Expand Sidebar" : "Collapse Sidebar")
+            .accessibilityLabel(isCollapsed ? "Expand Sidebar" : "Collapse Sidebar")
+        }
     }
 }
 
@@ -83,7 +104,7 @@ private struct WordOfDayCard: View {
                     .font(.system(size: 48, weight: .bold))
                 Spacer()
                 Image(systemName: "info.circle.fill")
-                    .font(.title2)
+                    .font(.system(size: 24))
             }
 
             Text("Morning")
@@ -105,20 +126,31 @@ private struct SidebarButton: View {
     let title: String
     let symbol: String
     let isSelected: Bool
+    let isCollapsed: Bool
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Label(title, systemImage: symbol)
-                .font(.system(size: 12, weight: .semibold))
+            HStack(spacing: 8) {
+                Image(systemName: symbol)
+                    .font(.system(size: 20, weight: .semibold))
+                    .frame(width: 22, height: 22)
+
+                if !isCollapsed {
+                    Text(title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .lineLimit(1)
+                }
+            }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .frame(height: 40)
+                .padding(.horizontal, isCollapsed ? 15 : 16)
+                .frame(height: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .background(isSelected ? TingXiePalette.sidebarSelection : .clear)
         .clipShape(RoundedRectangle(cornerRadius: 8))
+        .help(title)
     }
 }
 
@@ -128,27 +160,33 @@ struct WorkspaceHeader: View {
     var addAction: (() -> Void)?
 
     var body: some View {
-        HStack(alignment: .top) {
+        ZStack(alignment: .topTrailing) {
             Text(title)
                 .font(.system(size: 40, weight: .bold))
                 .foregroundStyle(TingXiePalette.accent)
-            Spacer()
-            VStack(spacing: 12) {
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 42)
+                .padding(.horizontal, 40)
+
+            VStack(spacing: 20) {
                 Image(systemName: "info.circle.fill")
+                    .font(.system(size: 24))
                     .foregroundStyle(TingXiePalette.accent)
                 if showsAddButton {
                     Button(action: { addAction?() }) {
                         Image(systemName: "plus")
+                            .frame(width: 32, height: 32)
                     }
                     .buttonStyle(.plain)
-                    .font(.title2)
+                    .font(.system(size: 28, weight: .medium))
                     .foregroundStyle(TingXiePalette.accent)
                     .accessibilityLabel("Create New Set")
                 }
             }
+            .padding(.top, 24)
+            .padding(.trailing, 24)
         }
-        .padding(.top, 42)
-        .padding(.horizontal, 40)
+        .frame(height: 112)
     }
 }
 

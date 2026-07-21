@@ -53,20 +53,19 @@ struct VocabularyHubView: View {
             VStack(spacing: 0) {
                 WorkspaceHeader(title: "Your Vocabulary Hub")
 
-                TextField("Search vocabulary, pinyin, tags...", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .padding(.horizontal, 14)
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.secondary)
+
+                    TextField("Search vocabulary, pinyin, tags...", text: $searchText)
+                        .textFieldStyle(.plain)
+                        .font(.body)
+                }
+                    .padding(.horizontal, 16)
                     .frame(height: 40)
                     .background(TingXiePalette.surface, in: RoundedRectangle(cornerRadius: 8))
-                    .overlay(alignment: .leading) {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundStyle(.secondary)
-                            .padding(.leading, 12)
-                            .offset(x: searchText.isEmpty ? 0 : -28)
-                            .opacity(searchText.isEmpty ? 1 : 0)
-                    }
                     .padding(.horizontal, 24)
-                    .padding(.top, 8)
 
                 vocabularyPicker
                     .padding(.horizontal, 24)
@@ -92,14 +91,17 @@ struct VocabularyHubView: View {
             ForEach(VocabularyFilter.allCases) { item in
                 Button {
                     filter = item
+                    selectedWordID = nil
                 } label: {
                     VStack(spacing: 4) {
                         Image(systemName: item.symbol)
+                            .font(.system(size: 22, weight: .medium))
                         Text(item.rawValue)
-                            .font(.caption2)
+                            .font(.system(size: 13, weight: .semibold))
                     }
                     .frame(maxWidth: .infinity)
-                    .frame(height: 54)
+                    .frame(height: 60)
+                    .contentShape(Rectangle())
                     .foregroundStyle(.primary)
                     .background(filter == item ? TingXiePalette.surface : .clear)
                 }
@@ -111,35 +113,36 @@ struct VocabularyHubView: View {
     }
 
     private var vocabularyList: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                ForEach(filteredWords) { word in
-                    Button {
-                        selectedWordID = word.persistentModelID
-                    } label: {
-                        HStack(spacing: 12) {
-                            Text(word.chinese)
-                                .font(.system(size: 16, weight: .medium))
-                                .frame(width: 110, alignment: .leading)
-                            Text(word.pinyin)
-                                .font(.system(size: 14))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            WordTags(word: word, compact: true)
-                        }
-                        .padding(.horizontal, 16)
-                        .frame(height: 36)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .background(selectedWord?.persistentModelID == word.persistentModelID ? TingXiePalette.accent.opacity(0.15) : .clear)
+        List {
+            ForEach(Array(filteredWords.enumerated()), id: \.element.persistentModelID) { index, word in
+                HStack(spacing: 0) {
+                    Text(word.chinese)
+                        .frame(width: 129, alignment: .leading)
 
-                    Divider().opacity(0.35)
+                    Text(word.pinyin)
+                        .frame(width: 157, alignment: .leading)
+
+                    WordTags(word: word, compact: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .font(.system(size: 16))
+                .padding(.horizontal, 16)
+                .frame(maxWidth: .infinity, minHeight: 32, maxHeight: 32)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    selectedWordID = word.persistentModelID
+                }
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+                .listRowBackground(index.isMultiple(of: 2) ? TingXiePalette.surface : TingXiePalette.tableStripe)
             }
-            .background(TingXiePalette.surface.opacity(0.72), in: RoundedRectangle(cornerRadius: 8))
-            .padding(.horizontal, 24)
-            .padding(.vertical, 24)
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(TingXiePalette.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, 24)
+        .padding(.vertical, 24)
     }
 }
 
@@ -156,6 +159,7 @@ private struct VocabularyInspector: View {
             HStack {
                 Spacer()
                 Image(systemName: "info.circle.fill")
+                    .font(.system(size: 24))
                     .foregroundStyle(TingXiePalette.accent)
             }
 
@@ -358,4 +362,39 @@ private struct SettingsCard: View {
         .padding(18)
         .background(TingXiePalette.surface, in: RoundedRectangle(cornerRadius: 12))
     }
+}
+
+#Preview("Vocabulary Hub — Empty") {
+    VocabularyHubView(words: [])
+        .modelContainer(for: [DictationSet.self, VocabularyWord.self], inMemory: true)
+}
+
+@MainActor
+private func populatedVocabularyHubPreview() -> some View {
+    let setTitle = "HSK 5 full set"
+    let idiom = VocabularyWord(
+        chinese: "莫名其妙",
+        englishTranslation: "Baffling; without rhyme or reason",
+        pinyin: "mò míng qí miào",
+        isMissedWord: true,
+        isIdiom: true,
+        tags: [setTitle]
+    )
+    idiom.generatedSentence = "他今天突然朝我发脾气，真是莫名其妙。"
+
+    let words = [
+        idiom,
+        VocabularyWord(chinese: "把握", englishTranslation: "to grasp", pinyin: "bǎ wò", tags: [setTitle]),
+        VocabularyWord(chinese: "集中", englishTranslation: "to concentrate", pinyin: "jí zhōng", isMissedWord: true, tags: [setTitle]),
+        VocabularyWord(chinese: "核心", englishTranslation: "core", pinyin: "hé xīn", tags: [setTitle]),
+        VocabularyWord(chinese: "反复", englishTranslation: "repeatedly", pinyin: "fǎn fù", tags: [setTitle]),
+        VocabularyWord(chinese: "必然", englishTranslation: "inevitable", pinyin: "bì rán", tags: [setTitle])
+    ]
+
+    return VocabularyHubView(words: words)
+        .modelContainer(for: [DictationSet.self, VocabularyWord.self], inMemory: true)
+}
+
+#Preview("Vocabulary Hub — Populated") {
+    populatedVocabularyHubPreview()
 }

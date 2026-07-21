@@ -24,6 +24,10 @@ struct SmartDictationView: View {
                     if sets.isEmpty {
                         EmptyDictationView(onCreateSet: onCreateSet)
                     } else {
+                        Divider()
+                            .overlay(TingXiePalette.accent.opacity(0.35))
+                            .padding(.horizontal, 24)
+
                         DictationSetList(sets: sets, onOpenSet: onOpenSet)
                     }
                 }
@@ -57,6 +61,7 @@ private struct EmptyDictationView: View {
 
             Button(action: onCreateSet) {
                 Label("Create New Set", systemImage: "plus")
+                    .padding(.bottom, 2)
             }
             .buttonStyle(GreenCapsuleButtonStyle())
             .padding(.top, 16)
@@ -106,7 +111,7 @@ private struct DictationSetList: View {
             }
             .padding(.horizontal, 24)
         }
-        .padding(.top, 16)
+        .padding(.top, 4)
     }
 }
 
@@ -127,12 +132,14 @@ private struct PracticeSessionView: View {
     @State private var filter: PracticeFilter = .all
     @State private var currentIndex = 0
     @State private var revealsCharacters = false
+    @State private var pendingMissedWordIDs: Set<PersistentIdentifier> = []
+    @State private var isContinuousPlaybackActive = false
     @State private var audioEngine = SpeechAudioEngine()
 
     private var words: [VocabularyWord] {
         switch filter {
         case .all: set.vocabularyWords
-        case .missed: set.vocabularyWords.filter(\.isMissedWord)
+        case .missed: set.vocabularyWords.filter(isMissed)
         case .idioms: set.vocabularyWords.filter(\.isIdiom)
         }
     }
@@ -149,7 +156,6 @@ private struct PracticeSessionView: View {
             Divider()
                 .overlay(TingXiePalette.accent.opacity(0.35))
                 .padding(.horizontal, 24)
-                .padding(.top, 8)
 
             Picker("Vocabulary Filter", selection: $filter) {
                 ForEach(PracticeFilter.allCases) { item in
@@ -162,7 +168,7 @@ private struct PracticeSessionView: View {
             .padding(.top, 16)
             .onChange(of: filter) { _, _ in
                 currentIndex = 0
-                revealsCharacters = false
+                restartContinuousPlaybackIfNeeded()
             }
 
             Group {
@@ -180,7 +186,16 @@ private struct PracticeSessionView: View {
         }
         .background(TingXiePalette.workspace)
         .onAppear {
-            audioEngine.selectedVoice = audioEngine.voices.first
+            audioEngine.selectedVoice = audioEngine.defaultFemaleVoice
+            audioEngine.onUtteranceFinished = {
+                Task { @MainActor in
+                    advanceContinuousPlayback()
+                }
+            }
+        }
+        .onDisappear {
+            stopContinuousPlayback()
+            audioEngine.onUtteranceFinished = nil
         }
     }
 
@@ -191,10 +206,9 @@ private struct PracticeSessionView: View {
                     ForEach(Array(words.enumerated()), id: \.element.persistentModelID) { index, word in
                         Text(revealsCharacters ? word.chinese : word.pinyin)
                             .font(.system(size: revealsCharacters ? 20 : 18, weight: index == currentIndex ? .bold : .regular))
-                            .foregroundStyle(word.isMissedWord && revealsCharacters ? TingXiePalette.missed : .primary)
+                            .foregroundStyle(isMissed(word) && revealsCharacters ? TingXiePalette.missed : .primary)
                             .onTapGesture {
-                                currentIndex = index
-                                speakCurrentWord()
+                                selectWordAndPlay(at: index)
                             }
                     }
                 }
@@ -207,22 +221,23 @@ private struct PracticeSessionView: View {
                 ProgressView(value: Double(currentIndex + 1), total: Double(max(words.count, 1)))
                     .tint(TingXiePalette.accent)
 
-                Button(action: speakCurrentWord) {
-                    Image(systemName: "play.circle.fill")
+                Button(action: toggleContinuousPlayback) {
+                    Image(systemName: isContinuousPlaybackActive ? "stop.circle.fill" : "play.circle.fill")
                         .font(.system(size: 40))
                         .foregroundStyle(TingXiePalette.accent)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Play Current Word")
+                .accessibilityLabel(isContinuousPlaybackActive ? "Stop Dictation Audio" : "Play Dictation Audio Continuously")
             }
 
             HStack {
                 Button {
-                    revealsCharacters.toggle()
+                    revealsCharacters = true
                 } label: {
-                    Label(revealsCharacters ? "Hide Characters" : "Reveal Characters", systemImage: revealsCharacters ? "eye.slash.fill" : "eye.fill")
+                    Label(revealsCharacters ? "Characters Revealed" : "Reveal Characters", systemImage: "eye.fill")
                 }
                 .buttonStyle(GreenCapsuleButtonStyle())
+                .disabled(revealsCharacters)
 
                 Spacer()
 
@@ -250,21 +265,72 @@ private struct PracticeSessionView: View {
 
     private func speakCurrentWord() {
         guard let currentWord else { return }
-        audioEngine.stop()
         audioEngine.speak(currentWord.chinese)
+    }
+
+    private func toggleContinuousPlayback() {
+        if isContinuousPlaybackActive {
+            stopContinuousPlayback()
+        } else {
+            isContinuousPlaybackActive = true
+            audioEngine.stop()
+            speakCurrentWord()
+        }
+    }
+
+    private func stopContinuousPlayback() {
+        isContinuousPlaybackActive = false
+        audioEngine.stop()
+    }
+
+    private func selectWordAndPlay(at index: Int) {
+        currentIndex = index
+        isContinuousPlaybackActive = true
+        audioEngine.stop()
+        speakCurrentWord()
+    }
+
+    private func restartContinuousPlaybackIfNeeded() {
+        guard isContinuousPlaybackActive else { return }
+        audioEngine.stop()
+        speakCurrentWord()
+    }
+
+    private func advanceContinuousPlayback() {
+        guard isContinuousPlaybackActive else { return }
+
+        if currentIndex < words.count - 1 {
+            currentIndex += 1
+            speakCurrentWord()
+        } else {
+            isContinuousPlaybackActive = false
+        }
     }
 
     private func markCurrentWordMissed() {
         guard let currentWord else { return }
         let store = DictationStore(modelContainer: modelContext.container)
         let wordID = currentWord.persistentModelID
+        let markedIndex = currentIndex
+        pendingMissedWordIDs.insert(wordID)
         Task {
-            try? await store.setMissed(true, wordID: wordID)
-            if currentIndex < words.count - 1 {
-                currentIndex += 1
-                revealsCharacters = false
+            do {
+                try await store.setMissed(true, wordID: wordID)
+                let isStillOnMarkedWord = currentIndex == markedIndex
+                    && words.indices.contains(markedIndex)
+                    && words[markedIndex].persistentModelID == wordID
+                if isStillOnMarkedWord, currentIndex < words.count - 1 {
+                    currentIndex += 1
+                    restartContinuousPlaybackIfNeeded()
+                }
+            } catch {
+                pendingMissedWordIDs.remove(wordID)
             }
         }
+    }
+
+    private func isMissed(_ word: VocabularyWord) -> Bool {
+        word.isMissedWord || pendingMissedWordIDs.contains(word.persistentModelID)
     }
 }
 
@@ -387,4 +453,64 @@ struct NewDictationSetSheet: View {
             }
         }
     }
+}
+
+#Preview("Smart Dictation — Empty") {
+    SmartDictationView(
+        sets: [],
+        activeSet: nil,
+        onCreateSet: {},
+        onOpenSet: { _ in },
+        onCloseSet: {}
+    )
+    .modelContainer(for: [DictationSet.self, VocabularyWord.self], inMemory: true)
+}
+
+#Preview("Smart Dictation — Sets") {
+    let hskSet = DictationSet(
+        title: "HSK 5 full set",
+        dateCreated: Date.now.addingTimeInterval(-86_400)
+    )
+    let idiomSet = DictationSet(
+        title: "Everyday idioms",
+        dateCreated: Date.now.addingTimeInterval(-172_800)
+    )
+
+    SmartDictationView(
+        sets: [hskSet, idiomSet],
+        activeSet: nil,
+        onCreateSet: {},
+        onOpenSet: { _ in },
+        onCloseSet: {}
+    )
+    .modelContainer(for: [DictationSet.self, VocabularyWord.self], inMemory: true)
+}
+
+@MainActor
+private func smartDictationPracticePreview() -> some View {
+    let set = DictationSet(title: "HSK 5 full set")
+    let words = [
+        VocabularyWord(chinese: "把握", englishTranslation: "to grasp", pinyin: "bǎ wò", tags: [set.title]),
+        VocabularyWord(chinese: "集中", englishTranslation: "to concentrate", pinyin: "jí zhōng", isMissedWord: true, tags: [set.title]),
+        VocabularyWord(chinese: "莫名其妙", englishTranslation: "baffling", pinyin: "mò míng qí miào", isIdiom: true, tags: [set.title]),
+        VocabularyWord(chinese: "核心", englishTranslation: "core", pinyin: "hé xīn", tags: [set.title]),
+        VocabularyWord(chinese: "反复", englishTranslation: "repeatedly", pinyin: "fǎn fù", tags: [set.title])
+    ]
+    words.forEach { word in
+        word.session = set
+        set.vocabularyWords.append(word)
+    }
+
+    return SmartDictationView(
+        sets: [set],
+        activeSet: set,
+        onCreateSet: {},
+        onOpenSet: { _ in },
+        onCloseSet: {}
+    )
+    .modelContainer(for: [DictationSet.self, VocabularyWord.self], inMemory: true)
+}
+
+#Preview("Smart Dictation — Practice") {
+    smartDictationPracticePreview()
 }

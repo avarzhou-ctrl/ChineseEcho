@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var selection: AppSection = .dictation
     @State private var activeSetID: PersistentIdentifier?
     @State private var isCreatingSet = false
+    @State private var isSidebarCollapsed = false
 
     private var activeSet: DictationSet? {
         guard let activeSetID else { return nil }
@@ -24,11 +25,16 @@ struct ContentView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            AppSidebar(selection: $selection, activeSet: activeSet) {
+            AppSidebar(
+                selection: $selection,
+                activeSet: activeSet,
+                isCollapsed: isSidebarCollapsed,
+                onToggleCollapse: { isSidebarCollapsed.toggle() }
+            ) {
                 activeSetID = nil
                 selection = .dictation
             }
-            .frame(width: 266)
+            .frame(width: isSidebarCollapsed ? 64 : 266)
 
             Group {
                 switch selection {
@@ -50,6 +56,7 @@ struct ContentView: View {
         }
         .frame(minWidth: 900, idealWidth: 1024, minHeight: 650, idealHeight: 768)
         .background(TingXiePalette.workspace)
+        .animation(.easeInOut(duration: 0.18), value: isSidebarCollapsed)
         .sheet(isPresented: $isCreatingSet) {
             NewDictationSetSheet { title, words in
                 let store = DictationStore(modelContainer: modelContext.container)

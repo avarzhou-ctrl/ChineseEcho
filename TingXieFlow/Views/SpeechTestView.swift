@@ -165,7 +165,7 @@ struct SpeechTestView: View {
         // Avoid resetting the user's picker choice when the view reappears.
         guard selectedVoiceIdentifier.isEmpty else { return }
 
-        let defaultVoice = availableVoices.first
+        let defaultVoice = audioEngine.defaultFemaleVoice
         selectedVoiceIdentifier = defaultVoice?.identifier ?? ""
         audioEngine.selectedVoice = defaultVoice
     }
