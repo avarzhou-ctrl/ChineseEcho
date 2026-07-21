@@ -58,6 +58,7 @@ Ask first:
 - Format: "**YYYY-MM-DD**: [Brief description of changes with which files were edited]"
 
 # Project Log
+- **2026-07-21**: Implemented the Figma-designed macOS app shell with a branded sidebar, dictation empty/list/practice states, interactive set creation, vocabulary search and MLX enrichment, settings dashboard, and background SwiftData mutations. Files edited: `TingXieFlow/ContentView.swift`, `TingXieFlow/TingXieFlowApp.swift`, `TingXieFlow/Views/TingXieTheme.swift`, `TingXieFlow/Views/SmartDictationView.swift`, `TingXieFlow/Views/VocabularyHubView.swift`, `TingXieFlow/Services/DictationStore.swift`, `AGENTS.md`.
 - **2026-07-20**: Set Qwen generation temperature explicitly to 0.7 for more varied non-thinking responses. Files edited: `TingXieFlow/Services/LLM.swift`, `AGENTS.md`.
 - **2026-07-20**: Disabled Qwen reasoning output and filtered residual `<think>` blocks from generated responses. Files edited: `TingXieFlow/Services/LLM.swift`, `AGENTS.md`.
 - **2026-07-20**: Replaced the external Ollama HTTP dependency with in-process MLX Swift inference using a cached Qwen 3 0.6B 4-bit model and updated the LLM test interface. Files edited: `TingXieFlow.xcodeproj/project.pbxproj`, `TingXieFlow/Services/LLM.swift`, `TingXieFlow/Views/LLMTestView.swift`, `AGENTS.md`.

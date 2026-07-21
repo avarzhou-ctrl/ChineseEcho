@@ -14,6 +14,8 @@ struct TingXieFlowApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
+            DictationSet.self,
+            VocabularyWord.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -26,8 +28,12 @@ struct TingXieFlowApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            NavigationStack {
+                ContentView()
+            }
         }
         .modelContainer(sharedModelContainer)
+        .defaultSize(width: 1024, height: 768)
+        .windowStyle(.hiddenTitleBar)
     }
 }

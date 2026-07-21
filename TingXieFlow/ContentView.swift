@@ -5,64 +5,67 @@
 //  Created by Ava Zhou on 2026/7/10.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct ContentView: View {
-    // SwiftData context used for local inserts and deletes.
     @Environment(\.modelContext) private var modelContext
-    // Live SwiftData query backing the sidebar list.
-    @Query private var items: [Item]
+    @Query(sort: \DictationSet.dateCreated, order: .reverse) private var dictationSets: [DictationSet]
+    @Query private var vocabularyWords: [VocabularyWord]
+
+    @State private var selection: AppSection = .dictation
+    @State private var activeSetID: PersistentIdentifier?
+    @State private var isCreatingSet = false
+
+    private var activeSet: DictationSet? {
+        guard let activeSetID else { return nil }
+        return dictationSets.first { $0.persistentModelID == activeSetID }
+    }
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
+        HStack(spacing: 0) {
+            AppSidebar(selection: $selection, activeSet: activeSet) {
+                activeSetID = nil
+                selection = .dictation
             }
-#if os(macOS)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-#endif
-            .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-#endif
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
+            .frame(width: 266)
+
+            Group {
+                switch selection {
+                case .dictation:
+                    SmartDictationView(
+                        sets: dictationSets,
+                        activeSet: activeSet,
+                        onCreateSet: { isCreatingSet = true },
+                        onOpenSet: { activeSetID = $0.persistentModelID },
+                        onCloseSet: { activeSetID = nil }
+                    )
+                case .vocabulary:
+                    VocabularyHubView(words: vocabularyWords)
+                case .settings:
+                    SettingsDashboard()
                 }
             }
-        } detail: {
-            Text("Select an item")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+        .frame(minWidth: 900, idealWidth: 1024, minHeight: 650, idealHeight: 768)
+        .background(TingXiePalette.workspace)
+        .sheet(isPresented: $isCreatingSet) {
+            NewDictationSetSheet { title, words in
+                let store = DictationStore(modelContainer: modelContext.container)
+                try await store.createSet(title: title, words: words)
             }
         }
     }
 }
 
+enum AppSection: Hashable {
+    case dictation
+    case vocabulary
+    case settings
+}
+
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+        .modelContainer(for: [Item.self, DictationSet.self, VocabularyWord.self], inMemory: true)
 }
