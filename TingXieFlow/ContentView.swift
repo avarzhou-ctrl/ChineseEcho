@@ -43,6 +43,7 @@ struct ContentView: View {
                         sets: dictationSets,
                         activeSet: activeSet,
                         onCreateSet: { isCreatingSet = true },
+                        onOpenVocabulary: { selection = .vocabulary },
                         onOpenSet: { activeSetID = $0.persistentModelID },
                         onCloseSet: { activeSetID = nil }
                     )
