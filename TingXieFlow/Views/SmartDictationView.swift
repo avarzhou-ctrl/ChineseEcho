@@ -99,9 +99,6 @@ private struct DictationHero: View {
             Spacer(minLength: 10)
 
             ZStack {
-                Circle()
-                    .fill(TingXiePalette.surfaceContainerHigh.opacity(0.75))
-                    .frame(width: 112, height: 112)
                 Image(systemName: "waveform")
                     .font(.system(size: 48, weight: .medium))
                     .foregroundStyle(TingXiePalette.secondary.opacity(0.45))
@@ -184,7 +181,7 @@ private struct DictationSetRow: View {
                         .font(.system(size: 18, weight: .medium, design: .rounded))
                     HStack(spacing: 12) {
                         Label(set.dateCreated.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
-                        Label("\(set.vocabularyWords.count) words", systemImage: "character.book.closed")
+                        Label("\(set.vocabularyWords.count) words", systemImage: "list.bullet")
                     }
                     .font(.system(size: 12, design: .rounded))
                     .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.72))

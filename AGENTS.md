@@ -103,6 +103,7 @@ Ask first:
 - Format: "**YYYY-MM-DD**: [Brief description of changes with which files were edited]"
 
 # Project Log
+- **2026-07-22**: Rebuilt the SwiftUI presentation around the supplied TingXieFlow design system with a dashboard-style dictation home, focused practice card, glassy set-creation sheet, card-based vocabulary catalog and inspector, refreshed settings landing, expanded palette tokens, and a labeled color-palette canvas preview. Files edited: `TingXieFlow/ContentView.swift`, `TingXieFlow/Views/TingXieTheme.swift`, `TingXieFlow/Views/SmartDictationView.swift`, `TingXieFlow/Views/VocabularyHubView.swift`, `AGENTS.md`.
 - **2026-07-22**: Added a code-grounded product design guide covering hierarchy, screens, shipped scope, visual tokens, interactions, content, accessibility, reusable components, and implementation guardrails. Files edited: `design.md`, `AGENTS.md`.
 - **2026-07-22**: Replaced stale high-level guidance with code-grounded product purpose, implemented workflow, architecture and critical-file map, technical constraints, visual tokens, canonical content terminology, non-features, and product goals. Files edited: `AGENTS.md`.
 - **2026-07-21**: Added a 1.25-second pause between consecutive dictation word utterances while preserving immediate stop and word-jump behavior. Files edited: `TingXieFlow/Services/SpeechAudioEngine.swift`, `AGENTS.md`.

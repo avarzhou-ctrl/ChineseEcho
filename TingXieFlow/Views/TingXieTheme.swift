@@ -295,3 +295,81 @@ extension View {
         modifier(TonalCardModifier(cornerRadius: cornerRadius))
     }
 }
+
+private struct TingXieColorPalettePreview: View {
+    private let colors: [(name: String, value: String, color: Color)] = [
+        ("Sidebar", "#296124", TingXiePalette.sidebar),
+        ("Sidebar Selection", "#72AE6C · 40%", TingXiePalette.sidebarSelection),
+        ("Background", "#EBFFE6", TingXiePalette.background),
+        ("Workspace", "Background", TingXiePalette.workspace),
+        ("Surface", "#ECF7EB", TingXiePalette.surface),
+        ("Surface Container", "#D7F6D3", TingXiePalette.surfaceContainer),
+        ("Surface Container High", "#D1F1CE", TingXiePalette.surfaceContainerHigh),
+        ("Surface Container Highest", "#CBEBC8", TingXiePalette.surfaceContainerHighest),
+        ("Accent", "#0E490E", TingXiePalette.accent),
+        ("Secondary", "#2D6B2A", TingXiePalette.secondary),
+        ("On Background", "#07200B", TingXiePalette.onBackground),
+        ("On Surface Variant", "#41493E", TingXiePalette.onSurfaceVariant),
+        ("Outline", "#71796D", TingXiePalette.outline),
+        ("Outline Variant", "#C1C9BA", TingXiePalette.outlineVariant),
+        ("Word of the Day", "#FDFBA7", TingXiePalette.wordOfDay),
+        ("Missed", "#C41F23", TingXiePalette.missed),
+        ("Table Stripe", "#A5C6A2 · 40%", TingXiePalette.tableStripe)
+    ]
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 28) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("TingXieFlow Color Palette")
+                        .font(.system(size: 36, weight: .bold, design: .rounded))
+                        .foregroundStyle(TingXiePalette.onBackground)
+                    Text("Named color tokens used across the app interface")
+                        .font(.system(size: 15, design: .rounded))
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                }
+
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 210), spacing: 16)],
+                    spacing: 16
+                ) {
+                    ForEach(colors, id: \.name) { sample in
+                        VStack(alignment: .leading, spacing: 0) {
+                            sample.color
+                                .frame(height: 108)
+                                .overlay(alignment: .bottomTrailing) {
+                                    Text(sample.value)
+                                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 8)
+                                        .frame(height: 24)
+                                        .background(.black.opacity(0.48), in: Capsule())
+                                        .padding(10)
+                                }
+
+                            Text(sample.name)
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .foregroundStyle(TingXiePalette.onBackground)
+                                .padding(14)
+                        }
+                        .background(Color.white.opacity(0.72))
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(TingXiePalette.outlineVariant.opacity(0.7), lineWidth: 1)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("\(sample.name), \(sample.value)")
+                    }
+                }
+            }
+            .padding(32)
+        }
+        .background(TingXiePalette.background)
+        .frame(width: 1000, height: 720)
+    }
+}
+
+#Preview("TingXieFlow Color Palette") {
+    TingXieColorPalettePreview()
+}
