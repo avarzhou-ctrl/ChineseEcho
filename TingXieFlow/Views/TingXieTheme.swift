@@ -29,7 +29,7 @@ struct AppSidebar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            brand
+            sidebarHeader
 
             VStack(spacing: 8) {
                 SidebarButton(
@@ -49,6 +49,7 @@ struct AppSidebar: View {
                     .foregroundStyle(.white.opacity(0.7))
                     .padding(.leading, 18)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .transition(.opacity.combined(with: .move(edge: .leading)))
                 }
 
                 SidebarButton(
@@ -70,7 +71,7 @@ struct AppSidebar: View {
                 }
             }
             .padding(.horizontal, isCollapsed ? 8 : 16)
-            .padding(.top, isCollapsed ? 28 : 42)
+            .padding(.top, isCollapsed ? 28 : 18)
 
             Spacer()
 
@@ -78,48 +79,44 @@ struct AppSidebar: View {
                 WordOfDayCard()
                     .padding(.horizontal, 16)
                     .padding(.bottom, 18)
+                    .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .bottomLeading)))
             }
-
-            Button(action: onToggleCollapse) {
-                HStack(spacing: 8) {
-                    Image(systemName: isCollapsed ? "sidebar.right" : "sidebar.left")
-                    if !isCollapsed {
-                        Text("Collapse Sidebar")
-                    }
-                }
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .frame(maxWidth: .infinity, alignment: isCollapsed ? .center : .leading)
-                .frame(height: 36)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.white.opacity(0.75))
-            .padding(.horizontal, isCollapsed ? 8 : 24)
-            .padding(.bottom, 12)
-            .help(isCollapsed ? "Expand Sidebar" : "Collapse Sidebar")
         }
         .foregroundStyle(.white)
         .background(TingXiePalette.sidebar)
     }
 
-    @ViewBuilder
-    private var brand: some View {
-        if isCollapsed {
-            Image(systemName: "waveform")
-                .font(.system(size: 24, weight: .bold))
-                .frame(maxWidth: .infinity)
-                .padding(.top, 28)
-        } else {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("TingXieFlow")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .tracking(-1.2)
-                Text("Audio-First Learning")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.72))
+    private var sidebarHeader: some View {
+        ZStack(alignment: .topTrailing) {
+            if !isCollapsed {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("TingXieFlow")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .tracking(-1.2)
+                    Text("Audio-First Learning")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.72))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 52)
+                .padding(.horizontal, 24)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
-            .padding(.top, 28)
-            .padding(.horizontal, 24)
+
+            Button(action: onToggleCollapse) {
+                Image(systemName: isCollapsed ? "sidebar.right" : "sidebar.left")
+                    .font(.system(size: 16, weight: .semibold))
+                    .frame(width: 36, height: 36)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.white.opacity(0.78))
+            .help(isCollapsed ? "Expand Sidebar" : "Collapse Sidebar")
+            .accessibilityLabel(isCollapsed ? "Expand Sidebar" : "Collapse Sidebar")
+            .padding(.top, 14)
+            .padding(.trailing, 14)
         }
+        .frame(maxWidth: .infinity, alignment: .topTrailing)
     }
 }
 
@@ -165,6 +162,7 @@ private struct SidebarButton: View {
                     Text(title)
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
                         .lineLimit(2)
+                        .transition(.opacity.combined(with: .move(edge: .leading)))
                 }
             }
             .frame(maxWidth: .infinity, alignment: isCollapsed ? .center : .leading)

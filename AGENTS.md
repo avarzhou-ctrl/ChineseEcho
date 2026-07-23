@@ -1,67 +1,22 @@
 # AGENTS.md
 
-## Product Purpose
+## Project Structure
+### Function
+- Chinese language learning assistant (Product Name: **TingXieFlow**)
+    - Smart 听写: The app uses native Apple TTS to read out dictation content using `AVSpeechSynthesizer`.
+    - 错词 organization: Local Ollama (llama3 / gemma2) generates modern contextual sentences containing the user's specific 错词 via local JSON streaming.
+    - 成语 logs: When an idiom is saved, the local LLM generates a casual sentence using it, adding custom tags (e.g., #joy, #sad, #humorous) and a breakdown of individual character meanings.
+    - Smart Audio Controls: Allows language learners to dynamically speed up/slow down the TTS voice or add pronunciation profile variations (Mainland vs. Taiwanese Mandarin).
+    - Automatic Anki Export: One-click button compiles collected words, generated sentences, and audio paths, packaging them into an `.apkg` file for Anki.
+- **Audience:** Foreign speakers learning Chinese OR elementary to early middle school students working on Chinese learning.
 
-- **Product name:** **TingXieFlow**. There is currently no repository README or separate tagline; use the product name and in-app copy as the canonical language.
-- **Audience:** Chinese learners, including foreign-language learners and elementary through early middle-school students.
-- **Primary job:** Turn user-authored Chinese vocabulary sets into an audio-first **Smart Dictation** practice loop. A learner creates a set, listens to its words in sequence, reveals the characters, and marks difficult words as **Missed**.
-- **Supporting job:** Collect every saved item in **Your Vocabulary Hub**, where learners can search by Chinese, pinyin, or set tag; filter **All Words**, **Missed Words**, and **Idioms**; inspect translations; mark missed words as learned; and generate a short contextual sentence.
-- **Privacy model:** Vocabulary and practice state persist locally with SwiftData. Sentence generation runs in-process with Qwen 3 0.6B 4-bit through MLX; the model is downloaded from Hugging Face once and cached locally. There is no application backend.
-- **Audio model:** Dictation uses `AVSpeechSynthesizer`, prefers the installed Mandarin voices Yu-shu, Tingting, and Li-Mu, defaults to a female Siri voice when available, and inserts a 1.25-second post-utterance pause.
+### Structure
+- Environment: Native macOS Application (Xcode project utilizing Swift 6 and SwiftUI).
+- Storage: Local persistence managed exclusively via **SwiftData**. No cloud backends.
 
-## Current Product Shape
-
-Smart Dictation is the dominant workflow and should receive the greatest visual and product weight:
-
-1. **Create New Set:** Parse one item per line in the form `Chinese | pinyin | translation`. Four-character entries are currently classified as idioms.
-2. **Practice:** Play a set continuously or jump to a tapped word. Before reveal, the flow layout shows pinyin; after **Reveal Characters**, it shows hanzi and enables **Mark Missed** and **Finish Set**.
-3. **Review:** Missed state is saved in the background and feeds both the practice filters and Vocabulary Hub.
-4. **Enrich:** The Vocabulary Hub inspector asks the local model for one natural, short, modern Chinese example sentence and saves the result on the word.
-
-Do not present planned or historical ideas as shipped features. In particular, the codebase does **not** currently implement Anki export, audio-file packaging, automatic idiom character breakdown generation, emotion tags, Ollama, or a cloud sync/backend.
-
-## Architecture and Critical Files
-
-- `TingXieFlow/TingXieFlowApp.swift`: App entry point, persistent `ModelContainer`, registered SwiftData schema, window defaults, and scene setup.
-- `TingXieFlow/ContentView.swift`: Root desktop shell. Owns navigation state and the collapsible 266/64-point sidebar, routes among **Smart Dictation**, **Your Vocabulary Hub**, and **Settings**, and presents set creation.
-- `TingXieFlow/Views/SmartDictationView.swift`: Primary feature and source of truth for empty, set-list, and practice states; set-input parsing; playback progression; character reveal; and missed-word interaction.
-- `TingXieFlow/Views/VocabularyHubView.swift`: Search/filter table, word inspector, contextual-sentence generation, learned-state action, and Settings dashboard.
-- `TingXieFlow/Views/TingXieTheme.swift`: Shared visual identity and reusable shell components, including `TingXiePalette`, `AppSidebar`, `WorkspaceHeader`, and `GreenCapsuleButtonStyle`.
-- `TingXieFlow/Models/DictationSet.swift`: Named, dated practice set with a cascade relationship to its vocabulary words.
-- `TingXieFlow/Models/VocabularyWord.swift`: Canonical vocabulary record: Chinese, English translation, pinyin, missed/idiom flags, optional generated sentence/breakdown, tags, and owning set.
-- `TingXieFlow/Services/DictationStore.swift`: `@ModelActor` boundary for creating sets and persisting missed or generated-sentence state away from direct view mutation.
-- `TingXieFlow/Services/SpeechAudioEngine.swift`: Observable Apple TTS adapter, preferred voices, speed/pitch values, stop behavior, inter-word pause, and completion callback.
-- `TingXieFlow/Services/LLM.swift`: Actor-isolated MLX/Qwen session loading, Hugging Face download/tokenizer adapters, generation parameters, and residual `<think>` removal.
-- `TingXieFlow/Views/SpeechTestView.swift` and `TingXieFlow/Views/LLMTestView.swift`: Settings-accessible diagnostic playgrounds for the two local engines; they are not primary navigation destinations.
-- `TingXieFlow.xcodeproj/project.pbxproj`: Target configuration and package dependencies (`mlx-swift-lm`, `swift-huggingface`, and `swift-transformers`). Ask before changing deployment targets or build settings.
-- `TingXieFlow/Item.swift`: Unused starter SwiftData model still registered in the schema; do not treat it as product-domain data.
-
-## Technical Constraints
-
-- The current experience is a native SwiftUI desktop interface built around `HStack`/`HSplitView`, with a minimum window of 900 × 650 and a default of 1024 × 768.
-- Local persistence is SwiftData only. Keep the `DictationSet` → `VocabularyWord` cascade and inverse session relationship intact.
-- SwiftData writes from feature views go through `DictationStore`, whose `@ModelActor` owns its model context.
-- Local generation is serialized by `LocalLanguageModel` and cached in one `ChatSession`. Preserve explicit async/await and keep model loading/generation from blocking interaction.
-- The app sandbox permits outgoing network access because first use may need to download the model; normal generation is local after caching.
-- Use SF Symbols for interface iconography and native SwiftUI controls unless the established custom component already covers the need.
-
-## Visual Identity and Content Rules
-
-- **Product structure:** A dark-green branded sidebar beside a pale-green workspace. Within Vocabulary Hub, use a two-pane catalog/inspector shape; within Smart Dictation, use a set list leading into a focused sequential practice state.
-- **Canonical colors (`TingXiePalette`):** sidebar `#296124`; workspace `#BAD9B7`; surface `#ECF7EB`; accent `#276525`; word-of-day yellow `#FDFBA7`; missed/error red `#C41F23`; alternating table stripe derived from `#A5C6A2` at 40% opacity.
-- **Type hierarchy:** 40-point bold workspace titles, 32-point bold product name, 24-point set titles, 44-point bold inspected Chinese word, and 14-point semibold sidebar labels. Preserve this hierarchy before introducing new sizes.
-- **Geometry:** Existing corner radii are predominantly 8 points (cards, selections, search, table, tags) and 12 points for Settings cards. Primary green actions use 40-point-tall capsules. Workspace headers are 112 points high with 40-point horizontal content padding.
-- **Canonical labels:** Use the exact in-app terms **Smart Dictation**, **Your Vocabulary Hub**, **Create New Set**, **All Words**, **Missed Words**, **Idioms**, **Reveal Characters**, **Mark Missed**, **Finish Set**, **Contextual Sentences**, **Mark As Learned**, **Speech & Pronunciation**, and **Local Language Model**.
-- Start designs with real checked-in content such as `HSK 5 full set`, `Everyday idioms`, `把握`, `集中`, `核心`, `反复`, and `莫名其妙`. Do not invent testimonials, usage metrics, pricing, integrations, feature claims, or placeholder marketing copy.
-- Support Light and Dark appearance by preferring semantic foreground/background styles where the palette does not intentionally establish brand color.
-
-## Product Goals
-
-1. Make the listen → reveal → self-assess loop fast, predictable, and keyboard/mouse accessible.
-2. Preserve learning continuity: set membership, missed status, searchability, and generated examples should survive relaunches.
-3. Keep speech and language-model work private and local after required model/voice assets are installed.
-4. Keep views modular and reusable while maintaining one clear source of truth for palette, persistence mutations, speech, and generation.
-5. Treat Smart Dictation as the lead experience; supporting settings and diagnostics should not compete with practice and review.
+### Design Style
+- **Theme:** Clean, native macOS desktop aesthetic (supports Light/Dark mode).
+- **Layout:** `NavigationSplitView` architecture featuring a standard Sidebar navigation and a Main workspace dashboard.
 
 ## Commands
 ### GitHub Commits
@@ -81,7 +36,7 @@ When told to reformat commits, follow the Conventional Commits (https://www.conv
 ## Boundaries
 ### Do
 - Write modular, highly reusable SwiftUI components.
-- Use explicit async/await patterns for local model loading and generation so the interface stays responsive.
+- Use explicit async/await patterns for local LLM networking calls to keep the main UI thread responsive.
 - Utilize native Apple symbols (`Image(systemName: ...)`) for iconography.
 
 ### Don't
@@ -103,6 +58,10 @@ Ask first:
 - Format: "**YYYY-MM-DD**: [Brief description of changes with which files were edited]"
 
 # Project Log
+- **2026-07-23**: Improved sidebar drag responsiveness by keeping live width changes in memory, persisting only completed resizes, and reducing cursor updates to pointer enter and exit events. Files edited: `TingXieFlow/ContentView.swift`, `AGENTS.md`.
+- **2026-07-23**: Added the native left-right resize cursor when hovering the custom persistent sidebar drag handle. Files edited: `TingXieFlow/ContentView.swift`, `AGENTS.md`.
+- **2026-07-23**: Smoothed sidebar collapse and content transitions, persisted the user-selected sidebar width across navigation and launches, and added an accessible custom resize handle. Files edited: `TingXieFlow/ContentView.swift`, `TingXieFlow/Views/TingXieTheme.swift`, `AGENTS.md`.
+- **2026-07-23**: Moved the sidebar collapse control to the top-right and replaced the fixed app shell with a native draggable horizontal split view supporting bounded sidebar resizing. Files edited: `TingXieFlow/ContentView.swift`, `TingXieFlow/Views/TingXieTheme.swift`, `AGENTS.md`.
 - **2026-07-22**: Rebuilt the SwiftUI presentation around the supplied TingXieFlow design system with a dashboard-style dictation home, focused practice card, glassy set-creation sheet, card-based vocabulary catalog and inspector, refreshed settings landing, expanded palette tokens, and a labeled color-palette canvas preview. Files edited: `TingXieFlow/ContentView.swift`, `TingXieFlow/Views/TingXieTheme.swift`, `TingXieFlow/Views/SmartDictationView.swift`, `TingXieFlow/Views/VocabularyHubView.swift`, `AGENTS.md`.
 - **2026-07-22**: Added a code-grounded product design guide covering hierarchy, screens, shipped scope, visual tokens, interactions, content, accessibility, reusable components, and implementation guardrails. Files edited: `design.md`, `AGENTS.md`.
 - **2026-07-22**: Replaced stale high-level guidance with code-grounded product purpose, implemented workflow, architecture and critical-file map, technical constraints, visual tokens, canonical content terminology, non-features, and product goals. Files edited: `AGENTS.md`.
