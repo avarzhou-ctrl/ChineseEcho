@@ -24,11 +24,9 @@ struct SettingsDashboard: View {
     private var generatedWordCount = AppPreferenceDefault.generatedWordCount
 
     @State private var audioEngine = SpeechAudioEngine()
-    @State private var isShowingSpeechDiagnostics = false
-    @State private var isShowingModelDiagnostics = false
-    @State private var isConfirmingReset = false
 
     private let sampleText = "今天我们练习听写。"
+    private let primaryCardMinimumHeight: CGFloat = 470
 
     var body: some View {
         VStack(spacing: 0) {
@@ -41,21 +39,22 @@ struct SettingsDashboard: View {
                     tips: [
                         "Speech choices change the voice, pace, pitch, and pause used during dictation.",
                         "Practice choices control repeats, automatic movement, and whether new cards begin revealed.",
-                        "The local AI remains private; its first use may download the selected model."
+                        "The Practice card also shows your library totals and controls the size of AI-generated sets."
                     ]
                 )
             )
 
             ScrollView {
-                LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 390), spacing: 18)],
-                    alignment: .leading,
-                    spacing: 18
-                ) {
-                    speechSection
-                    practiceSection
-                    localAISection
-                    dataSection
+                VStack(spacing: 18) {
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: 390), spacing: 18)],
+                        alignment: .leading,
+                        spacing: 18
+                    ) {
+                        speechSection
+                        practiceSection
+                    }
+
                     aboutSection
                 }
                 .padding(.horizontal, 40)
@@ -71,25 +70,14 @@ struct SettingsDashboard: View {
         .onChange(of: speechPitch) { _, _ in synchronizeAudioEngine() }
         .onChange(of: interWordPause) { _, _ in synchronizeAudioEngine() }
         .onDisappear { audioEngine.stop() }
-        .sheet(isPresented: $isShowingSpeechDiagnostics) {
-            SpeechTestView()
-        }
-        .sheet(isPresented: $isShowingModelDiagnostics) {
-            LLMTestView()
-        }
-        .alert("Reset All Preferences?", isPresented: $isConfirmingReset) {
-            Button("Cancel", role: .cancel) {}
-            Button("Reset", role: .destructive, action: resetPreferences)
-        } message: {
-            Text("Your vocabulary and dictation sets will not be deleted.")
-        }
     }
 
     private var speechSection: some View {
         SettingsSectionCard(
             title: "Speech & Pronunciation",
             symbol: "speaker.wave.2.fill",
-            summary: "Choose how native Apple speech reads every dictation word."
+            summary: "Choose how native Apple speech reads every dictation word.",
+            minimumHeight: primaryCardMinimumHeight
         ) {
             Picker("Pronunciation", selection: $pronunciationProfile) {
                 Text("Mainland Mandarin").tag("Mainland Mandarin")
@@ -138,14 +126,6 @@ struct SettingsDashboard: View {
                     audioEngine.stop()
                 }
                 .buttonStyle(.bordered)
-
-                Spacer()
-
-                Button("Open Diagnostics", systemImage: "waveform.badge.magnifyingglass") {
-                    isShowingSpeechDiagnostics = true
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(TingXiePalette.accent)
             }
         }
     }
@@ -154,7 +134,8 @@ struct SettingsDashboard: View {
         SettingsSectionCard(
             title: "Practice",
             symbol: "rectangle.on.rectangle.angled",
-            summary: "Control how listening sessions repeat, advance, and reveal answers."
+            summary: "Control listening sessions, review your library, and choose the size of new AI-generated sets.",
+            minimumHeight: primaryCardMinimumHeight
         ) {
             Stepper("Repeat each word \(repeatCount) time\(repeatCount == 1 ? "" : "s")", value: $repeatCount, in: 1...5)
             Toggle("Automatically advance after playback", isOn: $automaticProgression)
@@ -168,62 +149,23 @@ struct SettingsDashboard: View {
             )
             .font(.system(size: 11, design: .rounded))
             .foregroundStyle(TingXiePalette.onSurfaceVariant)
-        }
-    }
 
-    private var localAISection: some View {
-        SettingsSectionCard(
-            title: "Local AI",
-            symbol: "cpu.fill",
-            summary: "Configure private Qwen generation for set creation and contextual sentences."
-        ) {
-            Stepper(
-                "Suggest \(generatedWordCount) words for a new set",
-                value: $generatedWordCount,
-                in: 3...20
-            )
+            Divider()
 
-            LabeledContent("Model") {
-                Text("Qwen 3 0.6B · 4-bit MLX")
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
-            }
-            LabeledContent("Privacy") {
-                Label("On-device inference", systemImage: "checkmark.shield.fill")
-                    .foregroundStyle(TingXiePalette.secondary)
-            }
-
-            Button("Open Model Playground", systemImage: "sparkles") {
-                isShowingModelDiagnostics = true
-            }
-            .buttonStyle(.bordered)
-            .tint(TingXiePalette.accent)
-        }
-    }
-
-    private var dataSection: some View {
-        SettingsSectionCard(
-            title: "Data & Export",
-            symbol: "externaldrive.fill",
-            summary: "TingXieFlow stores learning data locally with SwiftData."
-        ) {
+            SettingsGroupHeading(title: "Learning Library", symbol: "books.vertical.fill")
             HStack(spacing: 12) {
                 DataCountBadge(value: setCount, label: "Sets", symbol: "square.stack.3d.up")
                 DataCountBadge(value: wordCount, label: "Words", symbol: "character.book.closed")
             }
 
-            LabeledContent("Anki Export") {
-                Label("Planned", systemImage: "shippingbox")
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
-            }
+            Divider()
 
-            Text("Resetting preferences keeps all sets and vocabulary. Destructive data controls will require their own confirmation flow.")
-                .font(.system(size: 11, design: .rounded))
-                .foregroundStyle(TingXiePalette.onSurfaceVariant)
-
-            Button("Reset Preferences", systemImage: "arrow.counterclockwise") {
-                isConfirmingReset = true
-            }
-            .buttonStyle(.bordered)
+            SettingsGroupHeading(title: "New Sets", symbol: "sparkles")
+            Stepper(
+                "Suggest \(generatedWordCount) words for a new set",
+                value: $generatedWordCount,
+                in: 3...20
+            )
         }
     }
 
@@ -265,37 +207,26 @@ struct SettingsDashboard: View {
     private func synchronizeAudioEngine() {
         audioEngine.configureFromPreferences()
     }
-
-    private func resetPreferences() {
-        UserDefaults.standard.resetTingXiePreferences()
-        voiceIdentifier = ""
-        pronunciationProfile = AppPreferenceDefault.pronunciationProfile
-        speechRate = AppPreferenceDefault.speechRate
-        speechPitch = AppPreferenceDefault.speechPitch
-        interWordPause = AppPreferenceDefault.interWordPause
-        repeatCount = AppPreferenceDefault.repeatCount
-        automaticProgression = AppPreferenceDefault.automaticProgression
-        keepCardsRevealed = AppPreferenceDefault.keepCardsRevealed
-        generatedWordCount = AppPreferenceDefault.generatedWordCount
-        synchronizeAudioEngine()
-    }
 }
 
 private struct SettingsSectionCard<Content: View>: View {
     let title: String
     let symbol: String
     let summary: String
+    let minimumHeight: CGFloat?
     let content: Content
 
     init(
         title: String,
         symbol: String,
         summary: String,
+        minimumHeight: CGFloat? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
         self.symbol = symbol
         self.summary = summary
+        self.minimumHeight = minimumHeight
         self.content = content()
     }
 
@@ -325,7 +256,7 @@ private struct SettingsSectionCard<Content: View>: View {
             }
         }
         .padding(22)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: minimumHeight, alignment: .topLeading)
         .tonalCard(cornerRadius: 18)
     }
 }
@@ -346,6 +277,17 @@ private struct SettingsSlider: View {
                 .foregroundStyle(TingXiePalette.onSurfaceVariant)
                 .frame(width: 48, alignment: .trailing)
         }
+    }
+}
+
+private struct SettingsGroupHeading: View {
+    let title: String
+    let symbol: String
+
+    var body: some View {
+        Label(title, systemImage: symbol)
+            .font(.system(size: 12, weight: .semibold, design: .rounded))
+            .foregroundStyle(TingXiePalette.accent)
     }
 }
 
