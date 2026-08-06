@@ -28,6 +28,7 @@ final class SpeechAudioEngine: NSObject, AVSpeechSynthesizerDelegate {
     override init() {
         super.init()
         synthesizer.delegate = self
+        configureFromPreferences()
     }
 
     // Prefer natural Apple Chinese voices for dictation and hide novelty/accessibility voices.
@@ -48,6 +49,34 @@ final class SpeechAudioEngine: NSObject, AVSpeechSynthesizerDelegate {
         voices.first { $0.gender == .female && $0.identifier.contains(".siri_") }
             ?? voices.first { $0.name == "Tingting" }
             ?? AVSpeechSynthesisVoice(language: "zh-CN")
+    }
+
+    func configureFromPreferences(_ defaults: UserDefaults = .standard) {
+        rate = Float(
+            defaults.object(forKey: AppPreferenceKey.speechRate) as? Double
+                ?? AppPreferenceDefault.speechRate
+        )
+        pitchMultiplier = Float(
+            defaults.object(forKey: AppPreferenceKey.speechPitch) as? Double
+                ?? AppPreferenceDefault.speechPitch
+        )
+        interWordPause =
+            defaults.object(forKey: AppPreferenceKey.interWordPause) as? Double
+            ?? AppPreferenceDefault.interWordPause
+
+        let savedIdentifier = defaults.string(forKey: AppPreferenceKey.voiceIdentifier) ?? ""
+        let profile = defaults.string(forKey: AppPreferenceKey.pronunciationProfile)
+            ?? AppPreferenceDefault.pronunciationProfile
+        selectedVoice = voices.first { $0.identifier == savedIdentifier }
+            ?? voice(for: profile)
+            ?? defaultFemaleVoice
+    }
+
+    private func voice(for profile: String) -> AVSpeechSynthesisVoice? {
+        let language = profile == "Taiwanese Mandarin" ? "zh-TW" : "zh-CN"
+        return voices.first { $0.language == language && $0.gender == .female }
+            ?? voices.first { $0.language == language }
+            ?? AVSpeechSynthesisVoice(language: language)
     }
     
     func speak(_ text: String) {

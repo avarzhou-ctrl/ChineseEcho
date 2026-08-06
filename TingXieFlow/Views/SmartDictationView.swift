@@ -3,6 +3,8 @@ import SwiftData
 import SwiftUI
 
 struct SmartDictationView: View {
+    @Environment(\.modelContext) private var modelContext
+
     let sets: [DictationSet]
     let activeSet: DictationSet?
     let onCreateSet: () -> Void
@@ -11,6 +13,9 @@ struct SmartDictationView: View {
     let onCloseSet: () -> Void
 
     @State private var searchText = ""
+    @State private var editingSet: DictationSet?
+    @State private var setPendingDeletion: DictationSet?
+    @State private var operationError: String?
 
     private var filteredSets: [DictationSet] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -29,42 +34,129 @@ struct SmartDictationView: View {
             if let activeSet {
                 PracticeSessionView(set: activeSet, onFinish: onCloseSet)
             } else {
-                VStack(spacing: 0) {
-                    WorkspaceHeader(
-                        title: "Smart Dictation",
-                        searchText: $searchText,
-                        searchPrompt: "Search dictation sets…",
-                        showsAddButton: true,
-                        addAction: onCreateSet
-                    )
-
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 30) {
-                            DictationHero(
-                                onCreateSet: onCreateSet,
-                                onOpenVocabulary: onOpenVocabulary
+                ZStack(alignment: .bottomTrailing) {
+                    VStack(spacing: 0) {
+                        WorkspaceHeader(
+                            title: "Smart Dictation",
+                            searchText: $searchText,
+                            searchPrompt: "Search dictation sets…",
+                            info: WorkspaceInfo(
+                                title: "About Smart Dictation",
+                                symbol: "waveform",
+                                summary: "Build focused listening sets, practice them with native Mandarin speech, and collect the words that need more review.",
+                                tips: [
+                                    "Use the floating plus button to paste material, describe a topic, or generate a set with the local AI.",
+                                    "During practice, select the card or press Return to flip it and check the characters.",
+                                    "Flag difficult words as missed; they will appear in the Vocabulary Hub for focused review."
+                                ]
                             )
+                        )
 
-                            DictationSetCollection(
-                                sets: filteredSets,
-                                isSearching: !searchText.isEmpty,
-                                onCreateSet: onCreateSet,
-                                onOpenSet: onOpenSet
-                            )
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 30) {
+                                DictationHero(onOpenVocabulary: onOpenVocabulary)
+
+                                DictationSetCollection(
+                                    sets: filteredSets,
+                                    isSearching: !searchText.isEmpty,
+                                    onCreateSet: onCreateSet,
+                                    onOpenSet: onOpenSet,
+                                    onEditSet: { editingSet = $0 },
+                                    onDuplicateSet: duplicateSet,
+                                    onDeleteSet: { setPendingDeletion = $0 }
+                                )
+                            }
+                            .padding(.horizontal, 40)
+                            .padding(.bottom, 96)
                         }
-                        .padding(.horizontal, 40)
-                        .padding(.bottom, 40)
                     }
+
+                    Button(action: onCreateSet) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 21, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 56, height: 56)
+                            .background(TingXiePalette.accent, in: Circle())
+                            .shadow(color: TingXiePalette.accent.opacity(0.28), radius: 16, y: 8)
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Create New Set")
+                    .accessibilityLabel("Create New Set")
+                    .padding(.trailing, 32)
+                    .padding(.bottom, 30)
                 }
             }
         }
         .foregroundStyle(TingXiePalette.onBackground)
         .background(TingXiePalette.background)
+        .sheet(item: $editingSet) { set in
+            NewDictationSetSheet(
+                mode: .edit,
+                initialTitle: set.title,
+                initialWords: set.vocabularyWords.map(NewVocabularyWord.init)
+            ) { title, words in
+                let store = DictationStore(modelContainer: modelContext.container)
+                try await store.updateSet(
+                    setID: set.persistentModelID,
+                    title: title,
+                    words: words
+                )
+            }
+        }
+        .alert(
+            "Delete “\(setPendingDeletion?.title ?? "Set")”?",
+            isPresented: Binding(
+                get: { setPendingDeletion != nil },
+                set: { if !$0 { setPendingDeletion = nil } }
+            )
+        ) {
+            Button("Cancel", role: .cancel) { setPendingDeletion = nil }
+            Button("Delete", role: .destructive) { deletePendingSet() }
+        } message: {
+            Text("This permanently removes the set and its saved vocabulary.")
+        }
+        .alert(
+            "Couldn’t Update Set",
+            isPresented: Binding(
+                get: { operationError != nil },
+                set: { if !$0 { operationError = nil } }
+            )
+        ) {
+            Button("OK") { operationError = nil }
+        } message: {
+            Text(operationError ?? "Please try again.")
+        }
+    }
+
+    private func duplicateSet(_ set: DictationSet) {
+        let setID = set.persistentModelID
+        Task {
+            do {
+                let store = DictationStore(modelContainer: modelContext.container)
+                try await store.duplicateSet(setID: setID)
+            } catch {
+                operationError = error.localizedDescription
+            }
+        }
+    }
+
+    private func deletePendingSet() {
+        guard let setPendingDeletion else { return }
+        let setID = setPendingDeletion.persistentModelID
+        self.setPendingDeletion = nil
+        Task {
+            do {
+                let store = DictationStore(modelContainer: modelContext.container)
+                try await store.deleteSet(setID: setID)
+            } catch {
+                operationError = error.localizedDescription
+            }
+        }
     }
 }
 
 private struct DictationHero: View {
-    let onCreateSet: () -> Void
     let onOpenVocabulary: () -> Void
 
     var body: some View {
@@ -75,7 +167,7 @@ private struct DictationHero: View {
                     .foregroundStyle(TingXiePalette.accent)
                     .frame(maxWidth: 480, alignment: .leading)
 
-                Text("Build a custom set from the Chinese you are learning, then listen, reveal, and review at your own pace.")
+                Text("Build a custom set from the Chinese you are learning, then listen, flip, and review at your own pace.")
                     .font(.system(size: 15, design: .rounded))
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
                     .lineSpacing(3)
@@ -83,11 +175,6 @@ private struct DictationHero: View {
                     .padding(.top, 12)
 
                 HStack(spacing: 12) {
-                    Button(action: onCreateSet) {
-                        Label("Create New Set", systemImage: "plus")
-                    }
-                    .buttonStyle(GreenCapsuleButtonStyle())
-
                     Button(action: onOpenVocabulary) {
                         Label("View Vocabulary", systemImage: "character.book.closed")
                     }
@@ -128,6 +215,9 @@ private struct DictationSetCollection: View {
     let isSearching: Bool
     let onCreateSet: () -> Void
     let onOpenSet: (DictationSet) -> Void
+    let onEditSet: (DictationSet) -> Void
+    let onDuplicateSet: (DictationSet) -> Void
+    let onDeleteSet: (DictationSet) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -155,7 +245,13 @@ private struct DictationSetCollection: View {
             } else {
                 LazyVStack(spacing: 12) {
                     ForEach(sets) { set in
-                        DictationSetRow(set: set) { onOpenSet(set) }
+                        DictationSetRow(
+                            set: set,
+                            onOpen: { onOpenSet(set) },
+                            onEdit: { onEditSet(set) },
+                            onDuplicate: { onDuplicateSet(set) },
+                            onDelete: { onDeleteSet(set) }
+                        )
                     }
                 }
             }
@@ -165,46 +261,65 @@ private struct DictationSetCollection: View {
 
 private struct DictationSetRow: View {
     let set: DictationSet
-    let action: () -> Void
+    let onOpen: () -> Void
+    let onEdit: () -> Void
+    let onDuplicate: () -> Void
+    let onDelete: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 18) {
-                Image(systemName: "play.fill")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(TingXiePalette.accent)
-                    .frame(width: 52, height: 52)
-                    .background(TingXiePalette.surfaceContainerHigh, in: RoundedRectangle(cornerRadius: 14))
+        HStack(spacing: 0) {
+            Button(action: onOpen) {
+                HStack(spacing: 18) {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(TingXiePalette.accent)
+                        .frame(width: 52, height: 52)
+                        .background(TingXiePalette.surfaceContainerHigh, in: RoundedRectangle(cornerRadius: 14))
 
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(set.title)
-                        .font(.system(size: 18, weight: .medium, design: .rounded))
-                    HStack(spacing: 12) {
-                        Label(set.dateCreated.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
-                        Label("\(set.vocabularyWords.count) words", systemImage: "list.bullet")
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(set.title)
+                            .font(.system(size: 18, weight: .medium, design: .rounded))
+                        HStack(spacing: 12) {
+                            Label(set.dateCreated.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
+                            Label("\(set.vocabularyWords.count) words", systemImage: "list.bullet")
+                        }
+                        .font(.system(size: 12, design: .rounded))
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.72))
                     }
-                    .font(.system(size: 12, design: .rounded))
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.72))
+
+                    Spacer()
                 }
-
-                Spacer()
-
-                Text("CUSTOM")
-                    .font(.system(size: 9, weight: .bold, design: .rounded))
-                    .foregroundStyle(TingXiePalette.secondary)
-                    .padding(.horizontal, 9)
-                    .frame(height: 22)
-                    .background(TingXiePalette.surfaceContainerHighest, in: Capsule())
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.45))
+                .padding(.leading, 18)
+                .frame(maxWidth: .infinity, minHeight: 78)
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, 18)
-            .frame(maxWidth: .infinity, minHeight: 78)
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+
+            Menu {
+                Button("Rename or Edit Words", systemImage: "pencil", action: onEdit)
+                Button("Duplicate", systemImage: "plus.square.on.square", action: onDuplicate)
+                Divider()
+                Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                    .frame(width: 60, height: 56)
+                    .contentShape(Rectangle())
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .padding(.trailing, 20)
+            .help("Edit \(set.title)")
+            .accessibilityLabel("Edit \(set.title)")
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.45))
+                .padding(.trailing, 18)
         }
-        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, minHeight: 78)
         .tonalCard()
     }
 }
@@ -219,13 +334,22 @@ private enum PracticeFilter: String, CaseIterable, Identifiable {
 
 private struct PracticeSessionView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let set: DictationSet
     let onFinish: () -> Void
 
+    @AppStorage(AppPreferenceKey.repeatCount)
+    private var repeatCount = AppPreferenceDefault.repeatCount
+    @AppStorage(AppPreferenceKey.automaticProgression)
+    private var automaticProgression = AppPreferenceDefault.automaticProgression
+    @AppStorage(AppPreferenceKey.keepCardsRevealed)
+    private var keepCardsRevealed = AppPreferenceDefault.keepCardsRevealed
+
     @State private var filter: PracticeFilter = .all
     @State private var currentIndex = 0
-    @State private var revealsCharacters = false
+    @State private var isCardFlipped = false
+    @State private var currentRepetition = 1
     @State private var pendingMissedWordIDs: Set<PersistentIdentifier> = []
     @State private var isContinuousPlaybackActive = false
     @State private var audioEngine = SpeechAudioEngine()
@@ -245,7 +369,19 @@ private struct PracticeSessionView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            WorkspaceHeader(title: "Practice Session")
+            WorkspaceHeader(
+                title: "Practice Session",
+                info: WorkspaceInfo(
+                    title: "About Practice Sessions",
+                    symbol: "rectangle.on.rectangle.angled",
+                    summary: "Listen first, then flip each card to check the characters before deciding whether the word needs more review.",
+                    tips: [
+                        "Select the card or press Return or Space to flip between the listening prompt and the answer.",
+                        "Mark Missed becomes available after the answer is visible.",
+                        "Playback repeats and automatic progression follow your choices in Settings."
+                    ]
+                )
+            )
 
             HStack(alignment: .bottom, spacing: 20) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -278,7 +414,8 @@ private struct PracticeSessionView: View {
         .foregroundStyle(TingXiePalette.onBackground)
         .background(TingXiePalette.background)
         .onAppear {
-            audioEngine.selectedVoice = audioEngine.defaultFemaleVoice
+            audioEngine.configureFromPreferences()
+            isCardFlipped = keepCardsRevealed
             audioEngine.onUtteranceFinished = {
                 Task { @MainActor in advanceContinuousPlayback() }
             }
@@ -289,7 +426,16 @@ private struct PracticeSessionView: View {
         }
         .onChange(of: filter) { _, _ in
             currentIndex = 0
+            currentRepetition = 1
+            isCardFlipped = keepCardsRevealed
             restartContinuousPlaybackIfNeeded()
+        }
+        .onChange(of: currentIndex) { _, _ in
+            currentRepetition = 1
+            isCardFlipped = keepCardsRevealed
+        }
+        .onChange(of: keepCardsRevealed) { _, shouldReveal in
+            isCardFlipped = shouldReveal
         }
     }
 
@@ -298,7 +444,11 @@ private struct PracticeSessionView: View {
             Spacer(minLength: 22)
 
             if let currentWord {
-                PracticeWordCard(word: currentWord, revealsCharacters: revealsCharacters)
+                PracticeFlipCard(
+                    word: currentWord,
+                    isFlipped: $isCardFlipped,
+                    reduceMotion: reduceMotion
+                )
                     .frame(maxWidth: 650, minHeight: 300, maxHeight: 360)
 
                 HStack(spacing: 30) {
@@ -308,22 +458,15 @@ private struct PracticeSessionView: View {
                         color: TingXiePalette.accent,
                         action: toggleContinuousPlayback
                     )
-
-                    Button {
-                        revealsCharacters = true
-                    } label: {
-                        Label(revealsCharacters ? "Characters Revealed" : "Reveal Characters", systemImage: "eye")
-                            .frame(minWidth: 245)
-                    }
-                    .buttonStyle(GreenCapsuleButtonStyle())
-                    .disabled(revealsCharacters)
-                    .keyboardShortcut(.return, modifiers: [])
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                    .frame(minWidth: 170)
 
                     PracticeRoundButton(
                         title: "MARK MISSED",
                         symbol: "flag",
                         color: TingXiePalette.missed,
-                        isDisabled: !revealsCharacters,
+                        isDisabled: !isCardFlipped,
                         action: markCurrentWordMissed
                     )
                 }
@@ -364,6 +507,7 @@ private struct PracticeSessionView: View {
             stopContinuousPlayback()
         } else {
             isContinuousPlaybackActive = true
+            currentRepetition = 1
             audioEngine.stop()
             speakCurrentWord()
         }
@@ -382,11 +526,16 @@ private struct PracticeSessionView: View {
 
     private func advanceContinuousPlayback() {
         guard isContinuousPlaybackActive else { return }
-        if currentIndex < words.count - 1 {
+        if currentRepetition < max(repeatCount, 1) {
+            currentRepetition += 1
+            speakCurrentWord()
+        } else if automaticProgression, currentIndex < words.count - 1 {
             currentIndex += 1
+            currentRepetition = 1
             audioEngine.speak(words[currentIndex].chinese)
         } else {
             isContinuousPlaybackActive = false
+            currentRepetition = 1
         }
     }
 
@@ -423,13 +572,20 @@ private struct PracticeFilterBar: View {
     var body: some View {
         HStack(spacing: 4) {
             ForEach(PracticeFilter.allCases) { item in
-                Button(item.rawValue) { selection = item }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(selection == item ? TingXiePalette.accent : TingXiePalette.onSurfaceVariant)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 36)
-                    .background(selection == item ? Color.white : .clear, in: Capsule())
+                Button {
+                    selection = item
+                } label: {
+                    Text(item.rawValue)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(selection == item ? TingXiePalette.accent : TingXiePalette.onSurfaceVariant)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+                .frame(height: 36)
+                .background(selection == item ? Color.white : .clear, in: Capsule())
+                .accessibilityAddTraits(selection == item ? .isSelected : [])
             }
         }
         .padding(4)
@@ -437,38 +593,81 @@ private struct PracticeFilterBar: View {
     }
 }
 
-private struct PracticeWordCard: View {
+private struct PracticeFlipCard: View {
     let word: VocabularyWord
-    let revealsCharacters: Bool
+    @Binding var isFlipped: Bool
+    let reduceMotion: Bool
 
     var body: some View {
-        VStack(spacing: 18) {
-            Image(systemName: "speaker.wave.2.fill")
-                .font(.system(size: 30, weight: .medium))
-                .foregroundStyle(TingXiePalette.secondary.opacity(0.5))
+        Button(action: flip) {
+            ZStack {
+                cardFace(isAnswer: false)
+                    .opacity(isFlipped ? 0 : 1)
+                    .rotation3DEffect(.degrees(isFlipped ? -180 : 0), axis: (x: 0, y: 1, z: 0))
 
-            Text(word.pinyin.isEmpty ? "Listen carefully" : word.pinyin)
-                .font(.system(size: 40, weight: .bold, design: .rounded))
-                .foregroundStyle(TingXiePalette.accent)
-
-            HStack(spacing: 12) {
-                ForEach(Array(word.chinese.enumerated()), id: \.offset) { _, character in
-                    Text(revealsCharacters ? String(character) : "?")
-                        .font(.system(size: revealsCharacters ? 40 : 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(revealsCharacters ? TingXiePalette.accent : TingXiePalette.secondary.opacity(0.18))
-                        .frame(width: 64, height: 72)
-                        .background(TingXiePalette.surfaceContainerHigh.opacity(0.75), in: RoundedRectangle(cornerRadius: 14))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(TingXiePalette.secondary.opacity(0.18), style: StrokeStyle(lineWidth: 1, dash: revealsCharacters ? [] : [5]))
-                        }
-                }
+                cardFace(isAnswer: true)
+                    .opacity(isFlipped ? 1 : 0)
+                    .rotation3DEffect(.degrees(isFlipped ? 0 : 180), axis: (x: 0, y: 1, z: 0))
             }
+            .contentShape(RoundedRectangle(cornerRadius: 28))
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut(.return, modifiers: [])
+        .accessibilityLabel(isFlipped ? "Hide answer for \(word.chinese)" : "Show answer")
+        .accessibilityHint("Flips the practice card")
+        .overlay {
+            Button("Flip Card", action: flip)
+                .keyboardShortcut(.space, modifiers: [])
+                .hidden()
+                .accessibilityHidden(true)
+        }
+    }
 
-            if !word.englishTranslation.isEmpty {
-                Text("Definition: \(word.englishTranslation)")
-                    .font(.system(size: 14, design: .rounded).italic())
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.7))
+    private func cardFace(isAnswer: Bool) -> some View {
+        VStack(spacing: 18) {
+            Image(systemName: isAnswer ? "checkmark.circle.fill" : "speaker.wave.2.fill")
+                .font(.system(size: 30, weight: .medium))
+                .foregroundStyle(
+                    isAnswer && word.isMissedWord
+                        ? TingXiePalette.missed
+                        : TingXiePalette.secondary.opacity(isAnswer ? 0.8 : 0.5)
+                )
+
+            if isAnswer {
+                Text(word.chinese)
+                    .font(.system(size: word.chinese.count > 4 ? 48 : 64, weight: .bold, design: .rounded))
+                    .foregroundStyle(word.isMissedWord ? TingXiePalette.missed : TingXiePalette.accent)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+
+                Text(word.pinyin.isEmpty ? "No pinyin" : word.pinyin)
+                    .font(.system(size: 25, weight: .semibold, design: .rounded))
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
+
+                Text(word.englishTranslation.isEmpty ? "No translation yet" : word.englishTranslation)
+                    .font(.system(size: 15, design: .rounded))
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.78))
+            } else {
+                Text(word.pinyin.isEmpty ? "Listen carefully" : word.pinyin)
+                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .foregroundStyle(TingXiePalette.accent)
+
+                HStack(spacing: 12) {
+                    ForEach(Array(word.chinese.enumerated()), id: \.offset) { _, _ in
+                        Text("?")
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .foregroundStyle(TingXiePalette.secondary.opacity(0.18))
+                            .frame(width: 64, height: 72)
+                            .background(TingXiePalette.surfaceContainerHigh.opacity(0.75), in: RoundedRectangle(cornerRadius: 14))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(
+                                        TingXiePalette.secondary.opacity(0.18),
+                                        style: StrokeStyle(lineWidth: 1, dash: [5])
+                                    )
+                            }
+                    }
+                }
             }
         }
         .padding(28)
@@ -477,6 +676,16 @@ private struct PracticeWordCard: View {
         .background(TingXiePalette.surface.opacity(0.72), in: RoundedRectangle(cornerRadius: 28))
         .overlay { RoundedRectangle(cornerRadius: 28).stroke(.white.opacity(0.8), lineWidth: 1) }
         .shadow(color: TingXiePalette.accent.opacity(0.11), radius: 28, y: 16)
+    }
+
+    private func flip() {
+        if reduceMotion {
+            isFlipped.toggle()
+        } else {
+            withAnimation(.spring(response: 0.52, dampingFraction: 0.82)) {
+                isFlipped.toggle()
+            }
+        }
     }
 }
 
@@ -505,22 +714,102 @@ private struct PracticeRoundButton: View {
     }
 }
 
+enum DictationSetEditorMode {
+    case create
+    case edit
+
+    var title: String {
+        switch self {
+        case .create: "Create New Set"
+        case .edit: "Edit Dictation Set"
+        }
+    }
+
+    var actionTitle: String {
+        switch self {
+        case .create: "Create Set"
+        case .edit: "Save Changes"
+        }
+    }
+}
+
+private struct DraftVocabularyWord: Identifiable {
+    let id: UUID
+    var chinese: String
+    var pinyin: String
+    var translation: String
+    var isIdiom: Bool
+
+    init(
+        id: UUID = UUID(),
+        chinese: String = "",
+        pinyin: String = "",
+        translation: String = "",
+        isIdiom: Bool = false
+    ) {
+        self.id = id
+        self.chinese = chinese
+        self.pinyin = pinyin
+        self.translation = translation
+        self.isIdiom = isIdiom
+    }
+
+    init(_ word: NewVocabularyWord) {
+        self.init(
+            chinese: word.chinese,
+            pinyin: word.pinyin,
+            translation: word.translation,
+            isIdiom: word.isIdiom
+        )
+    }
+
+    var savedValue: NewVocabularyWord? {
+        let cleanChinese = chinese.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanChinese.isEmpty else { return nil }
+        return NewVocabularyWord(
+            chinese: cleanChinese,
+            pinyin: pinyin.trimmingCharacters(in: .whitespacesAndNewlines),
+            translation: translation.trimmingCharacters(in: .whitespacesAndNewlines),
+            isIdiom: isIdiom
+        )
+    }
+}
+
 struct NewDictationSetSheet: View {
     @Environment(\.dismiss) private var dismiss
 
+    let mode: DictationSetEditorMode
     let onSave: (String, [NewVocabularyWord]) async throws -> Void
 
-    @State private var title = "HSK 5 full set"
-    @State private var sourceText = "把握 | bǎ wò | grasp\n比例 | bǐ lì | proportion\n核心 | hé xīn | core\n必然 | bì rán | inevitable\n反复 | fǎn fù | repeatedly\n集中 | jí zhōng | concentrate\n深刻 | shēn kè | profound\n莫名其妙 | mò míng qí miào | baffling"
+    @AppStorage(AppPreferenceKey.generatedWordCount)
+    private var generatedWordCount = AppPreferenceDefault.generatedWordCount
+
+    @State private var title: String
+    @State private var learningGoal = ""
+    @State private var manualText = ""
+    @State private var draftWords: [DraftVocabularyWord]
     @State private var errorMessage: String?
     @State private var isSaving = false
+    @State private var isGenerating = false
+
+    init(
+        mode: DictationSetEditorMode = .create,
+        initialTitle: String = "",
+        initialWords: [NewVocabularyWord] = [],
+        onSave: @escaping (String, [NewVocabularyWord]) async throws -> Void
+    ) {
+        self.mode = mode
+        self.onSave = onSave
+        _title = State(initialValue: initialTitle)
+        _draftWords = State(initialValue: initialWords.map(DraftVocabularyWord.init))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
                 Image(systemName: "character.book.closed")
                     .foregroundStyle(TingXiePalette.accent)
-                Text("Create New Set")
+                Text(mode.title)
                     .font(.system(size: 24, weight: .medium, design: .rounded))
                     .foregroundStyle(TingXiePalette.accent)
                 Spacer()
@@ -537,63 +826,148 @@ struct NewDictationSetSheet: View {
 
             Divider().overlay(TingXiePalette.outlineVariant.opacity(0.5))
 
-            VStack(alignment: .leading, spacing: 18) {
-                VStack(alignment: .leading, spacing: 7) {
-                    Text("Set Name")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    TextField("e.g., HSK 5 full set", text: $title)
-                        .textFieldStyle(.plain)
-                        .padding(.horizontal, 14)
-                        .frame(height: 44)
-                        .background(TingXiePalette.surface, in: RoundedRectangle(cornerRadius: 9))
-                }
+            HSplitView {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        VStack(alignment: .leading, spacing: 7) {
+                            Text("Set Name")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            TextField("e.g., Travel essentials", text: $title)
+                                .textFieldStyle(.plain)
+                                .padding(.horizontal, 14)
+                                .frame(height: 44)
+                                .background(TingXiePalette.surface, in: RoundedRectangle(cornerRadius: 9))
+                        }
 
-                VStack(alignment: .leading, spacing: 7) {
-                    HStack {
-                        Text("Words")
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        Spacer()
-                        Text("CHINESE | PINYIN | TRANSLATION")
-                            .font(.system(size: 9, weight: .bold, design: .rounded))
-                            .tracking(0.8)
-                            .foregroundStyle(TingXiePalette.secondary)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label("Build with Local AI", systemImage: "sparkles")
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .foregroundStyle(TingXiePalette.accent)
+
+                            Text("Paste Chinese material or describe a topic and level. TingXieFlow will suggest editable vocabulary with pinyin and translations.")
+                                .font(.system(size: 12, design: .rounded))
+                                .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                                .lineSpacing(2)
+
+                            TextEditor(text: $learningGoal)
+                                .font(.system(size: 13, design: .rounded))
+                                .scrollContentBackground(.hidden)
+                                .padding(9)
+                                .frame(minHeight: 110)
+                                .background(TingXiePalette.surface, in: RoundedRectangle(cornerRadius: 9))
+
+                            HStack {
+                                Stepper("\(generatedWordCount) words", value: $generatedWordCount, in: 3...20)
+                                    .font(.system(size: 12, design: .rounded))
+                                Spacer()
+                                Button(action: generateSuggestions) {
+                                    if isGenerating {
+                                        ProgressView().controlSize(.small)
+                                    } else {
+                                        Label("Generate", systemImage: "wand.and.stars")
+                                    }
+                                }
+                                .buttonStyle(OutlineCapsuleButtonStyle())
+                                .disabled(cleanLearningGoal.isEmpty || isGenerating)
+                            }
+                        }
+                        .padding(16)
+                        .background(TingXiePalette.surfaceContainer.opacity(0.62), in: RoundedRectangle(cornerRadius: 14))
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Manual Import")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            TextEditor(text: $manualText)
+                                .font(.system(size: 12, design: .monospaced))
+                                .scrollContentBackground(.hidden)
+                                .padding(8)
+                                .frame(minHeight: 90)
+                                .background(TingXiePalette.surface, in: RoundedRectangle(cornerRadius: 9))
+                            HStack {
+                                Text("One per line: Chinese | pinyin | translation")
+                                    .font(.system(size: 10, design: .rounded))
+                                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                                Spacer()
+                                Button("Import Lines", systemImage: "square.and.arrow.down", action: importManualLines)
+                                    .buttonStyle(.plain)
+                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(TingXiePalette.accent)
+                                    .disabled(manualText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            }
+                        }
+
+                        if let errorMessage {
+                            Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                                .font(.caption)
+                                .foregroundStyle(TingXiePalette.missed)
+                        }
                     }
-                    TextEditor(text: $sourceText)
-                        .font(.system(size: 14, design: .monospaced))
-                        .scrollContentBackground(.hidden)
-                        .padding(10)
-                        .frame(minHeight: 190)
-                        .background(TingXiePalette.surface, in: RoundedRectangle(cornerRadius: 9))
+                    .padding(24)
                 }
+                .frame(minWidth: 320, idealWidth: 350)
 
-                Label("Type one entry per line. Four-character entries are saved as idioms.", systemImage: "lightbulb")
-                    .font(.system(size: 11, design: .rounded))
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(TingXiePalette.surfaceContainerHighest.opacity(0.65), in: RoundedRectangle(cornerRadius: 8))
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Review Words")
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                            Text("\(validWords.count) ready to save")
+                                .font(.system(size: 11, design: .rounded))
+                                .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                        }
+                        Spacer()
+                        Button("Add Word", systemImage: "plus", action: addBlankWord)
+                            .buttonStyle(.plain)
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(TingXiePalette.accent)
+                    }
 
-                if let errorMessage {
-                    Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption)
-                        .foregroundStyle(TingXiePalette.missed)
+                    Divider()
+
+                    if draftWords.isEmpty {
+                        ContentUnavailableView(
+                            "No Words Yet",
+                            systemImage: "text.badge.plus",
+                            description: Text("Generate suggestions, import lines, or add a word manually.")
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 10) {
+                                ForEach($draftWords) { $word in
+                                    DraftVocabularyRow(
+                                        word: $word,
+                                        canMoveUp: word.id != draftWords.first?.id,
+                                        canMoveDown: word.id != draftWords.last?.id,
+                                        onMoveUp: { moveWord(id: word.id, by: -1) },
+                                        onMoveDown: { moveWord(id: word.id, by: 1) },
+                                        onDelete: { deleteWord(id: word.id) }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
+                .padding(24)
+                .frame(minWidth: 440, idealWidth: 500)
             }
-            .padding(28)
 
-            Spacer(minLength: 0)
+            Divider().overlay(TingXiePalette.outlineVariant.opacity(0.5))
 
             HStack(spacing: 14) {
+                Text("AI suggestions stay on this Mac and are always reviewed before saving.")
+                    .font(.system(size: 10, design: .rounded))
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
                 Spacer()
                 Button("Cancel") { dismiss() }
                     .buttonStyle(.plain)
                     .foregroundStyle(TingXiePalette.accent)
                 Button(action: save) {
-                    Label(isSaving ? "Creating…" : "Create", systemImage: "arrow.right")
+                    Label(isSaving ? "Saving…" : mode.actionTitle, systemImage: "arrow.right")
                         .labelStyle(.titleAndIcon)
                 }
                 .buttonStyle(GreenCapsuleButtonStyle())
-                .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || parsedWords.isEmpty || isSaving)
+                .disabled(cleanTitle.isEmpty || validWords.isEmpty || isSaving || isGenerating)
             }
             .padding(.horizontal, 28)
             .frame(height: 76)
@@ -602,26 +976,127 @@ struct NewDictationSetSheet: View {
         .foregroundStyle(TingXiePalette.onBackground)
         .background(.ultraThinMaterial)
         .background(TingXiePalette.surface.opacity(0.84))
-        .frame(width: 560, height: 570)
+        .frame(width: 900, height: 680)
     }
 
-    private var parsedWords: [NewVocabularyWord] {
-        sourceText.split(separator: "\n").compactMap { line in
-            let fields = line.split(separator: "|", omittingEmptySubsequences: false)
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            guard let chinese = fields.first, !chinese.isEmpty else { return nil }
-            return NewVocabularyWord(
-                chinese: chinese,
-                pinyin: fields.count > 1 ? fields[1] : "",
-                translation: fields.count > 2 ? fields[2] : "",
-                isIdiom: chinese.count == 4
-            )
+    private var cleanTitle: String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var cleanLearningGoal: String {
+        learningGoal.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var validWords: [NewVocabularyWord] {
+        draftWords.compactMap(\.savedValue)
+    }
+
+    private func addBlankWord() {
+        draftWords.append(DraftVocabularyWord())
+    }
+
+    private func moveWord(id: UUID, by offset: Int) {
+        guard let index = draftWords.firstIndex(where: { $0.id == id }) else { return }
+        let destination = index + offset
+        guard draftWords.indices.contains(index), draftWords.indices.contains(destination) else { return }
+        draftWords.swapAt(index, destination)
+    }
+
+    private func deleteWord(id: UUID) {
+        draftWords.removeAll { $0.id == id }
+    }
+
+    private func importManualLines() {
+        let imported = parseVocabularyLines(manualText)
+        guard !imported.isEmpty else {
+            errorMessage = "No valid lines were found. Separate each field with a vertical bar."
+            return
+        }
+        draftWords.append(contentsOf: imported)
+        manualText = ""
+        errorMessage = nil
+    }
+
+    private func generateSuggestions() {
+        let goal = cleanLearningGoal
+        guard !goal.isEmpty else { return }
+        isGenerating = true
+        errorMessage = nil
+
+        let prompt = """
+        Create exactly \(generatedWordCount) useful Chinese vocabulary entries for this learner request:
+        \(goal)
+
+        Return only one entry per line in this exact format:
+        Chinese | pinyin with tone marks | concise English translation
+
+        Every first field must contain Chinese Han characters. Every third field must be an English definition.
+        Never return the words "Chinese", "pinyin", or "translation" as an entry.
+        Do not number the lines. Do not add a heading, explanation, markdown, or code fence.
+        """
+
+        Task {
+            do {
+                let response = try await generateText(prompt: prompt)
+                let generated = parseVocabularyLines(response, derivesPinyinFromChinese: true)
+                guard !generated.isEmpty else {
+                    throw VocabularyGenerationError.invalidResponse
+                }
+                draftWords = generated
+            } catch {
+                errorMessage = friendlyGenerationMessage(for: error)
+            }
+            isGenerating = false
         }
     }
 
+    private func parseVocabularyLines(
+        _ text: String,
+        derivesPinyinFromChinese: Bool = false
+    ) -> [DraftVocabularyWord] {
+        text
+            .split(whereSeparator: \.isNewline)
+            .compactMap { rawLine in
+                let line = String(rawLine)
+                    .trimmingCharacters(in: CharacterSet(charactersIn: "`*-0123456789.、) \t"))
+                let fields = line.split(separator: "|", omittingEmptySubsequences: false)
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                guard fields.count >= 3 else { return nil }
+                let chinese = fields[0]
+                let suppliedPinyin = fields[1]
+                let translation = fields[2]
+                guard chinese.range(of: "\\p{Han}", options: .regularExpression) != nil,
+                      translation.range(of: "[A-Za-z]", options: .regularExpression) != nil else {
+                    return nil
+                }
+                let pinyin = derivesPinyinFromChinese
+                    ? systemPinyin(for: chinese) ?? suppliedPinyin
+                    : suppliedPinyin
+                return DraftVocabularyWord(
+                    chinese: chinese,
+                    pinyin: pinyin,
+                    translation: translation,
+                    isIdiom: chinese.count == 4
+                )
+            }
+    }
+
+    private func systemPinyin(for chinese: String) -> String? {
+        chinese
+            .applyingTransform(.mandarinToLatin, reverse: false)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func friendlyGenerationMessage(for error: Error) -> String {
+        if let urlError = error as? URLError,
+           urlError.code == .cannotConnectToHost || urlError.code == .networkConnectionLost {
+            return "The local model could not be downloaded. Check your connection, or use Manual Import."
+        }
+        return error.localizedDescription
+    }
+
     private func save() {
-        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        let words = parsedWords
+        let words = validWords
         isSaving = true
         errorMessage = nil
 
@@ -633,6 +1108,68 @@ struct NewDictationSetSheet: View {
                 errorMessage = error.localizedDescription
                 isSaving = false
             }
+        }
+    }
+}
+
+private enum VocabularyGenerationError: LocalizedError {
+    case invalidResponse
+
+    var errorDescription: String? {
+        "The model did not return usable vocabulary. Try a more specific request, or use Manual Import."
+    }
+}
+
+private struct DraftVocabularyRow: View {
+    @Binding var word: DraftVocabularyWord
+    let canMoveUp: Bool
+    let canMoveDown: Bool
+    let onMoveUp: () -> Void
+    let onMoveDown: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                TextField("Chinese", text: $word.chinese)
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .textFieldStyle(.plain)
+                    .frame(minWidth: 90)
+
+                Toggle("Idiom", isOn: $word.isIdiom)
+                    .toggleStyle(.checkbox)
+                    .font(.system(size: 10, design: .rounded))
+
+                Spacer()
+
+                Button(action: onMoveUp) {
+                    Image(systemName: "chevron.up")
+                }
+                .disabled(!canMoveUp)
+                Button(action: onMoveDown) {
+                    Image(systemName: "chevron.down")
+                }
+                .disabled(!canMoveDown)
+                Button(role: .destructive, action: onDelete) {
+                    Image(systemName: "trash")
+                }
+            }
+            .buttonStyle(.plain)
+
+            TextField("Pinyin", text: $word.pinyin)
+                .textFieldStyle(.plain)
+                .font(.system(size: 12, design: .rounded))
+                .foregroundStyle(TingXiePalette.onSurfaceVariant)
+
+            TextField("English translation", text: $word.translation)
+                .textFieldStyle(.plain)
+                .font(.system(size: 12, design: .rounded))
+        }
+        .padding(14)
+        .background(TingXiePalette.surface.opacity(0.78), in: RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(TingXiePalette.outlineVariant.opacity(0.6), lineWidth: 1)
         }
     }
 }

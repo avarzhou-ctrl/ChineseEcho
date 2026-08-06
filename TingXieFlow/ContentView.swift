@@ -16,6 +16,7 @@ struct ContentView: View {
 
     @State private var selection: AppSection = .dictation
     @State private var activeSetID: PersistentIdentifier?
+    @State private var selectedVocabularyWordID: PersistentIdentifier?
     @State private var isCreatingSet = false
     @State private var isSidebarCollapsed = false
     @State private var sidebarWidth =
@@ -34,16 +35,22 @@ struct ContentView: View {
             AppSidebar(
                 selection: $selection,
                 activeSet: activeSet,
+                vocabularyWords: vocabularyWords,
                 isCollapsed: isSidebarCollapsed,
                 onToggleCollapse: {
                     withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
                         isSidebarCollapsed.toggle()
                     }
+                },
+                onShowDictationHome: {
+                    activeSetID = nil
+                    selection = .dictation
+                },
+                onOpenWordOfDay: { word in
+                    selectedVocabularyWordID = word.persistentModelID
+                    selection = .vocabulary
                 }
-            ) {
-                activeSetID = nil
-                selection = .dictation
-            }
+            )
             .frame(width: isSidebarCollapsed ? 64 : clampedSidebarWidth)
 
             SidebarResizeHandle(
@@ -65,9 +72,15 @@ struct ContentView: View {
                         onCloseSet: { activeSetID = nil }
                     )
                 case .vocabulary:
-                    VocabularyHubView(words: vocabularyWords)
+                    VocabularyHubView(
+                        words: vocabularyWords,
+                        selectedWordID: $selectedVocabularyWordID
+                    )
                 case .settings:
-                    SettingsDashboard()
+                    SettingsDashboard(
+                        setCount: dictationSets.count,
+                        wordCount: vocabularyWords.count
+                    )
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

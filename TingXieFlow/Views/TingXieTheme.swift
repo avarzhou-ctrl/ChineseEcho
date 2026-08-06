@@ -23,9 +23,11 @@ enum TingXiePalette {
 struct AppSidebar: View {
     @Binding var selection: AppSection
     let activeSet: DictationSet?
+    let vocabularyWords: [VocabularyWord]
     let isCollapsed: Bool
     let onToggleCollapse: () -> Void
     let onShowDictationHome: () -> Void
+    let onOpenWordOfDay: (VocabularyWord) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -76,7 +78,7 @@ struct AppSidebar: View {
             Spacer()
 
             if !isCollapsed {
-                WordOfDayCard()
+                WordOfDayCard(words: vocabularyWords, onOpenWord: onOpenWordOfDay)
                     .padding(.horizontal, 16)
                     .padding(.bottom, 18)
                     .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .bottomLeading)))
@@ -121,27 +123,78 @@ struct AppSidebar: View {
 }
 
 private struct WordOfDayCard: View {
+    let words: [VocabularyWord]
+    let onOpenWord: (VocabularyWord) -> Void
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text("WORD OF THE DAY")
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-                .tracking(0.7)
-                .foregroundStyle(TingXiePalette.wordOfDay)
-            Text("把握")
-                .font(.system(size: 24, weight: .bold, design: .rounded))
-            Text("bǎ wò  ·  to grasp")
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+        TimelineView(.periodic(from: .now, by: 3_600)) { context in
+            let word = word(for: context.date)
+            Button {
+                if let word {
+                    onOpenWord(word)
+                }
+            } label: {
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack {
+                        Text("WORD OF THE DAY")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .tracking(0.7)
+                            .foregroundStyle(TingXiePalette.wordOfDay)
+                        Spacer()
+                        if word != nil {
+                            Image(systemName: "arrow.up.right")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.white.opacity(0.52))
+                        }
+                    }
+
+                    Text(word?.chinese ?? "开始")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                    Text(wordDetails(word))
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .lineLimit(2)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+            .disabled(word == nil)
+            .background(TingXiePalette.sidebarSelection, in: RoundedRectangle(cornerRadius: 12))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(.white.opacity(0.12), lineWidth: 1)
+            }
+            .help(word == nil ? "Save vocabulary to receive a daily word." : "Open in Vocabulary Hub")
+            .accessibilityLabel(accessibilityLabel(word))
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(TingXiePalette.sidebarSelection, in: RoundedRectangle(cornerRadius: 12))
-        .overlay {
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(.white.opacity(0.12), lineWidth: 1)
+    }
+
+    private func word(for date: Date) -> VocabularyWord? {
+        let sortedWords = words.sorted {
+            if $0.chinese == $1.chinese {
+                return $0.pinyin.localizedStandardCompare($1.pinyin) == .orderedAscending
+            }
+            return $0.chinese.localizedStandardCompare($1.chinese) == .orderedAscending
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Word of the day: 把握, bǎ wò, to grasp")
+        guard !sortedWords.isEmpty else { return nil }
+        let day = Calendar.current.ordinality(of: .day, in: .era, for: date) ?? 0
+        return sortedWords[day % sortedWords.count]
+    }
+
+    private func wordDetails(_ word: VocabularyWord?) -> String {
+        guard let word else { return "Save a word to begin" }
+        let pinyin = word.pinyin.isEmpty ? "No pinyin" : word.pinyin
+        let translation = word.englishTranslation.isEmpty ? "No translation yet" : word.englishTranslation
+        return "\(pinyin)  ·  \(translation)"
+    }
+
+    private func accessibilityLabel(_ word: VocabularyWord?) -> String {
+        guard let word else {
+            return "Word of the day unavailable. Save vocabulary to begin."
+        }
+        return "Word of the day: \(word.chinese), \(wordDetails(word))"
     }
 }
 
@@ -185,6 +238,9 @@ struct WorkspaceHeader: View {
     var searchPrompt = "Search…"
     var showsAddButton = false
     var addAction: (() -> Void)?
+    var info: WorkspaceInfo?
+
+    @State private var isShowingInfo = false
 
     var body: some View {
         HStack(alignment: .center, spacing: 24) {
@@ -219,13 +275,104 @@ struct WorkspaceHeader: View {
                 .accessibilityLabel("Create New Set")
             }
 
-            Image(systemName: "questionmark.circle")
-                .font(.system(size: 20, weight: .semibold))
+            if info != nil {
+                Button {
+                    isShowingInfo = true
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 20, weight: .semibold))
+                        .frame(width: 40, height: 40)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
                 .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                .accessibilityLabel("Help")
+                .help("About \(title)")
+                .accessibilityLabel("About \(title)")
+            }
         }
         .padding(.horizontal, 40)
         .frame(height: 112)
+        .sheet(isPresented: $isShowingInfo) {
+            if let info {
+                WorkspaceInfoSheet(info: info)
+            }
+        }
+    }
+}
+
+struct WorkspaceInfo: Sendable {
+    let title: String
+    let symbol: String
+    let summary: String
+    let tips: [String]
+}
+
+private struct WorkspaceInfoSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let info: WorkspaceInfo
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            HStack(alignment: .top, spacing: 16) {
+                Image(systemName: info.symbol)
+                    .font(.system(size: 25, weight: .semibold))
+                    .foregroundStyle(TingXiePalette.accent)
+                    .frame(width: 52, height: 52)
+                    .background(TingXiePalette.surfaceContainerHighest, in: RoundedRectangle(cornerRadius: 15))
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(info.title)
+                        .font(.system(size: 27, weight: .bold, design: .rounded))
+                    Text(info.summary)
+                        .font(.system(size: 14, design: .rounded))
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                        .lineSpacing(3)
+                }
+
+                Spacer()
+
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close")
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 14) {
+                ForEach(Array(info.tips.enumerated()), id: \.offset) { index, tip in
+                    HStack(alignment: .top, spacing: 12) {
+                        Text("\(index + 1)")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .frame(width: 24, height: 24)
+                            .background(TingXiePalette.accent, in: Circle())
+                        Text(tip)
+                            .font(.system(size: 14, design: .rounded))
+                            .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                            .lineSpacing(3)
+                            .padding(.top, 2)
+                    }
+                }
+            }
+
+            Spacer(minLength: 0)
+
+            HStack {
+                Spacer()
+                Button("Done") { dismiss() }
+                    .buttonStyle(GreenCapsuleButtonStyle())
+            }
+        }
+        .padding(28)
+        .frame(width: 520, height: 390)
+        .foregroundStyle(TingXiePalette.onBackground)
+        .background(TingXiePalette.background)
     }
 }
 
