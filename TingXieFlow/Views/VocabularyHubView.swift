@@ -16,35 +16,69 @@ struct VocabularyHubView: View {
     @Binding var selectedWordID: PersistentIdentifier?
 
     @State private var searchText = ""
+    @State private var isSearchResultsPresented = false
+    @State private var highlightedSearchWordID: PersistentIdentifier?
     @State private var filter: VocabularyFilter = .all
     @State private var pendingLearnedWordIDs: Set<PersistentIdentifier> = []
     @State private var editingWord: VocabularyWord?
     @State private var wordPendingDeletion: VocabularyWord?
     @State private var operationError: String?
 
-    private var filteredWords: [VocabularyWord] {
+    private var categoryWords: [VocabularyWord] {
         words.filter { word in
-            let matchesFilter = switch filter {
+            switch filter {
             case .all: true
             case .missed: isEffectivelyMissed(word)
             case .idioms: word.isIdiom
             }
-            let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-            let matchesSearch = query.isEmpty
-                || word.chinese.localizedCaseInsensitiveContains(query)
-                || word.pinyin.localizedCaseInsensitiveContains(query)
-                || word.tags.contains { $0.localizedCaseInsensitiveContains(query) }
-            return matchesFilter && matchesSearch
+        }
+    }
+
+    private var filteredWords: [VocabularyWord] {
+        let query = searchText.tingXieTrimmed
+        guard !query.isEmpty else { return categoryWords }
+
+        return categoryWords.filter { word in
+            SearchText.matches(word.chinese, query: query)
+                || SearchText.matchesPinyin(word.pinyin, query: query)
+                || SearchText.matches(word.englishTranslation, query: query)
+                || word.tags.contains { SearchText.matches($0, query: query) }
         }
     }
 
     private var selectedWord: VocabularyWord? {
         if let selectedWordID,
            let selected = words.first(where: { $0.persistentModelID == selectedWordID }),
-           filteredWords.contains(where: { $0.persistentModelID == selectedWordID }) {
+           categoryWords.contains(where: { $0.persistentModelID == selectedWordID }) {
             return selected
         }
-        return filteredWords.first
+        return categoryWords.first
+    }
+
+    private var searchResultsOverlay: AnyView {
+        AnyView(
+            SearchResultsPanel(
+                resultCount: filteredWords.count,
+                emptyMessage: "No matching vocabulary in \(filter.rawValue)",
+                onClear: clearSearch
+            ) {
+                ScrollView {
+                    LazyVStack(spacing: 4) {
+                        ForEach(filteredWords) { word in
+                            VocabularySearchResultRow(
+                                word: word,
+                                isMissed: isEffectivelyMissed(word),
+                                isHighlighted: highlightedSearchWordID == word.persistentModelID,
+                                onHover: { highlightedSearchWordID = word.persistentModelID },
+                                onSelect: { openSearchResult(word) }
+                            )
+                        }
+                    }
+                    .padding(6)
+                }
+                .frame(maxHeight: 320)
+            }
+        )
     }
 
     var body: some View {
@@ -52,7 +86,12 @@ struct VocabularyHubView: View {
             WorkspaceHeader(
                 title: "Your Vocabulary Hub",
                 searchText: $searchText,
-                searchPrompt: "Search characters, pinyin, or tags…",
+                searchPrompt: "Search words, meanings, or tags…",
+                searchAccessibilityLabel: "Search vocabulary, translations, and tags",
+                searchResults: searchResultsOverlay,
+                searchResultsPresented: $isSearchResultsPresented,
+                onSearchSubmit: openHighlightedSearchResult,
+                onMoveSearchSelection: moveSearchSelection,
                 info: WorkspaceInfo(
                     title: "About the Vocabulary Hub",
                     symbol: "character.book.closed",
@@ -76,6 +115,7 @@ struct VocabularyHubView: View {
                 )
                     .frame(minWidth: 360, idealWidth: 500)
             }
+            .onTapGesture { isSearchResultsPresented = false }
         }
         .foregroundStyle(TingXiePalette.onBackground)
         .background(TingXiePalette.background)
@@ -83,6 +123,10 @@ struct VocabularyHubView: View {
             guard newSelection != nil else { return }
             filter = .all
             searchText = ""
+        }
+        .onChange(of: searchText) { _, _ in
+            highlightedSearchWordID = filteredWords.first?.persistentModelID
+            isSearchResultsPresented = !searchText.tingXieTrimmed.isEmpty
         }
         .sheet(item: $editingWord) { word in
             WordEditorSheet(word: word) { chinese, pinyin, translation, isIdiom in
@@ -125,7 +169,7 @@ struct VocabularyHubView: View {
         VStack(spacing: 20) {
             VocabularyFilterBar(selection: $filter)
 
-            if filteredWords.isEmpty {
+            if categoryWords.isEmpty {
                 ContentUnavailableView(
                     emptyStateTitle,
                     systemImage: emptyStateSymbol,
@@ -135,7 +179,7 @@ struct VocabularyHubView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 9) {
-                        ForEach(filteredWords) { word in
+                        ForEach(categoryWords) { word in
                             VocabularyRow(
                                 word: word,
                                 isSelected: word.persistentModelID == selectedWord?.persistentModelID,
@@ -154,11 +198,13 @@ struct VocabularyHubView: View {
         .padding(.trailing, 24)
         .padding(.bottom, 32)
         .background(TingXiePalette.background)
-        .onChange(of: filter) { _, _ in selectedWordID = nil }
+        .onChange(of: filter) { _, _ in
+            selectedWordID = nil
+            highlightedSearchWordID = filteredWords.first?.persistentModelID
+        }
     }
 
     private var emptyStateTitle: String {
-        if !searchText.isEmpty { return "No Matching Vocabulary" }
         return switch filter {
         case .all: "No Vocabulary Yet"
         case .missed: "No Missed Words"
@@ -175,9 +221,6 @@ struct VocabularyHubView: View {
     }
 
     private var emptyStateDescription: String {
-        if !searchText.isEmpty {
-            return "Try another character, pinyin spelling, or set tag."
-        }
         switch filter {
         case .all:
             return "Words from your dictation sets will appear here."
@@ -190,6 +233,37 @@ struct VocabularyHubView: View {
 
     private func isEffectivelyMissed(_ word: VocabularyWord) -> Bool {
         word.isMissedWord && !pendingLearnedWordIDs.contains(word.persistentModelID)
+    }
+
+    private func clearSearch() {
+        searchText = ""
+        isSearchResultsPresented = false
+        highlightedSearchWordID = nil
+    }
+
+    private func openSearchResult(_ word: VocabularyWord) {
+        clearSearch()
+        selectedWordID = word.persistentModelID
+    }
+
+    private func openHighlightedSearchResult() {
+        guard !filteredWords.isEmpty else { return }
+        let word = filteredWords.first {
+            $0.persistentModelID == highlightedSearchWordID
+        } ?? filteredWords[0]
+        openSearchResult(word)
+    }
+
+    private func moveSearchSelection(_ direction: Int) {
+        guard !filteredWords.isEmpty else {
+            highlightedSearchWordID = nil
+            return
+        }
+        let currentIndex = filteredWords.firstIndex {
+            $0.persistentModelID == highlightedSearchWordID
+        } ?? (direction > 0 ? -1 : 0)
+        let nextIndex = min(max(currentIndex + direction, 0), filteredWords.count - 1)
+        highlightedSearchWordID = filteredWords[nextIndex].persistentModelID
     }
 
     private func markAsLearned(_ word: VocabularyWord) {
@@ -253,12 +327,20 @@ private struct VocabularyFilterBar: View {
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity)
                 .frame(height: 36)
-                .background(selection == item ? Color.white : .clear, in: RoundedRectangle(cornerRadius: 9))
+                .background(
+                    selection == item ? TingXiePalette.accent.opacity(0.09) : .clear,
+                    in: RoundedRectangle(cornerRadius: 9)
+                )
                 .accessibilityAddTraits(selection == item ? .isSelected : [])
             }
         }
         .padding(4)
-        .background(TingXiePalette.surfaceContainerHigh, in: RoundedRectangle(cornerRadius: 12))
+        .tingXieGlass(
+            .regular,
+            in: RoundedRectangle(cornerRadius: 12),
+            tint: TingXiePalette.accent.opacity(0.04),
+            isInteractive: true
+        )
     }
 }
 
@@ -336,6 +418,80 @@ private struct VocabularyRow: View {
     }
 }
 
+private struct VocabularySearchResultRow: View {
+    let word: VocabularyWord
+    let isMissed: Bool
+    let isHighlighted: Bool
+    let onHover: () -> Void
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 12) {
+                Text(word.chinese)
+                    .font(.system(size: 24, weight: .semibold, design: .rounded))
+                    .foregroundStyle(isMissed ? TingXiePalette.missed : TingXiePalette.accent)
+                    .frame(minWidth: 52, alignment: .leading)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(word.pinyin.isEmpty ? "No pinyin" : word.pinyin)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(TingXiePalette.onBackground)
+                        .lineLimit(1)
+                    Text(word.englishTranslation.isEmpty ? "No translation yet" : word.englishTranslation)
+                        .font(.system(size: 12, design: .rounded))
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                HStack(spacing: 5) {
+                    if isMissed {
+                        SearchResultBadge(title: "Missed", color: TingXiePalette.missed)
+                    }
+                    if word.isIdiom {
+                        SearchResultBadge(title: "Idiom", color: TingXiePalette.secondary)
+                    }
+                }
+
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.55))
+            }
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, minHeight: 58)
+            .contentShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .background(.clear, in: RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            if isHighlighted {
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(TingXiePalette.accent.opacity(0.55), lineWidth: 1)
+            }
+        }
+        .onHover { hovering in
+            if hovering { onHover() }
+        }
+        .accessibilityLabel("Open \(word.chinese), \(word.pinyin), \(word.englishTranslation)")
+    }
+}
+
+private struct SearchResultBadge: View {
+    let title: String
+    let color: Color
+
+    var body: some View {
+        Text(title)
+            .font(.system(size: 9, weight: .bold, design: .rounded))
+            .foregroundStyle(color)
+            .padding(.horizontal, 6)
+            .frame(height: 20)
+            .background(color.opacity(0.1), in: Capsule())
+    }
+}
+
 private struct VocabularyInspector: View {
     @Environment(\.modelContext) private var modelContext
 
@@ -353,36 +509,56 @@ private struct VocabularyInspector: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         HStack(alignment: .top, spacing: 18) {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text(word.chinese)
-                                    .font(.system(size: word.chinese.count > 3 ? 62 : 88, weight: .bold, design: .rounded))
-                                    .foregroundStyle(TingXiePalette.accent)
-                                    .minimumScaleFactor(0.7)
-                                    .lineLimit(1)
-
-                                HStack(spacing: 10) {
-                                    Text(word.pinyin)
-                                        .font(.system(size: 24, weight: .semibold, design: .rounded))
-                                    Button {
-                                        audioEngine.stop()
-                                        audioEngine.speak(word.chinese)
-                                    } label: {
-                                        Image(systemName: "speaker.wave.2.fill")
-                                            .font(.system(size: 15, weight: .semibold))
-                                            .frame(width: 38, height: 38)
-                                            .background(TingXiePalette.surfaceContainerHighest, in: Circle())
-                                    }
-                                    .buttonStyle(.plain)
-                                    .foregroundStyle(TingXiePalette.accent)
-                                    .accessibilityLabel("Play \(word.chinese)")
-                                }
-                            }
+                            Text(word.chinese)
+                                .font(.system(size: word.chinese.count > 3 ? 62 : 88, weight: .bold, design: .rounded))
+                                .foregroundStyle(TingXiePalette.accent)
+                                .minimumScaleFactor(0.7)
+                                .lineLimit(1)
 
                             Spacer()
 
                             WordTags(word: word, compact: false, showsMissed: isMissed)
                                 .padding(.top, 10)
                         }
+
+                        HStack(spacing: 12) {
+                            Image(systemName: "waveform")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(TingXiePalette.secondary.opacity(0.72))
+
+                            Text(word.pinyin.isEmpty ? "No pinyin" : word.pinyin)
+                                .font(.system(size: 20, weight: .semibold, design: .rounded))
+                                .foregroundStyle(TingXiePalette.onBackground)
+
+                            Spacer(minLength: 12)
+
+                            Button {
+                                audioEngine.stop()
+                                audioEngine.speak(word.chinese)
+                            } label: {
+                                Label("Play Audio", systemImage: "speaker.wave.2.fill")
+                                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                                    .padding(.horizontal, 14)
+                                    .frame(height: 36)
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(TingXiePalette.accent)
+                            .tingXieGlass(
+                                .regular,
+                                in: Capsule(),
+                                tint: TingXiePalette.accent.opacity(0.05),
+                                isInteractive: true
+                            )
+                            .accessibilityLabel("Play \(word.chinese)")
+                        }
+                        .padding(.horizontal, 16)
+                        .frame(maxWidth: .infinity, minHeight: 54)
+                        .background(TingXiePalette.surfaceContainerHigh.opacity(0.72), in: RoundedRectangle(cornerRadius: 14))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(TingXiePalette.outlineVariant.opacity(0.55), lineWidth: 1)
+                        }
+                        .padding(.top, 14)
 
                         Divider()
                             .overlay(TingXiePalette.outlineVariant.opacity(0.5))
@@ -570,6 +746,7 @@ private struct WordEditorSheet: View {
                         .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
+                .tingXieGlass(.regular, in: Circle(), isInteractive: true)
                 .accessibilityLabel("Close")
             }
             .padding(.horizontal, 24)

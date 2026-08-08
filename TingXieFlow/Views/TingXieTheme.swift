@@ -12,20 +12,92 @@ enum TingXiePalette {
     static let accent = Color(red: 14 / 255, green: 73 / 255, blue: 14 / 255)
     static let secondary = Color(red: 45 / 255, green: 107 / 255, blue: 42 / 255)
     static let onBackground = Color(red: 7 / 255, green: 32 / 255, blue: 11 / 255)
+    static let onAccent = Color.white
     static let onSurfaceVariant = Color(red: 65 / 255, green: 73 / 255, blue: 62 / 255)
     static let outline = Color(red: 113 / 255, green: 121 / 255, blue: 109 / 255)
     static let outlineVariant = Color(red: 193 / 255, green: 201 / 255, blue: 186 / 255)
     static let wordOfDay = Color(red: 253 / 255, green: 251 / 255, blue: 167 / 255)
     static let missed = Color(red: 196 / 255, green: 31 / 255, blue: 35 / 255)
     static let tableStripe = Color(red: 165 / 255, green: 198 / 255, blue: 162 / 255).opacity(0.4)
+    static let glassBorder = Color.white.opacity(0.42)
+    static let glassShadow = Color.black.opacity(0.12)
+}
+
+enum TingXieGlassRole {
+    case regular
+    case clear
+    case prominent
+}
+
+private struct TingXieGlassModifier<S: Shape>: ViewModifier {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    let role: TingXieGlassRole
+    let shape: S
+    let tint: Color?
+    let isInteractive: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(macOS 26.0, *) {
+            content
+                .glassEffect(glass, in: shape)
+        } else {
+            content
+                .background(
+                    reduceTransparency
+                        ? AnyShapeStyle(TingXiePalette.surface)
+                        : AnyShapeStyle(.regularMaterial),
+                    in: shape
+                )
+                .background(fallbackTint, in: shape)
+                .overlay {
+                    shape.stroke(
+                        colorSchemeContrast == .increased ? TingXiePalette.onBackground.opacity(0.72) : TingXiePalette.glassBorder,
+                        lineWidth: colorSchemeContrast == .increased ? 2 : 1
+                    )
+                }
+                .shadow(color: TingXiePalette.glassShadow, radius: 12, y: 6)
+        }
+    }
+
+    @available(macOS 26.0, *)
+    private var glass: Glass {
+        let base: Glass = role == .clear ? .clear : .regular
+        return base
+            .tint(tint)
+            .interactive(isInteractive)
+    }
+
+    private var fallbackTint: Color {
+        guard let tint else { return .clear }
+        return tint.opacity(role == .prominent ? 0.86 : 0.12)
+    }
+}
+
+extension View {
+    func tingXieGlass<S: Shape>(
+        _ role: TingXieGlassRole = .regular,
+        in shape: S,
+        tint: Color? = nil,
+        isInteractive: Bool = false
+    ) -> some View {
+        modifier(
+            TingXieGlassModifier(
+                role: role,
+                shape: shape,
+                tint: tint,
+                isInteractive: isInteractive
+            )
+        )
+    }
 }
 
 struct AppSidebar: View {
     @Binding var selection: AppSection
     let activeSet: DictationSet?
     let vocabularyWords: [VocabularyWord]
-    let isCollapsed: Bool
-    let onToggleCollapse: () -> Void
     let onShowDictationHome: () -> Void
     let onOpenWordOfDay: (VocabularyWord) -> Void
 
@@ -38,11 +110,10 @@ struct AppSidebar: View {
                     title: "Smart Dictation",
                     symbol: "waveform",
                     isSelected: selection == .dictation,
-                    isCollapsed: isCollapsed,
                     action: onShowDictationHome
                 )
 
-                if let activeSet, !isCollapsed {
+                if let activeSet {
                     HStack(spacing: 8) {
                         Rectangle().frame(width: 2, height: 18)
                         Text(activeSet.title).lineLimit(1)
@@ -57,8 +128,7 @@ struct AppSidebar: View {
                 SidebarButton(
                     title: "Your Vocabulary Hub",
                     symbol: "character.book.closed",
-                    isSelected: selection == .vocabulary,
-                    isCollapsed: isCollapsed
+                    isSelected: selection == .vocabulary
                 ) {
                     selection = .vocabulary
                 }
@@ -66,59 +136,36 @@ struct AppSidebar: View {
                 SidebarButton(
                     title: "Settings",
                     symbol: "gearshape",
-                    isSelected: selection == .settings,
-                    isCollapsed: isCollapsed
+                    isSelected: selection == .settings
                 ) {
                     selection = .settings
                 }
             }
-            .padding(.horizontal, isCollapsed ? 8 : 16)
-            .padding(.top, isCollapsed ? 28 : 18)
+            .padding(.horizontal, 12)
+            .padding(.top, 18)
 
             Spacer()
 
-            if !isCollapsed {
-                WordOfDayCard(words: vocabularyWords, onOpenWord: onOpenWordOfDay)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 18)
-                    .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .bottomLeading)))
-            }
+            WordOfDayCard(words: vocabularyWords, onOpenWord: onOpenWordOfDay)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 18)
         }
         .foregroundStyle(.white)
         .background(TingXiePalette.sidebar)
     }
 
     private var sidebarHeader: some View {
-        ZStack(alignment: .topTrailing) {
-            if !isCollapsed {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("TingXieFlow")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .tracking(-1.2)
-                    Text("Audio-First Learning")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.72))
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 52)
-                .padding(.horizontal, 24)
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-
-            Button(action: onToggleCollapse) {
-                Image(systemName: isCollapsed ? "sidebar.right" : "sidebar.left")
-                    .font(.system(size: 16, weight: .semibold))
-                    .frame(width: 36, height: 36)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.white.opacity(0.78))
-            .help(isCollapsed ? "Expand Sidebar" : "Collapse Sidebar")
-            .accessibilityLabel(isCollapsed ? "Expand Sidebar" : "Collapse Sidebar")
-            .padding(.top, 14)
-            .padding(.trailing, 14)
+        VStack(alignment: .leading, spacing: 2) {
+            Text("TingXieFlow")
+                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .tracking(-1.1)
+            Text("Audio-First Learning")
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.72))
         }
-        .frame(maxWidth: .infinity, alignment: .topTrailing)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 28)
+        .padding(.horizontal, 20)
     }
 }
 
@@ -161,11 +208,12 @@ private struct WordOfDayCard: View {
             }
             .buttonStyle(.plain)
             .disabled(word == nil)
-            .background(TingXiePalette.sidebarSelection, in: RoundedRectangle(cornerRadius: 12))
-            .overlay {
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(.white.opacity(0.12), lineWidth: 1)
-            }
+            .tingXieGlass(
+                .regular,
+                in: RoundedRectangle(cornerRadius: 14),
+                tint: TingXiePalette.sidebarSelection,
+                isInteractive: word != nil
+            )
             .help(word == nil ? "Save vocabulary to receive a daily word." : "Open in Vocabulary Hub")
             .accessibilityLabel(accessibilityLabel(word))
         }
@@ -202,7 +250,6 @@ private struct SidebarButton: View {
     let title: String
     let symbol: String
     let isSelected: Bool
-    let isCollapsed: Bool
     let action: () -> Void
 
     var body: some View {
@@ -211,15 +258,12 @@ private struct SidebarButton: View {
                 Image(systemName: symbol)
                     .font(.system(size: 20, weight: .semibold))
                     .frame(width: 24, height: 24)
-                if !isCollapsed {
-                    Text(title)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .lineLimit(2)
-                        .transition(.opacity.combined(with: .move(edge: .leading)))
-                }
+                Text(title)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .lineLimit(2)
             }
-            .frame(maxWidth: .infinity, alignment: isCollapsed ? .center : .leading)
-            .padding(.horizontal, isCollapsed ? 0 : 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14)
             .frame(height: 52)
             .contentShape(Rectangle())
         }
@@ -236,6 +280,11 @@ struct WorkspaceHeader: View {
     var subtitle: String?
     var searchText: Binding<String>?
     var searchPrompt = "Search…"
+    var searchAccessibilityLabel = "Search"
+    var searchResults: AnyView?
+    var searchResultsPresented: Binding<Bool>?
+    var onSearchSubmit: (() -> Void)?
+    var onMoveSearchSelection: ((Int) -> Void)?
     var showsAddButton = false
     var addAction: (() -> Void)?
     var info: WorkspaceInfo?
@@ -259,8 +308,17 @@ struct WorkspaceHeader: View {
             Spacer(minLength: 24)
 
             if let searchText {
-                SearchField(text: searchText, prompt: searchPrompt)
+                SearchField(
+                    text: searchText,
+                    prompt: searchPrompt,
+                    accessibilityLabel: searchAccessibilityLabel,
+                    results: searchResults,
+                    resultsPresented: searchResultsPresented,
+                    onSubmit: onSearchSubmit,
+                    onMoveSelection: onMoveSearchSelection
+                )
                     .frame(width: 250)
+                    .zIndex(20)
             }
 
             if showsAddButton {
@@ -268,10 +326,10 @@ struct WorkspaceHeader: View {
                     Image(systemName: "plus")
                         .font(.system(size: 18, weight: .semibold))
                         .frame(width: 40, height: 40)
-                        .background(TingXiePalette.accent, in: Circle())
-                        .foregroundStyle(.white)
+                        .foregroundStyle(TingXiePalette.onAccent)
                 }
                 .buttonStyle(.plain)
+                .tingXieGlass(.prominent, in: Circle(), tint: TingXiePalette.accent, isInteractive: true)
                 .accessibilityLabel("Create New Set")
             }
 
@@ -286,12 +344,19 @@ struct WorkspaceHeader: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                .tingXieGlass(
+                    .regular,
+                    in: Circle(),
+                    tint: TingXiePalette.accent.opacity(0.04),
+                    isInteractive: true
+                )
                 .help("About \(title)")
                 .accessibilityLabel("About \(title)")
             }
         }
         .padding(.horizontal, 40)
         .frame(height: 112)
+        .zIndex(20)
         .sheet(isPresented: $isShowingInfo) {
             if let info {
                 WorkspaceInfoSheet(info: info)
@@ -339,6 +404,7 @@ private struct WorkspaceInfoSheet: View {
                         .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
+                .tingXieGlass(.regular, in: Circle(), isInteractive: true)
                 .accessibilityLabel("Close")
             }
 
@@ -349,7 +415,7 @@ private struct WorkspaceInfoSheet: View {
                     HStack(alignment: .top, spacing: 12) {
                         Text("\(index + 1)")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(TingXiePalette.onAccent)
                             .frame(width: 24, height: 24)
                             .background(TingXiePalette.accent, in: Circle())
                         Text(tip)
@@ -379,6 +445,14 @@ private struct WorkspaceInfoSheet: View {
 struct SearchField: View {
     @Binding var text: String
     let prompt: String
+    var accessibilityLabel = "Search"
+    var results: AnyView?
+    var resultsPresented: Binding<Bool>?
+    var onSubmit: (() -> Void)?
+    var onMoveSelection: ((Int) -> Void)?
+
+    @FocusState private var isFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 10) {
@@ -388,10 +462,176 @@ struct SearchField: View {
             TextField(prompt, text: $text)
                 .textFieldStyle(.plain)
                 .font(.system(size: 14, design: .rounded))
+                .focused($isFocused)
+                .onSubmit { onSubmit?() }
+                .onKeyPress(.upArrow) {
+                    onMoveSelection?(-1)
+                    return onMoveSelection == nil ? .ignored : .handled
+                }
+                .onKeyPress(.downArrow) {
+                    onMoveSelection?(1)
+                    return onMoveSelection == nil ? .ignored : .handled
+                }
+                .onExitCommand {
+                    if showsResults, !text.tingXieTrimmed.isEmpty {
+                        resultsPresented?.wrappedValue = false
+                    } else if !text.isEmpty {
+                        text = ""
+                    } else {
+                        isFocused = false
+                    }
+                }
+                .accessibilityLabel(accessibilityLabel)
+
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                    isFocused = true
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.6))
+                }
+                .buttonStyle(.plain)
+                .help("Clear search")
+                .accessibilityLabel("Clear search")
+            }
         }
         .padding(.horizontal, 14)
         .frame(height: 40)
-        .background(TingXiePalette.surface.opacity(0.8), in: RoundedRectangle(cornerRadius: 12))
+        .contentShape(RoundedRectangle(cornerRadius: 12))
+        .onTapGesture {
+            if !text.tingXieTrimmed.isEmpty {
+                resultsPresented?.wrappedValue = true
+            }
+        }
+        .tingXieGlass(
+            .regular,
+            in: RoundedRectangle(cornerRadius: 12),
+            tint: TingXiePalette.surface.opacity(0.2),
+            isInteractive: true
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(
+                    isFocused ? TingXiePalette.accent.opacity(0.72) : TingXiePalette.outlineVariant.opacity(0.45),
+                    lineWidth: isFocused ? 2 : 1
+                )
+        }
+        .overlay(alignment: .topTrailing) {
+            if showsResults, !text.tingXieTrimmed.isEmpty, let results {
+                results
+                    .frame(width: 390)
+                    .offset(y: 48)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: text.tingXieTrimmed.isEmpty)
+        .background {
+            Button("") {
+                isFocused = true
+                resultsPresented?.wrappedValue = true
+            }
+                .keyboardShortcut("f", modifiers: .command)
+                .opacity(0)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+        }
+    }
+
+    private var showsResults: Bool {
+        resultsPresented?.wrappedValue ?? true
+    }
+}
+
+struct SearchResultsPanel<Content: View>: View {
+    let resultCount: Int
+    let emptyMessage: String
+    let onClear: () -> Void
+    let content: Content
+
+    init(
+        resultCount: Int,
+        emptyMessage: String,
+        onClear: @escaping () -> Void,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.resultCount = resultCount
+        self.emptyMessage = emptyMessage
+        self.onClear = onClear
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(resultCount == 1 ? "1 result" : "\(resultCount) results")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                Spacer()
+                Button("Clear", action: onClear)
+                    .buttonStyle(.plain)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(TingXiePalette.accent)
+                    .accessibilityLabel("Clear search")
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 38)
+
+            Divider()
+                .overlay(TingXiePalette.outlineVariant.opacity(0.55))
+
+            if resultCount == 0 {
+                VStack(spacing: 9) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 22, weight: .medium))
+                        .foregroundStyle(TingXiePalette.secondary.opacity(0.55))
+                    Text(emptyMessage)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                }
+                .frame(maxWidth: .infinity, minHeight: 112)
+            } else {
+                content
+                    .frame(height: min(CGFloat(resultCount) * 62 + 12, 322))
+            }
+        }
+        .tingXieGlass(
+            .regular,
+            in: RoundedRectangle(cornerRadius: 14),
+            tint: TingXiePalette.surface.opacity(0.18)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(TingXiePalette.outlineVariant.opacity(0.75), lineWidth: 1)
+        }
+    }
+}
+
+enum SearchText {
+    static func matches(_ value: String, query: String) -> Bool {
+        value.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: .current)
+            .localizedStandardContains(
+                query.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: .current)
+            )
+    }
+
+    static func matchesPinyin(_ value: String, query: String) -> Bool {
+        pinyinKey(value).contains(pinyinKey(query))
+    }
+
+    private static func pinyinKey(_ value: String) -> String {
+        value
+            .folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: .current)
+            .lowercased()
+            .replacingOccurrences(of: "v", with: "u")
+            .filter { $0.isLetter || $0.isNumber }
+    }
+}
+
+extension String {
+    var tingXieTrimmed: String {
+        trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
@@ -399,12 +639,15 @@ struct GreenCapsuleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 15, weight: .bold, design: .rounded))
-            .foregroundStyle(.white)
+            .foregroundStyle(TingXiePalette.onAccent)
             .padding(.horizontal, 22)
             .frame(height: 40)
-            .background(TingXiePalette.accent.opacity(configuration.isPressed ? 0.78 : 1))
-            .clipShape(Capsule())
-            .shadow(color: TingXiePalette.accent.opacity(0.16), radius: 8, y: 4)
+            .tingXieGlass(
+                .prominent,
+                in: Capsule(),
+                tint: TingXiePalette.accent.opacity(configuration.isPressed ? 0.78 : 1),
+                isInteractive: true
+            )
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
     }
 }
@@ -416,8 +659,12 @@ struct OutlineCapsuleButtonStyle: ButtonStyle {
             .foregroundStyle(TingXiePalette.accent)
             .padding(.horizontal, 22)
             .frame(height: 40)
-            .background(TingXiePalette.accent.opacity(configuration.isPressed ? 0.08 : 0.01))
-            .clipShape(Capsule())
+            .tingXieGlass(
+                .regular,
+                in: Capsule(),
+                tint: TingXiePalette.accent.opacity(configuration.isPressed ? 0.16 : 0.06),
+                isInteractive: true
+            )
             .overlay { Capsule().stroke(TingXiePalette.accent.opacity(0.25), lineWidth: 1) }
     }
 }

@@ -13,20 +13,49 @@ struct SmartDictationView: View {
     let onCloseSet: () -> Void
 
     @State private var searchText = ""
+    @State private var isSearchResultsPresented = false
+    @State private var highlightedSearchSetID: PersistentIdentifier?
     @State private var editingSet: DictationSet?
     @State private var setPendingDeletion: DictationSet?
     @State private var operationError: String?
 
     private var filteredSets: [DictationSet] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let query = searchText.tingXieTrimmed
         guard !query.isEmpty else { return sets }
         return sets.filter { set in
-            set.title.localizedCaseInsensitiveContains(query)
+            SearchText.matches(set.title, query: query)
                 || set.vocabularyWords.contains { word in
-                    word.chinese.localizedCaseInsensitiveContains(query)
-                        || word.pinyin.localizedCaseInsensitiveContains(query)
+                    SearchText.matches(word.chinese, query: query)
+                        || SearchText.matchesPinyin(word.pinyin, query: query)
+                        || SearchText.matches(word.englishTranslation, query: query)
                 }
         }
+    }
+
+    private var searchResultsOverlay: AnyView {
+        AnyView(
+            SearchResultsPanel(
+                resultCount: filteredSets.count,
+                emptyMessage: "No matching dictation sets",
+                onClear: clearSearch
+            ) {
+                ScrollView {
+                    LazyVStack(spacing: 4) {
+                        ForEach(filteredSets) { set in
+                            DictationSearchResultRow(
+                                set: set,
+                                query: searchText.tingXieTrimmed,
+                                isHighlighted: highlightedSearchSetID == set.persistentModelID,
+                                onHover: { highlightedSearchSetID = set.persistentModelID },
+                                onSelect: { openSearchResult(set) }
+                            )
+                        }
+                    }
+                    .padding(6)
+                }
+                .frame(maxHeight: 320)
+            }
+        )
     }
 
     var body: some View {
@@ -39,7 +68,12 @@ struct SmartDictationView: View {
                         WorkspaceHeader(
                             title: "Smart Dictation",
                             searchText: $searchText,
-                            searchPrompt: "Search dictation sets…",
+                            searchPrompt: "Search sets or vocabulary…",
+                            searchAccessibilityLabel: "Search dictation sets and vocabulary",
+                            searchResults: searchResultsOverlay,
+                            searchResultsPresented: $isSearchResultsPresented,
+                            onSearchSubmit: openHighlightedSearchResult,
+                            onMoveSearchSelection: moveSearchSelection,
                             info: WorkspaceInfo(
                                 title: "About Smart Dictation",
                                 symbol: "waveform",
@@ -57,8 +91,8 @@ struct SmartDictationView: View {
                                 DictationHero(onOpenVocabulary: onOpenVocabulary)
 
                                 DictationSetCollection(
-                                    sets: filteredSets,
-                                    isSearching: !searchText.isEmpty,
+                                    sets: sets,
+                                    isSearching: false,
                                     onCreateSet: onCreateSet,
                                     onOpenSet: onOpenSet,
                                     onEditSet: { editingSet = $0 },
@@ -69,18 +103,18 @@ struct SmartDictationView: View {
                             .padding(.horizontal, 40)
                             .padding(.bottom, 96)
                         }
+                        .onTapGesture { isSearchResultsPresented = false }
                     }
 
                     Button(action: onCreateSet) {
                         Image(systemName: "plus")
                             .font(.system(size: 21, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(TingXiePalette.onAccent)
                             .frame(width: 56, height: 56)
-                            .background(TingXiePalette.accent, in: Circle())
-                            .shadow(color: TingXiePalette.accent.opacity(0.28), radius: 16, y: 8)
                             .contentShape(Circle())
                     }
                     .buttonStyle(.plain)
+                    .tingXieGlass(.prominent, in: Circle(), tint: TingXiePalette.accent, isInteractive: true)
                     .help("Create New Set")
                     .accessibilityLabel("Create New Set")
                     .padding(.trailing, 32)
@@ -90,6 +124,10 @@ struct SmartDictationView: View {
         }
         .foregroundStyle(TingXiePalette.onBackground)
         .background(TingXiePalette.background)
+        .onChange(of: searchText) { _, _ in
+            highlightedSearchSetID = filteredSets.first?.persistentModelID
+            isSearchResultsPresented = !searchText.tingXieTrimmed.isEmpty
+        }
         .sheet(item: $editingSet) { set in
             NewDictationSetSheet(
                 mode: .edit,
@@ -141,6 +179,37 @@ struct SmartDictationView: View {
         }
     }
 
+    private func clearSearch() {
+        searchText = ""
+        isSearchResultsPresented = false
+        highlightedSearchSetID = nil
+    }
+
+    private func openSearchResult(_ set: DictationSet) {
+        clearSearch()
+        onOpenSet(set)
+    }
+
+    private func openHighlightedSearchResult() {
+        guard !filteredSets.isEmpty else { return }
+        let set = filteredSets.first {
+            $0.persistentModelID == highlightedSearchSetID
+        } ?? filteredSets[0]
+        openSearchResult(set)
+    }
+
+    private func moveSearchSelection(_ direction: Int) {
+        guard !filteredSets.isEmpty else {
+            highlightedSearchSetID = nil
+            return
+        }
+        let currentIndex = filteredSets.firstIndex {
+            $0.persistentModelID == highlightedSearchSetID
+        } ?? (direction > 0 ? -1 : 0)
+        let nextIndex = min(max(currentIndex + direction, 0), filteredSets.count - 1)
+        highlightedSearchSetID = filteredSets[nextIndex].persistentModelID
+    }
+
     private func deletePendingSet() {
         guard let setPendingDeletion else { return }
         let setID = setPendingDeletion.persistentModelID
@@ -153,6 +222,71 @@ struct SmartDictationView: View {
                 operationError = error.localizedDescription
             }
         }
+    }
+}
+
+private struct DictationSearchResultRow: View {
+    let set: DictationSet
+    let query: String
+    let isHighlighted: Bool
+    let onHover: () -> Void
+    let onSelect: () -> Void
+
+    private var matchingWord: VocabularyWord? {
+        self.set.vocabularyWords.first { word in
+            SearchText.matches(word.chinese, query: query)
+                || SearchText.matchesPinyin(word.pinyin, query: query)
+                || SearchText.matches(word.englishTranslation, query: query)
+        }
+    }
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 12) {
+                Image(systemName: "rectangle.stack.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(TingXiePalette.accent)
+                    .frame(width: 32, height: 32)
+                    .background(TingXiePalette.surfaceContainerHigh, in: RoundedRectangle(cornerRadius: 9))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(set.title)
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(TingXiePalette.onBackground)
+                        .lineLimit(1)
+
+                    if let matchingWord {
+                        Text("Match: \(matchingWord.chinese)  ·  \(matchingWord.pinyin)")
+                            .lineLimit(1)
+                    } else {
+                        Text("\(set.vocabularyWords.count) vocabulary words")
+                    }
+                }
+                .font(.system(size: 12, design: .rounded))
+                .foregroundStyle(TingXiePalette.onSurfaceVariant)
+
+                Spacer()
+
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.55))
+            }
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .contentShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .background(.clear, in: RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            if isHighlighted {
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(TingXiePalette.accent.opacity(0.55), lineWidth: 1)
+            }
+        }
+        .onHover { hovering in
+            if hovering { onHover() }
+        }
+        .accessibilityLabel("Open \(set.title), \(set.vocabularyWords.count) vocabulary words")
     }
 }
 
@@ -481,15 +615,12 @@ private struct PracticeSessionView: View {
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                     ProgressView(value: Double(currentIndex + 1), total: Double(max(words.count, 1)))
                         .tint(TingXiePalette.accent)
-                        .frame(maxWidth: 460)
+                        .frame(maxWidth: .infinity)
                 }
-
-                Spacer()
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 Button("Finish Set", systemImage: "rectangle.portrait.and.arrow.right", action: onFinish)
-                    .buttonStyle(.plain)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(TingXiePalette.accent)
+                    .buttonStyle(OutlineCapsuleButtonStyle())
             }
             .padding(.horizontal, 40)
             .padding(.bottom, 32)
@@ -584,12 +715,17 @@ private struct PracticeFilterBar: View {
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity)
                 .frame(height: 36)
-                .background(selection == item ? Color.white : .clear, in: Capsule())
+                .background(selection == item ? TingXiePalette.accent.opacity(0.09) : .clear, in: Capsule())
                 .accessibilityAddTraits(selection == item ? .isSelected : [])
             }
         }
         .padding(4)
-        .background(TingXiePalette.surfaceContainerHigh, in: Capsule())
+        .tingXieGlass(
+            .regular,
+            in: Capsule(),
+            tint: TingXiePalette.accent.opacity(0.04),
+            isInteractive: true
+        )
     }
 }
 
@@ -702,8 +838,12 @@ private struct PracticeRoundButton: View {
                 Image(systemName: symbol)
                     .font(.system(size: 16, weight: .bold))
                     .frame(width: 44, height: 44)
-                    .background(color.opacity(0.04), in: Circle())
-                    .overlay { Circle().stroke(color.opacity(0.25), lineWidth: 1.5) }
+                    .tingXieGlass(
+                        .regular,
+                        in: Circle(),
+                        tint: color.opacity(0.08),
+                        isInteractive: !isDisabled
+                    )
                 Text(title)
                     .font(.system(size: 10, weight: .bold, design: .rounded))
             }
@@ -711,6 +851,7 @@ private struct PracticeRoundButton: View {
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
+        .opacity(isDisabled ? 0.58 : 1)
     }
 }
 
@@ -819,6 +960,7 @@ struct NewDictationSetSheet: View {
                         .frame(width: 34, height: 34)
                 }
                 .buttonStyle(.plain)
+                .tingXieGlass(.regular, in: Circle(), isInteractive: true)
                 .accessibilityLabel("Close")
             }
             .padding(.horizontal, 28)

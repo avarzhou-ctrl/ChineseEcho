@@ -28,12 +28,10 @@ struct TingXieFlowApp: App {
 
     var body: some Scene {
         WindowGroup {
-            NavigationStack {
-                ContentView()
-            }
+            ContentView()
         }
         .modelContainer(sharedModelContainer)
         .defaultSize(width: 1024, height: 768)
-        .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unifiedCompact)
     }
 }
