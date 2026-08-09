@@ -328,19 +328,14 @@ private struct VocabularyFilterBar: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 36)
                 .background(
-                    selection == item ? TingXiePalette.accent.opacity(0.09) : .clear,
+                    selection == item ? Color.white : .clear,
                     in: RoundedRectangle(cornerRadius: 9)
                 )
                 .accessibilityAddTraits(selection == item ? .isSelected : [])
             }
         }
         .padding(4)
-        .tingXieGlass(
-            .regular,
-            in: RoundedRectangle(cornerRadius: 12),
-            tint: TingXiePalette.accent.opacity(0.04),
-            isInteractive: true
-        )
+        .background(TingXiePalette.surfaceContainerHigh, in: RoundedRectangle(cornerRadius: 12))
     }
 }
 
@@ -543,12 +538,7 @@ private struct VocabularyInspector: View {
                             }
                             .buttonStyle(.plain)
                             .foregroundStyle(TingXiePalette.accent)
-                            .tingXieGlass(
-                                .regular,
-                                in: Capsule(),
-                                tint: TingXiePalette.accent.opacity(0.05),
-                                isInteractive: true
-                            )
+                            .background(TingXiePalette.surfaceContainerHighest, in: Capsule())
                             .accessibilityLabel("Play \(word.chinese)")
                         }
                         .padding(.horizontal, 16)
@@ -746,7 +736,6 @@ private struct WordEditorSheet: View {
                         .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
-                .tingXieGlass(.regular, in: Circle(), isInteractive: true)
                 .accessibilityLabel("Close")
             }
             .padding(.horizontal, 24)

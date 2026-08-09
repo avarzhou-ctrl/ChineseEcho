@@ -70,7 +70,7 @@ Vocabulary and practice state remain in SwiftData. Sentence generation runs in-p
 
 ## Information Architecture
 
-The app uses a native `NavigationSplitView` with a branded sidebar, system toolbar layer, and a single main workspace. On macOS 26 and newer, navigation and priority controls use native Liquid Glass; older supported releases receive a system-material fallback.
+The app uses a custom horizontal split shell with a branded sidebar and a single main workspace. The interface uses the original TingXieFlow palette, tonal cards, solid controls, and restrained system materials.
 
 | Destination | Purpose | Primary content |
 | --- | --- | --- |
@@ -78,7 +78,7 @@ The app uses a native `NavigationSplitView` with a branded sidebar, system toolb
 | Your Vocabulary Hub | Search and revisit saved words | Filtered vocabulary list and word inspector |
 | Settings | Test supporting engines | Speech & Pronunciation and Local Language Model cards |
 
-An active dictation set appears beneath **Smart Dictation** in the sidebar. The native sidebar may be resized from 220 to 420 points or hidden with the system sidebar control.
+An active dictation set appears beneath **Smart Dictation** in the sidebar. The sidebar may be resized from 220 to 420 points, collapsed to 64 points, and remembers its expanded width.
 
 ## Screen Specifications
 
@@ -88,8 +88,9 @@ An active dictation set appears beneath **Smart Dictation** in the sidebar. The 
 - Minimum window: 900 × 650 points
 - Sidebar: 220–420 points, with a 266-point ideal width
 - Workspace fills all remaining space
-- Window uses the native unified compact title bar and toolbar
-- Sidebar visibility and resizing follow native macOS split-view behavior
+- Window uses the original hidden-title-bar presentation
+- A custom accessible resize handle manages the persistent sidebar width
+- Branded colors and tonal surfaces remain visually stable during live resizing
 
 The shell is implemented in `TingXieFlow/ContentView.swift`. Shared sidebar and header elements live in `TingXieFlow/Views/TingXieTheme.swift`.
 
@@ -226,9 +227,7 @@ Colors are defined in `TingXieFlow/Views/TingXieTheme.swift`.
 | `missed` | `#C41F23` | Missed state, destructive emphasis, and errors |
 | `tableStripe` | `#A5C6A2` at 40% | Alternating vocabulary rows |
 
-Structural tokens retain the original fixed TingXieFlow green palette in every appearance. Liquid Glass is reserved for the navigation and functional layer: the native sidebar and toolbar, search field and results panel, primary and floating actions, filter controls, and transient playback controls. Content cards, vocabulary rows, inspector content, practice cards, and settings sections remain on standard materials so that glass does not compete with learning content.
-
-Use native `glassEffect` on macOS 26 and newer. Keep the macOS 15.6 deployment target and provide `.regularMaterial` fallbacks that respond to Reduce Transparency and Increased Contrast without replacing the established palette.
+Structural tokens retain the original fixed TingXieFlow green palette in every appearance. Primary actions use solid accent fills, secondary actions use subtle tonal fills and outlines, search and filter controls use opaque palette surfaces, and content cards use the established light material treatment.
 
 Do not add decorative colors without a semantic need. Use semantic SwiftUI foreground styles for primary and secondary text so the app remains readable in Light and Dark appearance.
 

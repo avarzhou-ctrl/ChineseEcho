@@ -109,12 +109,13 @@ struct SmartDictationView: View {
                     Button(action: onCreateSet) {
                         Image(systemName: "plus")
                             .font(.system(size: 21, weight: .bold))
-                            .foregroundStyle(TingXiePalette.onAccent)
+                            .foregroundStyle(.white)
                             .frame(width: 56, height: 56)
+                            .background(TingXiePalette.accent, in: Circle())
+                            .shadow(color: TingXiePalette.accent.opacity(0.28), radius: 16, y: 8)
                             .contentShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    .tingXieGlass(.prominent, in: Circle(), tint: TingXiePalette.accent, isInteractive: true)
                     .help("Create New Set")
                     .accessibilityLabel("Create New Set")
                     .padding(.trailing, 32)
@@ -374,6 +375,8 @@ private struct DictationSetCollection: View {
                             .buttonStyle(GreenCapsuleButtonStyle())
                     }
                 }
+                .padding(.horizontal, 32)
+                .padding(.vertical, 28)
                 .frame(maxWidth: .infinity, minHeight: 180)
                 .tonalCard()
             } else {
@@ -715,17 +718,12 @@ private struct PracticeFilterBar: View {
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity)
                 .frame(height: 36)
-                .background(selection == item ? TingXiePalette.accent.opacity(0.09) : .clear, in: Capsule())
+                .background(selection == item ? Color.white : .clear, in: Capsule())
                 .accessibilityAddTraits(selection == item ? .isSelected : [])
             }
         }
         .padding(4)
-        .tingXieGlass(
-            .regular,
-            in: Capsule(),
-            tint: TingXiePalette.accent.opacity(0.04),
-            isInteractive: true
-        )
+        .background(TingXiePalette.surfaceContainerHigh, in: Capsule())
     }
 }
 
@@ -838,12 +836,8 @@ private struct PracticeRoundButton: View {
                 Image(systemName: symbol)
                     .font(.system(size: 16, weight: .bold))
                     .frame(width: 44, height: 44)
-                    .tingXieGlass(
-                        .regular,
-                        in: Circle(),
-                        tint: color.opacity(0.08),
-                        isInteractive: !isDisabled
-                    )
+                    .background(color.opacity(0.04), in: Circle())
+                    .overlay { Circle().stroke(color.opacity(0.25), lineWidth: 1.5) }
                 Text(title)
                     .font(.system(size: 10, weight: .bold, design: .rounded))
             }
@@ -851,7 +845,6 @@ private struct PracticeRoundButton: View {
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
-        .opacity(isDisabled ? 0.58 : 1)
     }
 }
 
@@ -960,7 +953,6 @@ struct NewDictationSetSheet: View {
                         .frame(width: 34, height: 34)
                 }
                 .buttonStyle(.plain)
-                .tingXieGlass(.regular, in: Circle(), isInteractive: true)
                 .accessibilityLabel("Close")
             }
             .padding(.horizontal, 28)
@@ -1167,7 +1159,9 @@ struct NewDictationSetSheet: View {
 
         let prompt = """
         Create exactly \(generatedWordCount) useful Chinese vocabulary entries for this learner request:
+        <learner_request>
         \(goal)
+        </learner_request>
 
         Return only one entry per line in this exact format:
         Chinese | pinyin with tone marks | concise English translation
@@ -1180,7 +1174,16 @@ struct NewDictationSetSheet: View {
         Task {
             do {
                 let response = try await generateText(prompt: prompt)
-                let generated = parseVocabularyLines(response, derivesPinyinFromChinese: true)
+                var generated = parseVocabularyLines(response, derivesPinyinFromChinese: true)
+                if generated.isEmpty {
+                    let repairedResponse = try await generateText(
+                        prompt: vocabularyRepairPrompt(for: response)
+                    )
+                    generated = parseVocabularyLines(
+                        repairedResponse,
+                        derivesPinyinFromChinese: true
+                    )
+                }
                 guard !generated.isEmpty else {
                     throw VocabularyGenerationError.invalidResponse
                 }
@@ -1200,13 +1203,14 @@ struct NewDictationSetSheet: View {
             .split(whereSeparator: \.isNewline)
             .compactMap { rawLine in
                 let line = String(rawLine)
+                    .replacingOccurrences(of: "｜", with: "|")
                     .trimmingCharacters(in: CharacterSet(charactersIn: "`*-0123456789.、) \t"))
                 let fields = line.split(separator: "|", omittingEmptySubsequences: false)
                     .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 guard fields.count >= 3 else { return nil }
                 let chinese = fields[0]
                 let suppliedPinyin = fields[1]
-                let translation = fields[2]
+                let translation = fields.dropFirst(2).joined(separator: " | ")
                 guard chinese.range(of: "\\p{Han}", options: .regularExpression) != nil,
                       translation.range(of: "[A-Za-z]", options: .regularExpression) != nil else {
                     return nil
@@ -1221,6 +1225,21 @@ struct NewDictationSetSheet: View {
                     isIdiom: chinese.count == 4
                 )
             }
+    }
+
+    private func vocabularyRepairPrompt(for response: String) -> String {
+        """
+        Reformat the candidate output below into exactly \(generatedWordCount) valid Chinese vocabulary entries.
+
+        Return only one entry per line in this exact format:
+        Chinese | pinyin with tone marks | concise English translation
+
+        Every first field must contain Chinese Han characters and every third field must contain an English definition. Do not number the lines or add any other text. If the candidate has too few usable entries, add relevant entries matching the same learner request.
+
+        <candidate_output>
+        \(response)
+        </candidate_output>
+        """
     }
 
     private func systemPinyin(for chinese: String) -> String? {
