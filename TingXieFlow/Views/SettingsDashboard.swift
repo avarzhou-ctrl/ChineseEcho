@@ -20,9 +20,6 @@ struct SettingsDashboard: View {
     private var automaticProgression = AppPreferenceDefault.automaticProgression
     @AppStorage(AppPreferenceKey.keepCardsRevealed)
     private var keepCardsRevealed = AppPreferenceDefault.keepCardsRevealed
-    @AppStorage(AppPreferenceKey.generatedWordCount)
-    private var generatedWordCount = AppPreferenceDefault.generatedWordCount
-
     @State private var audioEngine = SpeechAudioEngine()
 
     private let sampleText = "今天我们练习听写。"
@@ -39,7 +36,7 @@ struct SettingsDashboard: View {
                     tips: [
                         "Speech choices change the voice, pace, pitch, and pause used during dictation.",
                         "Practice choices control repeats, automatic movement, and whether new cards begin revealed.",
-                        "The Practice card also shows your library totals and controls the size of AI-generated sets."
+                        "The Practice card also shows the number of sets and vocabulary words stored on this Mac."
                     ]
                 )
             )
@@ -134,7 +131,7 @@ struct SettingsDashboard: View {
         SettingsSectionCard(
             title: "Practice",
             symbol: "rectangle.on.rectangle.angled",
-            summary: "Control listening sessions, review your library, and choose the size of new AI-generated sets.",
+            summary: "Control listening sessions and review your local learning library.",
             minimumHeight: primaryCardMinimumHeight
         ) {
             Stepper("Repeat each word \(repeatCount) time\(repeatCount == 1 ? "" : "s")", value: $repeatCount, in: 1...5)
@@ -157,15 +154,6 @@ struct SettingsDashboard: View {
                 DataCountBadge(value: setCount, label: "Sets", symbol: "square.stack.3d.up")
                 DataCountBadge(value: wordCount, label: "Words", symbol: "character.book.closed")
             }
-
-            Divider()
-
-            SettingsGroupHeading(title: "New Sets", symbol: "sparkles")
-            Stepper(
-                "Suggest \(generatedWordCount) words for a new set",
-                value: $generatedWordCount,
-                in: 3...20
-            )
         }
     }
 
@@ -189,6 +177,10 @@ struct SettingsDashboard: View {
             }
             LabeledContent("Language Model") {
                 Text("MLX Swift")
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
+            }
+            LabeledContent("Dictionary") {
+                Text("CC-CEDICT · CC BY-SA 4.0")
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
             }
         }

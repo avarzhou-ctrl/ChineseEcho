@@ -9,7 +9,6 @@ enum AppPreferenceKey {
     static let repeatCount = "practiceRepeatCount"
     static let automaticProgression = "practiceAutomaticProgression"
     static let keepCardsRevealed = "practiceKeepCardsRevealed"
-    static let generatedWordCount = "generatedWordCount"
 
     static let all = [
         voiceIdentifier,
@@ -19,8 +18,7 @@ enum AppPreferenceKey {
         interWordPause,
         repeatCount,
         automaticProgression,
-        keepCardsRevealed,
-        generatedWordCount
+        keepCardsRevealed
     ]
 }
 
@@ -32,7 +30,6 @@ enum AppPreferenceDefault {
     static let repeatCount = 1
     static let automaticProgression = true
     static let keepCardsRevealed = false
-    static let generatedWordCount = 8
 }
 
 extension UserDefaults {

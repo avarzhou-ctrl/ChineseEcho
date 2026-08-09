@@ -24,9 +24,9 @@
   - Add an **About** group for app version, privacy information, acknowledgements, and help.
   - Persist user-facing preferences between launches.
 
-- [x] **Use AI to automate new-set creation**
-  - Replace the rigid `Chinese | pinyin | translation` workflow with guided input where the learner can paste Chinese text, enter a topic, or describe a learning goal.
-  - Use the local model to extract or suggest vocabulary while generating pinyin and translations automatically.
+- [x] **Use AI to enrich new-set vocabulary**
+  - Accept Chinese words separated by commas, spaces, or new lines.
+  - Preserve the supplied words and order while filling in pinyin and English translations automatically.
   - Present the generated entries for review before saving.
   - Let users add, edit, reorder, or remove words and manually correct AI output.
   - Preserve a manual-entry fallback when generation fails or the model is unavailable.

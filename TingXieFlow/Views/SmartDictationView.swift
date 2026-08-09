@@ -1,3 +1,4 @@
+import AppKit
 import AVFoundation
 import SwiftData
 import SwiftUI
@@ -79,7 +80,7 @@ struct SmartDictationView: View {
                                 symbol: "waveform",
                                 summary: "Build focused listening sets, practice them with native Mandarin speech, and collect the words that need more review.",
                                 tips: [
-                                    "Use the floating plus button to paste material, describe a topic, or generate a set with the local AI.",
+                                    "Use the floating plus button to enter Chinese words, then let the local AI fill in pinyin and English translations.",
                                     "During practice, select the card or press Return to flip it and check the characters.",
                                     "Flag difficult words as missed; they will appear in the Vocabulary Hub for focused review."
                                 ]
@@ -915,14 +916,13 @@ struct NewDictationSetSheet: View {
     let mode: DictationSetEditorMode
     let onSave: (String, [NewVocabularyWord]) async throws -> Void
 
-    @AppStorage(AppPreferenceKey.generatedWordCount)
-    private var generatedWordCount = AppPreferenceDefault.generatedWordCount
-
     @State private var title: String
-    @State private var learningGoal = ""
+    @State private var chineseWordInput = ""
     @State private var manualText = ""
     @State private var draftWords: [DraftVocabularyWord]
     @State private var errorMessage: String?
+    @State private var initialModelOutput = ""
+    @State private var repairModelOutput = ""
     @State private var isSaving = false
     @State private var isGenerating = false
 
@@ -974,39 +974,43 @@ struct NewDictationSetSheet: View {
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
-                            Label("Build with Local AI", systemImage: "sparkles")
+                            Label("Fill Vocabulary Details", systemImage: "text.book.closed")
                                 .font(.system(size: 15, weight: .bold, design: .rounded))
                                 .foregroundStyle(TingXiePalette.accent)
 
-                            Text("Paste Chinese material or describe a topic and level. TingXieFlow will suggest editable vocabulary with pinyin and translations.")
+                            Text("Enter Chinese words separated by commas, spaces, or new lines. TingXieFlow looks them up in its offline CC-CEDICT dictionary, then uses Local AI only for unmatched words.")
                                 .font(.system(size: 12, design: .rounded))
                                 .foregroundStyle(TingXiePalette.onSurfaceVariant)
                                 .lineSpacing(2)
 
-                            TextEditor(text: $learningGoal)
+                            TextEditor(text: $chineseWordInput)
                                 .font(.system(size: 13, design: .rounded))
                                 .scrollContentBackground(.hidden)
                                 .padding(9)
                                 .frame(minHeight: 110)
                                 .background(TingXiePalette.surface, in: RoundedRectangle(cornerRadius: 9))
+                                .accessibilityLabel("Chinese words to enrich")
 
                             HStack {
-                                Stepper("\(generatedWordCount) words", value: $generatedWordCount, in: 3...20)
+                                Text("Example: 苹果, 学习  坚持")
                                     .font(.system(size: 12, design: .rounded))
+                                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
                                 Spacer()
-                                Button(action: generateSuggestions) {
+                                Button(action: enrichChineseWords) {
                                     if isGenerating {
                                         ProgressView().controlSize(.small)
                                     } else {
-                                        Label("Generate", systemImage: "wand.and.stars")
+                                        Label("Fill Details", systemImage: "wand.and.stars")
                                     }
                                 }
                                 .buttonStyle(OutlineCapsuleButtonStyle())
-                                .disabled(cleanLearningGoal.isEmpty || isGenerating)
+                                .disabled(inputChineseWords.isEmpty || isGenerating)
                             }
                         }
                         .padding(16)
                         .background(TingXiePalette.surfaceContainer.opacity(0.62), in: RoundedRectangle(cornerRadius: 14))
+
+                        modelOutputPanel
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Manual Import")
@@ -1089,7 +1093,7 @@ struct NewDictationSetSheet: View {
             Divider().overlay(TingXiePalette.outlineVariant.opacity(0.5))
 
             HStack(spacing: 14) {
-                Text("AI suggestions stay on this Mac and are always reviewed before saving.")
+                Text("Dictionary lookups and AI fallbacks stay on this Mac and are always reviewed before saving.")
                     .font(.system(size: 10, design: .rounded))
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
                 Spacer()
@@ -1117,12 +1121,80 @@ struct NewDictationSetSheet: View {
         title.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var cleanLearningGoal: String {
-        learningGoal.trimmingCharacters(in: .whitespacesAndNewlines)
+    private var inputChineseWords: [String] {
+        let separators = CharacterSet.whitespacesAndNewlines
+            .union(CharacterSet(charactersIn: ",，、;；"))
+        var seen = Set<String>()
+        return chineseWordInput
+            .components(separatedBy: separators)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { word in
+                !word.isEmpty
+                    && word.range(of: "\\p{Han}", options: .regularExpression) != nil
+                    && seen.insert(word).inserted
+            }
     }
 
     private var validWords: [NewVocabularyWord] {
         draftWords.compactMap(\.savedValue)
+    }
+
+    @ViewBuilder
+    private var modelOutputPanel: some View {
+        if !initialModelOutput.isEmpty || !repairModelOutput.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Label("Model Output", systemImage: "text.bubble")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(TingXiePalette.accent)
+                    Spacer()
+                    Button("Copy", systemImage: "doc.on.doc", action: copyModelOutput)
+                        .buttonStyle(.plain)
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(TingXiePalette.accent)
+                }
+
+                modelOutputSection(title: "Initial response", text: initialModelOutput)
+
+                if !repairModelOutput.isEmpty {
+                    Divider()
+                    modelOutputSection(title: "Repair response", text: repairModelOutput)
+                }
+            }
+            .padding(14)
+            .background(TingXiePalette.surfaceContainer.opacity(0.62), in: RoundedRectangle(cornerRadius: 12))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(TingXiePalette.outlineVariant.opacity(0.65), lineWidth: 1)
+            }
+        }
+    }
+
+    private func modelOutputSection(title: String, text: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .foregroundStyle(TingXiePalette.onSurfaceVariant)
+            ScrollView {
+                Text(text)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(TingXiePalette.onBackground)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+            }
+            .frame(maxHeight: 150)
+            .background(TingXiePalette.surface, in: RoundedRectangle(cornerRadius: 8))
+        }
+    }
+
+    private func copyModelOutput() {
+        let sections = [
+            initialModelOutput.isEmpty ? nil : "Initial response:\n\(initialModelOutput)",
+            repairModelOutput.isEmpty ? nil : "Repair response:\n\(repairModelOutput)"
+        ].compactMap { $0 }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(sections.joined(separator: "\n\n"), forType: .string)
     }
 
     private func addBlankWord() {
@@ -1151,40 +1223,68 @@ struct NewDictationSetSheet: View {
         errorMessage = nil
     }
 
-    private func generateSuggestions() {
-        let goal = cleanLearningGoal
-        guard !goal.isEmpty else { return }
+    private func enrichChineseWords() {
+        let words = inputChineseWords
+        guard !words.isEmpty else { return }
         isGenerating = true
         errorMessage = nil
-
-        let prompt = """
-        Create exactly \(generatedWordCount) useful Chinese vocabulary entries for this learner request:
-        <learner_request>
-        \(goal)
-        </learner_request>
-
-        Return only one entry per line in this exact format:
-        Chinese | pinyin with tone marks | concise English translation
-
-        Every first field must contain Chinese Han characters. Every third field must be an English definition.
-        Never return the words "Chinese", "pinyin", or "translation" as an entry.
-        Do not number the lines. Do not add a heading, explanation, markdown, or code fence.
-        """
+        initialModelOutput = ""
+        repairModelOutput = ""
 
         Task {
             do {
-                let response = try await generateText(prompt: prompt)
-                var generated = parseVocabularyLines(response, derivesPinyinFromChinese: true)
-                if generated.isEmpty {
-                    let repairedResponse = try await generateText(
-                        prompt: vocabularyRepairPrompt(for: response)
+                let dictionaryEntries = (try? await CCCEDICTDictionary.shared.entries(for: words)) ?? [:]
+                let unresolvedWords = words.filter { dictionaryEntries[$0] == nil }
+                var enrichedByWord = Dictionary(
+                    uniqueKeysWithValues: dictionaryEntries.map { word, entry in
+                        (
+                            word,
+                            DraftVocabularyWord(
+                                chinese: word,
+                                pinyin: entry.pinyin,
+                                translation: entry.translation,
+                                isIdiom: word.count == 4
+                            )
+                        )
+                    }
+                )
+
+                if !unresolvedWords.isEmpty {
+                    let prompt = vocabularyEnrichmentPrompt(for: unresolvedWords)
+                    let response = try await generateText(prompt: prompt)
+                    initialModelOutput = response
+                    var generated = orderedEnrichment(
+                        parseVocabularyLines(response, usesSystemPinyin: true),
+                        matching: unresolvedWords
                     )
-                    generated = parseVocabularyLines(
-                        repairedResponse,
-                        derivesPinyinFromChinese: true
-                    )
+
+                    if generated.count != unresolvedWords.count {
+                        let repairedResponse = try await generateText(
+                            prompt: vocabularyRepairPrompt(
+                                for: response,
+                                words: unresolvedWords
+                            )
+                        )
+                        repairModelOutput = repairedResponse
+                        generated = orderedEnrichment(
+                            parseVocabularyLines(
+                                repairedResponse,
+                                usesSystemPinyin: true
+                            ),
+                            matching: unresolvedWords
+                        )
+                    }
+
+                    guard generated.count == unresolvedWords.count else {
+                        throw VocabularyGenerationError.invalidResponse
+                    }
+                    for entry in generated {
+                        enrichedByWord[entry.chinese] = entry
+                    }
                 }
-                guard !generated.isEmpty else {
+
+                let generated = words.compactMap { enrichedByWord[$0] }
+                guard generated.count == words.count else {
                     throw VocabularyGenerationError.invalidResponse
                 }
                 draftWords = generated
@@ -1197,7 +1297,7 @@ struct NewDictationSetSheet: View {
 
     private func parseVocabularyLines(
         _ text: String,
-        derivesPinyinFromChinese: Bool = false
+        usesSystemPinyin: Bool = false
     ) -> [DraftVocabularyWord] {
         text
             .split(whereSeparator: \.isNewline)
@@ -1215,7 +1315,7 @@ struct NewDictationSetSheet: View {
                       translation.range(of: "[A-Za-z]", options: .regularExpression) != nil else {
                     return nil
                 }
-                let pinyin = derivesPinyinFromChinese
+                let pinyin = usesSystemPinyin
                     ? systemPinyin(for: chinese) ?? suppliedPinyin
                     : suppliedPinyin
                 return DraftVocabularyWord(
@@ -1227,14 +1327,44 @@ struct NewDictationSetSheet: View {
             }
     }
 
-    private func vocabularyRepairPrompt(for response: String) -> String {
+    private func orderedEnrichment(
+        _ generated: [DraftVocabularyWord],
+        matching words: [String]
+    ) -> [DraftVocabularyWord] {
+        words.compactMap { word in
+            generated.first {
+                $0.chinese.trimmingCharacters(in: .whitespacesAndNewlines) == word
+            }
+        }
+    }
+
+    private func vocabularyEnrichmentPrompt(for words: [String]) -> String {
         """
-        Reformat the candidate output below into exactly \(generatedWordCount) valid Chinese vocabulary entries.
+        Add pinyin and a concise English translation for every Chinese word below. Preserve the exact Chinese text and order. Do not add, remove, combine, or replace words.
+
+        <chinese_words>
+        \(words.joined(separator: "\n"))
+        </chinese_words>
 
         Return only one entry per line in this exact format:
         Chinese | pinyin with tone marks | concise English translation
 
-        Every first field must contain Chinese Han characters and every third field must contain an English definition. Do not number the lines or add any other text. If the candidate has too few usable entries, add relevant entries matching the same learner request.
+        Return exactly \(words.count) lines. Do not number the lines or add a heading, explanation, markdown, or code fence.
+        """
+    }
+
+    private func vocabularyRepairPrompt(for response: String, words: [String]) -> String {
+        """
+        Correct the candidate output so it contains one entry for every supplied Chinese word in the exact same order. Do not add, remove, combine, or replace words.
+
+        <chinese_words>
+        \(words.joined(separator: "\n"))
+        </chinese_words>
+
+        Return only one entry per line in this exact format:
+        Chinese | pinyin with tone marks | concise English translation
+
+        Return exactly \(words.count) lines. Every third field must contain an English definition. Do not number the lines or add any other text.
 
         <candidate_output>
         \(response)
@@ -1277,7 +1407,7 @@ private enum VocabularyGenerationError: LocalizedError {
     case invalidResponse
 
     var errorDescription: String? {
-        "The model did not return usable vocabulary. Try a more specific request, or use Manual Import."
+        "The model could not fill details for every Chinese word. Check the input and try again, or use Manual Import."
     }
 }
 

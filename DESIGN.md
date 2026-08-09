@@ -127,12 +127,15 @@ When sets exist, replace the empty state with a vertically divided list. Each ro
 
 ### Create New Set sheet
 
-Use a 560 × 440-point modal with:
+Use the split create-set editor with:
 
 - **Create New Set** title
 - **Set name** field
-- **Words** editor
-- Instruction: “Enter one item per line: Chinese | pinyin | translation”
+- **Fill with Local AI** field accepting Chinese words separated by commas, spaces, or new lines
+- **Fill Details** action that preserves the supplied words and fills in pinyin and concise English translations
+- Selectable **Model Output** panel showing the initial response and any repair response, with a Copy action
+- Editable generated rows for review, reordering, and correction
+- Manual import using “Chinese | pinyin | translation” lines
 - **Cancel** and **Create** actions
 
 Use checked-in sample content when a populated state is required:
