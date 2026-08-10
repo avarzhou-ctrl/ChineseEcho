@@ -1,5 +1,6 @@
 import SwiftUI
 
+// Centralizes adaptive colors shared by every TingXieFlow workspace and control.
 enum TingXiePalette {
     static let sidebar = Color(red: 41 / 255, green: 97 / 255, blue: 36 / 255)
     static let sidebarSelection = Color(red: 114 / 255, green: 174 / 255, blue: 108 / 255).opacity(0.4)
@@ -20,6 +21,7 @@ enum TingXiePalette {
     static let tableStripe = Color(red: 165 / 255, green: 198 / 255, blue: 162 / 255).opacity(0.4)
 }
 
+// Provides primary navigation, collapse behavior, and the daily vocabulary shortcut.
 struct AppSidebar: View {
     @Binding var selection: AppSection
     let activeSet: DictationSet?
@@ -122,6 +124,7 @@ struct AppSidebar: View {
     }
 }
 
+// Selects a deterministic daily word and exposes it as a sidebar shortcut.
 private struct WordOfDayCard: View {
     let words: [VocabularyWord]
     let onOpenWord: (VocabularyWord) -> Void
@@ -198,6 +201,7 @@ private struct WordOfDayCard: View {
     }
 }
 
+// Renders one expanded or icon-only navigation destination.
 private struct SidebarButton: View {
     let title: String
     let symbol: String
@@ -231,6 +235,7 @@ private struct SidebarButton: View {
     }
 }
 
+// Standardizes workspace titles, search, add actions, and contextual information.
 struct WorkspaceHeader: View {
     let title: String
     var subtitle: String?
@@ -315,6 +320,7 @@ struct WorkspaceHeader: View {
     }
 }
 
+// Carries the copy and tips displayed by a workspace information sheet.
 struct WorkspaceInfo: Sendable {
     let title: String
     let symbol: String
@@ -322,6 +328,7 @@ struct WorkspaceInfo: Sendable {
     let tips: [String]
 }
 
+// Presents concise guidance without leaving the current workspace.
 private struct WorkspaceInfoSheet: View {
     @Environment(\.dismiss) private var dismiss
 
@@ -391,6 +398,7 @@ private struct WorkspaceInfoSheet: View {
     }
 }
 
+// Anchors live results to a reusable search input with keyboard navigation.
 struct SearchField: View {
     @Binding var text: String
     let prompt: String
@@ -488,6 +496,7 @@ struct SearchField: View {
     }
 }
 
+// Wraps arbitrary search results with a count header and clear action.
 struct SearchResultsPanel<Content: View>: View {
     let resultCount: Int
     let emptyMessage: String
@@ -549,6 +558,7 @@ struct SearchResultsPanel<Content: View>: View {
     }
 }
 
+// Normalizes plain text and pinyin so searches ignore case, width, and tone marks.
 enum SearchText {
     static func matches(_ value: String, query: String) -> Bool {
         value.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: .current)
@@ -576,6 +586,7 @@ extension String {
     }
 }
 
+// Styles primary actions with the app's accent-filled capsule treatment.
 struct GreenCapsuleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -590,6 +601,7 @@ struct GreenCapsuleButtonStyle: ButtonStyle {
     }
 }
 
+// Styles configurable secondary actions with a compact accent outline.
 struct OutlineCapsuleButtonStyle: ButtonStyle {
     var fontSize: CGFloat = 15
     var horizontalPadding: CGFloat = 22
@@ -607,6 +619,7 @@ struct OutlineCapsuleButtonStyle: ButtonStyle {
     }
 }
 
+// Applies the shared translucent card surface and subtle outline.
 struct TonalCardModifier: ViewModifier {
     var cornerRadius: CGFloat = 16
 
@@ -626,6 +639,7 @@ extension View {
     }
 }
 
+// Visualizes palette tokens in Xcode without adding a runtime screen.
 private struct TingXieColorPalettePreview: View {
     private let colors: [(name: String, value: String, color: Color)] = [
         ("Sidebar", "#296124", TingXiePalette.sidebar),

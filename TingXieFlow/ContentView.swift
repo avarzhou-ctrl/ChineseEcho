@@ -9,6 +9,7 @@ import AppKit
 import SwiftData
 import SwiftUI
 
+// Coordinates app navigation, selected records, sidebar sizing, and set creation.
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \DictationSet.dateCreated, order: .reverse) private var dictationSets: [DictationSet]
@@ -100,12 +101,14 @@ struct ContentView: View {
     }
 }
 
+// Enumerates the three top-level destinations controlled by the sidebar.
 enum AppSection: Hashable {
     case dictation
     case vocabulary
     case settings
 }
 
+// Adds a bounded, persistent drag target for resizing the custom sidebar.
 private struct SidebarResizeHandle: View {
     @Binding var width: Double
     let allowedRange: ClosedRange<Double>

@@ -1,6 +1,7 @@
 import SwiftData
 import SwiftUI
 
+// Defines the catalog subsets available in the vocabulary workspace.
 private enum VocabularyFilter: String, CaseIterable, Identifiable {
     case all = "All Words"
     case missed = "Missed Words"
@@ -9,6 +10,7 @@ private enum VocabularyFilter: String, CaseIterable, Identifiable {
     var id: Self { self }
 }
 
+// Coordinates vocabulary filtering, search, selection, editing, review state, and deletion.
 struct VocabularyHubView: View {
     @Environment(\.modelContext) private var modelContext
 
@@ -309,6 +311,7 @@ struct VocabularyHubView: View {
     }
 }
 
+// Presents vocabulary categories as a full-width segmented control.
 private struct VocabularyFilterBar: View {
     @Binding var selection: VocabularyFilter
 
@@ -339,6 +342,7 @@ private struct VocabularyFilterBar: View {
     }
 }
 
+// Displays one vocabulary record and its contextual row actions.
 private struct VocabularyRow: View {
     let word: VocabularyWord
     let isSelected: Bool
@@ -413,6 +417,7 @@ private struct VocabularyRow: View {
     }
 }
 
+// Highlights the fields that matched a vocabulary search query.
 private struct VocabularySearchResultRow: View {
     let word: VocabularyWord
     let isMissed: Bool
@@ -473,6 +478,7 @@ private struct VocabularySearchResultRow: View {
     }
 }
 
+// Labels why a search result matched without changing the underlying record.
 private struct SearchResultBadge: View {
     let title: String
     let color: Color
@@ -487,6 +493,7 @@ private struct SearchResultBadge: View {
     }
 }
 
+// Shows pronunciation, meaning, tags, Local AI enrichment, and word-level actions.
 private struct VocabularyInspector: View {
     @Environment(\.modelContext) private var modelContext
 
@@ -654,6 +661,7 @@ private struct VocabularyInspector: View {
 
 }
 
+// Standardizes headings within the vocabulary inspector.
 private struct InspectorSectionTitle: View {
     let title: String
 
@@ -667,6 +675,7 @@ private struct InspectorSectionTitle: View {
     }
 }
 
+// Lays out every stored tag for the selected vocabulary word.
 private struct WordTags: View {
     let word: VocabularyWord
     let compact: Bool
@@ -683,6 +692,7 @@ private struct WordTags: View {
     }
 }
 
+// Renders a single vocabulary tag as a compact capsule.
 private struct TagLabel: View {
     let text: String
     let color: Color
@@ -699,6 +709,7 @@ private struct TagLabel: View {
     }
 }
 
+// Validates and saves editable fields for an existing vocabulary record.
 private struct WordEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
 
@@ -809,6 +820,7 @@ private struct WordEditorSheet: View {
 }
 
 @MainActor
+// Seeds the populated preview with representative regular, missed, and idiom records.
 private func populatedVocabularyHubPreview() -> some View {
     let setTitle = "HSK 5 full set"
     let idiom = VocabularyWord(

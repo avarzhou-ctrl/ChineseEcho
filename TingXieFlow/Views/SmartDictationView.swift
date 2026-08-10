@@ -3,6 +3,7 @@ import AVFoundation
 import SwiftData
 import SwiftUI
 
+// Drives dictation-set search, list actions, practice presentation, and editor sheets.
 struct SmartDictationView: View {
     @Environment(\.modelContext) private var modelContext
 
@@ -231,6 +232,7 @@ struct SmartDictationView: View {
     }
 }
 
+// Summarizes one matching set and the vocabulary field that satisfied the search.
 private struct DictationSearchResultRow: View {
     let set: DictationSet
     let query: String
@@ -296,6 +298,7 @@ private struct DictationSearchResultRow: View {
     }
 }
 
+// Introduces the dictation workspace and links learners to saved vocabulary.
 private struct DictationHero: View {
     let onOpenVocabulary: () -> Void
 
@@ -350,6 +353,7 @@ private struct DictationHero: View {
     }
 }
 
+// Switches between the empty state and the learner's saved set list.
 private struct DictationSetCollection: View {
     let sets: [DictationSet]
     let isSearching: Bool
@@ -401,6 +405,7 @@ private struct DictationSetCollection: View {
     }
 }
 
+// Renders one set with practice, edit, duplicate, and delete actions.
 private struct DictationSetRow: View {
     let set: DictationSet
     let onOpen: () -> Void
@@ -466,6 +471,7 @@ private struct DictationSetRow: View {
     }
 }
 
+// Defines whether a practice session includes every word or only missed words.
 private enum PracticeFilter: String, CaseIterable, Identifiable {
     case all = "All Words"
     case missed = "Missed Words"
@@ -474,6 +480,7 @@ private enum PracticeFilter: String, CaseIterable, Identifiable {
     var id: Self { self }
 }
 
+// Coordinates filtered practice progress, speech repetition, and missed-word updates.
 private struct PracticeSessionView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -705,6 +712,7 @@ private struct PracticeSessionView: View {
     }
 }
 
+// Presents the full-set and missed-only practice modes as a compact segmented control.
 private struct PracticeFilterBar: View {
     @Binding var selection: PracticeFilter
 
@@ -732,6 +740,7 @@ private struct PracticeFilterBar: View {
     }
 }
 
+// Flips between an audio-first prompt and the complete vocabulary answer.
 private struct PracticeFlipCard: View {
     let word: VocabularyWord
     @Binding var isFlipped: Bool
@@ -828,6 +837,7 @@ private struct PracticeFlipCard: View {
     }
 }
 
+// Standardizes circular actions shown beneath the practice card.
 private struct PracticeRoundButton: View {
     let title: String
     let symbol: String
@@ -853,6 +863,7 @@ private struct PracticeRoundButton: View {
     }
 }
 
+// Supplies create-versus-edit titles and primary action labels to the shared editor.
 enum DictationSetEditorMode {
     case create
     case edit
@@ -872,6 +883,7 @@ enum DictationSetEditorMode {
     }
 }
 
+// Holds mutable editor fields until they are validated into a save payload.
 private struct DraftVocabularyWord: Identifiable {
     let id: UUID
     var chinese: String
@@ -914,6 +926,7 @@ private struct DraftVocabularyWord: Identifiable {
     }
 }
 
+// Builds or edits a set through dictionary lookup, Local AI fallback, import, and review.
 struct NewDictationSetSheet: View {
     @Environment(\.dismiss) private var dismiss
 
@@ -1437,6 +1450,7 @@ struct NewDictationSetSheet: View {
     }
 }
 
+// Reports Local AI output that cannot be reconciled with the requested words.
 private enum VocabularyGenerationError: LocalizedError {
     case invalidResponse
 
@@ -1445,6 +1459,7 @@ private enum VocabularyGenerationError: LocalizedError {
     }
 }
 
+// Edits and reorders one vocabulary draft in the set review column.
 private struct DraftVocabularyRow: View {
     @Binding var word: DraftVocabularyWord
     let canMoveUp: Bool
@@ -1518,6 +1533,7 @@ private struct DraftVocabularyRow: View {
 }
 
 @MainActor
+// Seeds previews with representative practice data without touching the user's store.
 private func smartDictationPracticePreview() -> some View {
     let set = DictationSet(title: "HSK 5 full set")
     let words = [

@@ -7,6 +7,7 @@
 
 import SwiftData
 
+// Persists one vocabulary entry, its review state, enrichment, tags, and owning set.
 @Model
 nonisolated final class VocabularyWord {
     var chinese: String

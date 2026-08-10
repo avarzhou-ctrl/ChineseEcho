@@ -5,12 +5,14 @@
 
 import Foundation
 
+// Carries the concise dictionary data needed to populate a vocabulary draft.
 struct CCCEDICTEntry: Sendable {
     let chinese: String
     let pinyin: String
     let translation: String
 }
 
+// Describes failures that prevent bundled dictionary lookup.
 enum CCCEDICTError: LocalizedError {
     case resourceMissing
 
@@ -22,6 +24,7 @@ enum CCCEDICTError: LocalizedError {
     }
 }
 
+// Serializes dictionary loading, exact lookup, and result caching off the UI workflow.
 actor CCCEDICTDictionary {
     static let shared = CCCEDICTDictionary()
 
@@ -198,12 +201,14 @@ actor CCCEDICTDictionary {
     }
 }
 
+// Keeps the best parsed definition when CC-CEDICT contains multiple entries for a word.
 private struct ScoredEntry {
     let entry: CCCEDICTEntry
     let traditional: String
     let score: Int
 }
 
+// Converts numbered CC-CEDICT pinyin syllables into user-facing Unicode tone marks.
 private enum PinyinToneConverter {
     private static let toneMarks = [
         "",

@@ -1,5 +1,6 @@
 import Foundation
 
+// Centralizes UserDefaults keys so settings views and playback services stay synchronized.
 enum AppPreferenceKey {
     static let voiceIdentifier = "speechVoiceIdentifier"
     static let pronunciationProfile = "pronunciationProfile"
@@ -22,6 +23,7 @@ enum AppPreferenceKey {
     ]
 }
 
+// Defines the first-launch values used by speech and practice controls.
 enum AppPreferenceDefault {
     static let pronunciationProfile = "Mainland Mandarin"
     static let speechRate = 0.5
@@ -32,6 +34,7 @@ enum AppPreferenceDefault {
     static let keepCardsRevealed = false
 }
 
+// Provides one reset operation for every TingXieFlow-specific preference.
 extension UserDefaults {
     func resetTingXiePreferences() {
         AppPreferenceKey.all.forEach(removeObject(forKey:))

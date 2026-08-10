@@ -8,6 +8,7 @@
 import Foundation
 import SwiftData
 
+// Persists a named practice collection and owns its vocabulary through a cascade relationship.
 @Model
 nonisolated final class DictationSet {
     var title: String

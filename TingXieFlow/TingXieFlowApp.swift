@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 
+// Configures the app window and injects the shared local SwiftData container.
 @main
 struct TingXieFlowApp: App {
     // Shared SwiftData container for app-wide local persistence.

@@ -1,6 +1,7 @@
 import AVFoundation
 import SwiftUI
 
+// Presents persisted speech, practice, local-data, and app-information settings.
 struct SettingsDashboard: View {
     let setCount: Int
     let wordCount: Int
@@ -201,6 +202,7 @@ struct SettingsDashboard: View {
     }
 }
 
+// Gives each settings category a consistent titled card container.
 private struct SettingsSectionCard<Content: View>: View {
     let title: String
     let symbol: String
@@ -253,6 +255,7 @@ private struct SettingsSectionCard<Content: View>: View {
     }
 }
 
+// Standardizes labeled sliders with a trailing formatted value.
 private struct SettingsSlider: View {
     let title: String
     @Binding var value: Double
@@ -272,6 +275,7 @@ private struct SettingsSlider: View {
     }
 }
 
+// Renders a compact heading for a related group of settings controls.
 private struct SettingsGroupHeading: View {
     let title: String
     let symbol: String
@@ -283,6 +287,7 @@ private struct SettingsGroupHeading: View {
     }
 }
 
+// Displays one local-data count as a reusable labeled badge.
 private struct DataCountBadge: View {
     let value: Int
     let label: String

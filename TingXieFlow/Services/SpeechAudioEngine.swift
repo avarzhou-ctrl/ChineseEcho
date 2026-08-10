@@ -8,6 +8,7 @@
 import AVFoundation
 import Observation
 
+// Wraps AVSpeechSynthesizer with observable Mandarin voice, rate, pitch, and completion controls.
 @Observable
 final class SpeechAudioEngine: NSObject, AVSpeechSynthesizerDelegate {
     @ObservationIgnored

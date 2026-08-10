@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 
+// Transfers editable vocabulary values across actor boundaries without carrying live SwiftData models.
 nonisolated struct NewVocabularyWord: Sendable, Identifiable {
     let id = UUID()
     let chinese: String
@@ -23,6 +24,7 @@ nonisolated struct NewVocabularyWord: Sendable, Identifiable {
     }
 }
 
+// Performs all set and vocabulary mutations inside a dedicated SwiftData model actor.
 @ModelActor
 actor DictationStore {
     func createSet(title: String, words: [NewVocabularyWord]) throws {
@@ -152,6 +154,7 @@ actor DictationStore {
     }
 }
 
+// Converts missing-record failures into actionable editor messages.
 private enum DictationStoreError: LocalizedError {
     case setNotFound
 

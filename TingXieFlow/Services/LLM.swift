@@ -11,6 +11,7 @@ import MLXLLM
 import MLXLMCommon
 import Tokenizers
 
+// Converts malformed model repository identifiers into readable download errors.
 nonisolated private enum ModelDownloadError: LocalizedError {
     case invalidRepositoryID(String)
 
@@ -22,6 +23,7 @@ nonisolated private enum ModelDownloadError: LocalizedError {
     }
 }
 
+// Adapts Hugging Face snapshot downloads to the MLX language-model loader.
 nonisolated private struct HuggingFaceDownloader: MLXLMCommon.Downloader {
     private let client = HuggingFace.HubClient()
 
@@ -47,6 +49,7 @@ nonisolated private struct HuggingFaceDownloader: MLXLMCommon.Downloader {
     }
 }
 
+// Bridges the Hugging Face tokenizer implementation to MLX's tokenizer protocol.
 nonisolated private struct HuggingFaceTokenizer: MLXLMCommon.Tokenizer {
     private let tokenizer: any Tokenizers.Tokenizer
 
@@ -91,6 +94,7 @@ nonisolated private struct HuggingFaceTokenizer: MLXLMCommon.Tokenizer {
     }
 }
 
+// Loads the tokenizer assets stored beside a downloaded MLX model.
 nonisolated private struct HuggingFaceTokenizerLoader: MLXLMCommon.TokenizerLoader {
     func load(from directory: URL) async throws -> any MLXLMCommon.Tokenizer {
         let tokenizer = try await Tokenizers.AutoTokenizer.from(modelFolder: directory)
@@ -98,6 +102,7 @@ nonisolated private struct HuggingFaceTokenizerLoader: MLXLMCommon.TokenizerLoad
     }
 }
 
+// Lazily loads one local model while creating isolated chat history for each request.
 actor LocalLanguageModel {
     static let shared = LocalLanguageModel()
 
@@ -134,6 +139,7 @@ actor LocalLanguageModel {
     }
 }
 
+// Removes hidden Qwen reasoning blocks before model output reaches the interface.
 nonisolated private extension String {
     var withoutThinkingBlock: String {
         var output = self
@@ -161,6 +167,7 @@ nonisolated private extension String {
     }
 }
 
+// Exposes a small feature-facing API over the shared local language-model actor.
 func generateText(prompt: String) async throws -> String {
     try await LocalLanguageModel.shared.generate(prompt: prompt)
 }
