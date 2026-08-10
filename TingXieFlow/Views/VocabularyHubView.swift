@@ -23,6 +23,8 @@ struct VocabularyHubView: View {
     @State private var highlightedSearchWordID: PersistentIdentifier?
     @State private var filter: VocabularyFilter = .all
     @State private var filterTransitionEdge: Edge = .trailing
+    @State private var inspectorTransitionEdge: Edge = .trailing
+    @State private var selectionOriginatesInCatalog = false
     @State private var pendingLearnedWordIDs: Set<PersistentIdentifier> = []
     @State private var editingWord: VocabularyWord?
     @State private var wordPendingDeletion: VocabularyWord?
@@ -126,13 +128,19 @@ struct VocabularyHubView: View {
                         onMarkAsLearned: markAsLearned
                     )
                     .id(selectedWord?.persistentModelID)
-                    .transition(TingXieMotion.inspectorTransition(reduceMotion: reduceMotion))
+                    .transition(
+                        TingXieMotion.directionalTransition(
+                            enteringFrom: inspectorTransitionEdge,
+                            reduceMotion: reduceMotion
+                        )
+                    )
                 }
                 .animation(
                     TingXieMotion.contentChange(reduceMotion: reduceMotion),
                     value: selectedWord?.persistentModelID
                 )
                 .frame(minWidth: 360, idealWidth: 500)
+                .clipped()
             }
             .onTapGesture { isSearchResultsPresented = false }
         }
@@ -140,6 +148,10 @@ struct VocabularyHubView: View {
         .background(TingXiePalette.background)
         .onChange(of: selectedWordID) { _, newSelection in
             guard newSelection != nil else { return }
+            if selectionOriginatesInCatalog {
+                selectionOriginatesInCatalog = false
+                return
+            }
             filter = .all
             searchText = ""
         }
@@ -205,7 +217,7 @@ struct VocabularyHubView: View {
                                         word: word,
                                         isSelected: word.persistentModelID == selectedWord?.persistentModelID,
                                         isMissed: isEffectivelyMissed(word),
-                                        onSelect: { selectedWordID = word.persistentModelID },
+                                        onSelect: { selectWord(word) },
                                         onEdit: { editingWord = word },
                                         onToggleMissed: { setMissed(!isEffectivelyMissed(word), for: word) },
                                         onDelete: { wordPendingDeletion = word }
@@ -293,7 +305,26 @@ struct VocabularyHubView: View {
 
     private func openSearchResult(_ word: VocabularyWord) {
         clearSearch()
-        selectedWordID = word.persistentModelID
+        selectWord(word)
+    }
+
+    private func selectWord(_ word: VocabularyWord) {
+        let currentID = selectedWord?.persistentModelID
+        let newID = word.persistentModelID
+        guard currentID != newID else { return }
+
+        let oldIndex = categoryWords.firstIndex {
+            $0.persistentModelID == currentID
+        } ?? 0
+        let newIndex = categoryWords.firstIndex {
+            $0.persistentModelID == newID
+        } ?? oldIndex
+        inspectorTransitionEdge = newIndex >= oldIndex ? .trailing : .leading
+
+        withAnimation(TingXieMotion.contentChange(reduceMotion: reduceMotion)) {
+            selectionOriginatesInCatalog = true
+            selectedWordID = newID
+        }
     }
 
     private func openHighlightedSearchResult() {
@@ -376,6 +407,8 @@ private struct VocabularyFilterBar: View {
 
 // Displays one vocabulary record and its contextual row actions.
 private struct VocabularyRow: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let word: VocabularyWord
     let isSelected: Bool
     let isMissed: Bool
@@ -446,6 +479,10 @@ private struct VocabularyRow: View {
                     .stroke(TingXiePalette.outlineVariant.opacity(0.65), lineWidth: 1)
             }
         }
+        .animation(
+            TingXieMotion.contentChange(reduceMotion: reduceMotion),
+            value: isSelected
+        )
     }
 }
 
@@ -555,37 +592,27 @@ private struct VocabularyInspector: View {
                                 .padding(.top, 10)
                         }
 
-                        HStack(spacing: 12) {
-                            Image(systemName: "waveform")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(TingXiePalette.secondary.opacity(0.72))
-
+                        HStack(spacing: 10) {
                             Text(word.pinyin.isEmpty ? "No pinyin" : word.pinyin)
                                 .font(.system(size: 20, weight: .semibold, design: .rounded))
                                 .foregroundStyle(TingXiePalette.onBackground)
-
-                            Spacer(minLength: 12)
 
                             Button {
                                 audioEngine.stop()
                                 audioEngine.speak(word.chinese)
                             } label: {
-                                Label("Play Audio", systemImage: "speaker.wave.2.fill")
-                                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                                    .padding(.horizontal, 14)
-                                    .frame(height: 36)
+                                Image(systemName: "speaker.wave.2.fill")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .frame(width: 32, height: 32)
+                                    .background(TingXiePalette.surfaceContainerHigh, in: Circle())
+                                    .contentShape(Circle())
                             }
                             .buttonStyle(.plain)
                             .foregroundStyle(TingXiePalette.accent)
-                            .background(TingXiePalette.surfaceContainerHighest, in: Capsule())
+                            .help("Play \(word.chinese)")
                             .accessibilityLabel("Play \(word.chinese)")
-                        }
-                        .padding(.horizontal, 16)
-                        .frame(maxWidth: .infinity, minHeight: 54)
-                        .background(TingXiePalette.surfaceContainerHigh.opacity(0.72), in: RoundedRectangle(cornerRadius: 14))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(TingXiePalette.outlineVariant.opacity(0.55), lineWidth: 1)
+
+                            Spacer(minLength: 0)
                         }
                         .padding(.top, 14)
 
@@ -675,7 +702,9 @@ private struct VocabularyInspector: View {
     private func regenerateSentence() {
         guard let word else { return }
         let wordID = word.persistentModelID
-        let prompt = "请用“\(word.chinese)”写一个自然、简短的现代中文句子。只输出句子。"
+        let prompt = """
+        请用“\(word.chinese)”写一个完整、自然的现代中文例句。句子需有具体情境、动作、原因或结果，并严格遵守系统提供的例句质量要求。只输出句子。
+        """
         isGenerating = true
         generationError = nil
 

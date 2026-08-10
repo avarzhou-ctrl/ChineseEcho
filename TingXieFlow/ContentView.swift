@@ -12,10 +12,12 @@ import SwiftUI
 // Coordinates app navigation, selected records, sidebar sizing, and set creation.
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(sort: \DictationSet.dateCreated, order: .reverse) private var dictationSets: [DictationSet]
     @Query private var vocabularyWords: [VocabularyWord]
 
     @State private var selection: AppSection = .dictation
+    @State private var sectionTransitionEdge: Edge = .trailing
     @State private var activeSetID: PersistentIdentifier?
     @State private var selectedVocabularyWordID: PersistentIdentifier?
     @State private var isCreatingSet = false
@@ -31,10 +33,17 @@ struct ContentView: View {
         return dictationSets.first { $0.persistentModelID == activeSetID }
     }
 
+    private var animatedSelection: Binding<AppSection> {
+        Binding(
+            get: { selection },
+            set: updateSelection
+        )
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             AppSidebar(
-                selection: $selection,
+                selection: animatedSelection,
                 activeSet: activeSet,
                 vocabularyWords: vocabularyWords,
                 isCollapsed: isSidebarCollapsed,
@@ -45,11 +54,11 @@ struct ContentView: View {
                 },
                 onShowDictationHome: {
                     activeSetID = nil
-                    selection = .dictation
+                    updateSelection(.dictation)
                 },
                 onOpenWordOfDay: { word in
                     selectedVocabularyWordID = word.persistentModelID
-                    selection = .vocabulary
+                    updateSelection(.vocabulary)
                 }
             )
             .frame(width: isSidebarCollapsed ? 64 : clampedSidebarWidth)
@@ -61,30 +70,40 @@ struct ContentView: View {
                 onResizeEnded: { persistedSidebarWidth = $0 }
             )
 
-            Group {
-                switch selection {
-                case .dictation:
-                    SmartDictationView(
-                        sets: dictationSets,
-                        activeSet: activeSet,
-                        onCreateSet: { isCreatingSet = true },
-                        onOpenVocabulary: { selection = .vocabulary },
-                        onOpenSet: { activeSetID = $0.persistentModelID },
-                        onCloseSet: { activeSetID = nil }
-                    )
-                case .vocabulary:
-                    VocabularyHubView(
-                        words: vocabularyWords,
-                        selectedWordID: $selectedVocabularyWordID
-                    )
-                case .settings:
-                    SettingsDashboard(
-                        setCount: dictationSets.count,
-                        wordCount: vocabularyWords.count
-                    )
+            ZStack {
+                Group {
+                    switch selection {
+                    case .dictation:
+                        SmartDictationView(
+                            sets: dictationSets,
+                            activeSet: activeSet,
+                            onCreateSet: { isCreatingSet = true },
+                            onOpenVocabulary: { updateSelection(.vocabulary) },
+                            onOpenSet: { activeSetID = $0.persistentModelID },
+                            onCloseSet: { activeSetID = nil }
+                        )
+                    case .vocabulary:
+                        VocabularyHubView(
+                            words: vocabularyWords,
+                            selectedWordID: $selectedVocabularyWordID
+                        )
+                    case .settings:
+                        SettingsDashboard(
+                            setCount: dictationSets.count,
+                            wordCount: vocabularyWords.count
+                        )
+                    }
                 }
+                .id(selection)
+                .transition(
+                    TingXieMotion.directionalTransition(
+                        enteringFrom: sectionTransitionEdge,
+                        reduceMotion: reduceMotion
+                    )
+                )
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
         }
         .frame(minWidth: 900, idealWidth: 1024, minHeight: 650, idealHeight: 768)
         .background(TingXiePalette.workspace)
@@ -96,10 +115,20 @@ struct ContentView: View {
     private var clampedSidebarWidth: CGFloat {
         CGFloat(min(max(sidebarWidth, sidebarWidthRange.lowerBound), sidebarWidthRange.upperBound))
     }
+
+    private func updateSelection(_ newSelection: AppSection) {
+        guard newSelection != selection else { return }
+        let oldIndex = AppSection.allCases.firstIndex(of: selection) ?? 0
+        let newIndex = AppSection.allCases.firstIndex(of: newSelection) ?? 0
+        sectionTransitionEdge = newIndex > oldIndex ? .trailing : .leading
+        withAnimation(TingXieMotion.filterSelection(reduceMotion: reduceMotion)) {
+            selection = newSelection
+        }
+    }
 }
 
 // Enumerates the three top-level destinations controlled by the sidebar.
-enum AppSection: Hashable {
+enum AppSection: Hashable, CaseIterable {
     case dictation
     case vocabulary
     case settings

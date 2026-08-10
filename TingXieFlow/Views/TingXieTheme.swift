@@ -171,6 +171,8 @@ struct SlidingFilterBar<Item: Hashable & Identifiable>: View {
 
 // Provides primary navigation, collapse behavior, and the daily vocabulary shortcut.
 struct AppSidebar: View {
+    @Namespace private var selectionAnimation
+
     @Binding var selection: AppSection
     let activeSet: DictationSet?
     let vocabularyWords: [VocabularyWord]
@@ -189,6 +191,7 @@ struct AppSidebar: View {
                     symbol: "waveform",
                     isSelected: selection == .dictation,
                     isCollapsed: isCollapsed,
+                    selectionAnimation: selectionAnimation,
                     action: onShowDictationHome
                 )
 
@@ -208,7 +211,8 @@ struct AppSidebar: View {
                     title: "Your Vocabulary Hub",
                     symbol: "character.book.closed",
                     isSelected: selection == .vocabulary,
-                    isCollapsed: isCollapsed
+                    isCollapsed: isCollapsed,
+                    selectionAnimation: selectionAnimation
                 ) {
                     selection = .vocabulary
                 }
@@ -217,7 +221,8 @@ struct AppSidebar: View {
                     title: "Settings",
                     symbol: "gearshape",
                     isSelected: selection == .settings,
-                    isCollapsed: isCollapsed
+                    isCollapsed: isCollapsed,
+                    selectionAnimation: selectionAnimation
                 ) {
                     selection = .settings
                 }
@@ -355,6 +360,7 @@ private struct SidebarButton: View {
     let symbol: String
     let isSelected: Bool
     let isCollapsed: Bool
+    let selectionAnimation: Namespace.ID
     let action: () -> Void
 
     var body: some View {
@@ -376,7 +382,16 @@ private struct SidebarButton: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .background(isSelected ? TingXiePalette.sidebarSelection : .clear)
+        .background {
+            if isSelected {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(TingXiePalette.sidebarSelection)
+                    .matchedGeometryEffect(
+                        id: "selected-sidebar-section",
+                        in: selectionAnimation
+                    )
+            }
+        }
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .help(title)
         .accessibilityLabel(title)
