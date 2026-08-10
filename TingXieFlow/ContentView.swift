@@ -22,6 +22,7 @@ struct ContentView: View {
     @State private var selectedVocabularyWordID: PersistentIdentifier?
     @State private var isCreatingSet = false
     @State private var isSidebarCollapsed = false
+    @State private var modelDownloadCoordinator = ModelDownloadCoordinator.shared
     @State private var sidebarWidth =
         UserDefaults.standard.object(forKey: "sidebarWidth") as? Double ?? 266.0
     @AppStorage("sidebarWidth") private var persistedSidebarWidth = 266.0
@@ -107,13 +108,33 @@ struct ContentView: View {
         }
         .frame(minWidth: 900, idealWidth: 1024, minHeight: 650, idealHeight: 768)
         .background(TingXiePalette.workspace)
+        .overlay(alignment: .bottomTrailing) {
+            if modelDownloadCoordinator.isStatusVisible {
+                ModelDownloadStatusView(coordinator: modelDownloadCoordinator)
+                    .padding(.trailing, 20)
+                    .padding(.bottom, modelStatusBottomPadding)
+            }
+        }
+        .animation(
+            TingXieMotion.contentChange(reduceMotion: reduceMotion),
+            value: modelDownloadCoordinator.isStatusVisible
+        )
         .sheet(isPresented: $isCreatingSet) {
             NewDictationSetSheet(modelContainer: modelContext.container)
+        }
+        .task {
+            await modelDownloadCoordinator.refreshCachedByteCount()
+            modelDownloadCoordinator.startPreparing()
         }
     }
 
     private var clampedSidebarWidth: CGFloat {
         CGFloat(min(max(sidebarWidth, sidebarWidthRange.lowerBound), sidebarWidthRange.upperBound))
+    }
+
+    private var modelStatusBottomPadding: CGFloat {
+        // The dictation home reserves 86 points for its floating action, plus a 16-point gap.
+        selection == .dictation && activeSet == nil ? 102 : 20
     }
 
     private func updateSelection(_ newSelection: AppSection) {

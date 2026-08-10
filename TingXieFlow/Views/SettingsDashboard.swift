@@ -20,6 +20,9 @@ struct SettingsDashboard: View {
     @AppStorage(AppPreferenceKey.keepCardsRevealed)
     private var keepCardsRevealed = AppPreferenceDefault.keepCardsRevealed
     @State private var audioEngine = SpeechAudioEngine()
+    @State private var modelDownloadCoordinator = ModelDownloadCoordinator.shared
+    @State private var isConfirmingModelRemoval = false
+    @State private var modelRemovalError: String?
 
     private let sampleText = "今天我们练习听写。"
     private let primaryCardMinimumHeight: CGFloat = 470
@@ -51,6 +54,7 @@ struct SettingsDashboard: View {
                         practiceSection
                     }
 
+                    localAISection
                     aboutSection
                 }
                 .padding(.horizontal, 40)
@@ -66,6 +70,21 @@ struct SettingsDashboard: View {
         .onChange(of: speechPitch) { _, _ in synchronizeAudioEngine() }
         .onChange(of: interWordPause) { _, _ in synchronizeAudioEngine() }
         .onDisappear { audioEngine.stop() }
+        .task { await modelDownloadCoordinator.refreshCachedByteCount() }
+        .alert("Remove Local AI Model?", isPresented: $isConfirmingModelRemoval) {
+            Button("Cancel", role: .cancel) {}
+            Button("Remove Model", role: .destructive) {
+                Task {
+                    do {
+                        try await modelDownloadCoordinator.removeDownloadedModel()
+                    } catch {
+                        modelRemovalError = error.localizedDescription
+                    }
+                }
+            }
+        } message: {
+            Text("This removes the downloaded \(modelDownloadCoordinator.modelName) files from this Mac. Local AI will be unavailable until the model is downloaded again.")
+        }
     }
 
     private var speechSection: some View {
@@ -155,6 +174,114 @@ struct SettingsDashboard: View {
         }
     }
 
+    private var localAISection: some View {
+        SettingsSectionCard(
+            title: "Local AI",
+            symbol: "cpu.fill",
+            summary: "Manage the private on-device model used for vocabulary enrichment and contextual sentences."
+        ) {
+            HStack(alignment: .center, spacing: 14) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(modelDownloadCoordinator.modelName)
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                    Text(modelDownloadCoordinator.statusTitle)
+                        .font(.system(size: 12, design: .rounded))
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                }
+
+                Spacer()
+
+                Label(localAIStateLabel, systemImage: localAIStateSymbol)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(localAIStateColor)
+                    .padding(.horizontal, 10)
+                    .frame(height: 28)
+                    .background(localAIStateColor.opacity(0.1), in: Capsule())
+            }
+
+            if modelDownloadCoordinator.phase == .downloading {
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack {
+                        Text(modelDownloadCoordinator.statusDetail)
+                        Spacer()
+                        Text(modelDownloadCoordinator.percentageText)
+                            .fontWeight(.bold)
+                            .foregroundStyle(TingXiePalette.accent)
+                    }
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
+
+                    ProgressView(value: modelDownloadCoordinator.fractionCompleted)
+                        .progressViewStyle(.linear)
+                        .tint(TingXiePalette.accent)
+                        .accessibilityLabel("Local AI download progress")
+                        .accessibilityValue(modelDownloadCoordinator.percentageText)
+
+                    Label(modelDownloadCoordinator.predictedTimeText, systemImage: "clock")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                        .accessibilityLabel("Predicted Local AI download time")
+                }
+            } else if modelDownloadCoordinator.phase == .checking
+                        || modelDownloadCoordinator.phase == .loading {
+                HStack(spacing: 10) {
+                    ProgressView().controlSize(.small)
+                    Text(modelDownloadCoordinator.statusDetail)
+                        .font(.system(size: 11, design: .rounded))
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                }
+            } else {
+                Text(modelDownloadCoordinator.statusDetail)
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
+            }
+
+            Divider()
+
+            LabeledContent("Stored model data") {
+                Text(modelDownloadCoordinator.cachedSizeText)
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
+            }
+
+            HStack(spacing: 10) {
+                if modelDownloadCoordinator.isPreparing {
+                    Button("Pause Download", systemImage: "pause.fill") {
+                        Task { await modelDownloadCoordinator.cancelPreparation() }
+                    }
+                    .buttonStyle(.bordered)
+                } else if modelDownloadCoordinator.canRetry {
+                    Button("Download Model", systemImage: "arrow.down.circle.fill") {
+                        modelRemovalError = nil
+                        modelDownloadCoordinator.startPreparing()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(TingXiePalette.accent)
+                }
+
+                Spacer()
+
+                Button("Remove Model", systemImage: "trash", role: .destructive) {
+                    isConfirmingModelRemoval = true
+                }
+                .buttonStyle(.bordered)
+                .disabled(modelDownloadCoordinator.cachedByteCount == 0)
+            }
+
+            if let modelRemovalError {
+                Label(modelRemovalError, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(TingXiePalette.missed)
+            }
+
+            Label(
+                "Preparation starts in the background at app launch. Pausing keeps downloaded files so the next attempt can resume.",
+                systemImage: "info.circle"
+            )
+            .font(.system(size: 10, design: .rounded))
+            .foregroundStyle(TingXiePalette.onSurfaceVariant)
+        }
+    }
+
     private var aboutSection: some View {
         SettingsSectionCard(
             title: "About",
@@ -174,7 +301,7 @@ struct SettingsDashboard: View {
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
             }
             LabeledContent("Language Model") {
-                Text("MLX Swift")
+                Text("\(LocalModelSpec.displayName) · MLX Swift")
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
             }
             LabeledContent("Dictionary") {
@@ -191,6 +318,37 @@ struct SettingsDashboard: View {
         case let (version?, build?): "\(version) (\(build))"
         case let (version?, nil): version
         default: "Development"
+        }
+    }
+
+    private var localAIStateLabel: String {
+        switch modelDownloadCoordinator.phase {
+        case .idle: "Not Downloaded"
+        case .checking: "Checking"
+        case .downloading: "Downloading"
+        case .loading: "Loading"
+        case .ready: "Ready"
+        case .cancelled: "Paused"
+        case .failed: "Needs Attention"
+        }
+    }
+
+    private var localAIStateSymbol: String {
+        switch modelDownloadCoordinator.phase {
+        case .ready: "checkmark.circle.fill"
+        case .failed: "exclamationmark.triangle.fill"
+        case .cancelled: "pause.circle.fill"
+        case .downloading: "arrow.down.circle.fill"
+        case .loading: "cpu"
+        default: "circle.dashed"
+        }
+    }
+
+    private var localAIStateColor: Color {
+        switch modelDownloadCoordinator.phase {
+        case .ready: TingXiePalette.accent
+        case .failed: TingXiePalette.missed
+        default: TingXiePalette.secondary
         }
     }
 

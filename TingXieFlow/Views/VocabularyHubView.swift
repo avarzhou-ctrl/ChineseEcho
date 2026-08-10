@@ -573,6 +573,7 @@ private struct VocabularyInspector: View {
     @State private var isGenerating = false
     @State private var generationError: String?
     @State private var audioEngine = SpeechAudioEngine()
+    @State private var modelDownloadCoordinator = ModelDownloadCoordinator.shared
 
     var body: some View {
         Group {
@@ -626,30 +627,48 @@ private struct VocabularyInspector: View {
                             .lineSpacing(4)
                             .padding(.top, 10)
 
-                        HStack {
+                        HStack(alignment: .center) {
                             InspectorSectionTitle("Contextual Sentences")
                             Spacer()
                             Button(action: regenerateSentence) {
-                                if isGenerating {
+                                if modelDownloadCoordinator.phase == .downloading {
+                                    HStack(spacing: 6) {
+                                        ProgressView()
+                                            .controlSize(.small)
+                                        Text(modelDownloadCoordinator.percentageText)
+                                    }
+                                } else if modelDownloadCoordinator.isPreparing {
+                                    Label("Preparing AI", systemImage: "cpu")
+                                } else if isGenerating {
                                     ProgressView().controlSize(.small)
                                 } else {
-                                    Label("Regenerate", systemImage: "arrow.clockwise")
+                                    Label(
+                                        contextualSentences.isEmpty ? "Generate" : "Regenerate",
+                                        systemImage: contextualSentences.isEmpty ? "sparkles" : "arrow.clockwise"
+                                    )
                                 }
                             }
                             .buttonStyle(.plain)
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .font(.system(size: 15, weight: .medium, design: .rounded))
                             .foregroundStyle(TingXiePalette.accent)
-                            .disabled(isGenerating)
+                            .disabled(isGenerating || modelDownloadCoordinator.isPreparing)
                         }
                         .padding(.top, 34)
 
-                        Text(word.generatedSentence ?? "Generate one natural, short Chinese example sentence for this word.")
-                            .font(.system(size: 17, design: .rounded))
-                            .lineSpacing(5)
-                            .padding(20)
-                            .frame(maxWidth: .infinity, minHeight: 92, alignment: .topLeading)
-                            .background(Color.white.opacity(0.48), in: RoundedRectangle(cornerRadius: 16))
-                            .padding(.top, 12)
+                        if contextualSentences.isEmpty {
+                            Text("Generate two natural example sentences to see how \(word.chinese) is used in everyday situations.")
+                                .font(.system(size: 15, design: .rounded))
+                                .foregroundStyle(TingXiePalette.secondary)
+                                .lineSpacing(4)
+                                .padding(.top, 12)
+                        } else {
+                            VStack(spacing: 14) {
+                                ForEach(contextualSentences) { example in
+                                    ContextualSentenceCard(example: example, vocabulary: word.chinese)
+                                }
+                            }
+                            .padding(.top, 14)
+                        }
 
                         if let generationError {
                             Label(generationError, systemImage: "exclamationmark.triangle.fill")
@@ -703,14 +722,19 @@ private struct VocabularyInspector: View {
         guard let word else { return }
         let wordID = word.persistentModelID
         let prompt = """
-        请用“\(word.chinese)”写一个完整、自然的现代中文例句。句子需有具体情境、动作、原因或结果，并严格遵守系统提供的例句质量要求。只输出句子。
+        请用词语“\(word.chinese)”写两个不同的现代中文例句，并为每句提供自然、简洁的英文翻译。每个中文例句都必须自然包含完全相同的词语“\(word.chinese)”，并严格遵守系统提供的例句质量要求。
+
+        只输出以下 JSON，不要使用 Markdown 或添加其他文字：
+        {"examples":[{"chinese":"第一个中文例句","english":"First English translation."},{"chinese":"第二个中文例句","english":"Second English translation."}]}
         """
         isGenerating = true
         generationError = nil
 
         Task {
             do {
-                let sentence = try await generateText(prompt: prompt)
+                let response = try await generateText(prompt: prompt)
+                let payload = try ContextualSentencePayload.parse(response, vocabulary: word.chinese)
+                let sentence = try payload.encoded()
                 let store = DictationStore(modelContainer: modelContext.container)
                 try await store.setGeneratedSentence(sentence, wordID: wordID)
             } catch {
@@ -720,6 +744,112 @@ private struct VocabularyInspector: View {
         }
     }
 
+    private var contextualSentences: [ContextualSentence] {
+        ContextualSentencePayload.storedExamples(from: word?.generatedSentence)
+    }
+
+}
+
+// Stores bilingual examples inside the existing sentence field without requiring a SwiftData migration.
+nonisolated private struct ContextualSentencePayload: Codable {
+    let examples: [ContextualSentence]
+
+    func encoded() throws -> String {
+        let data = try JSONEncoder().encode(self)
+        guard let value = String(data: data, encoding: .utf8) else {
+            throw ContextualSentenceError.invalidResponse
+        }
+        return value
+    }
+
+    static func parse(_ response: String, vocabulary: String) throws -> Self {
+        let trimmed = response.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let openingBrace = trimmed.firstIndex(of: "{"),
+              let closingBrace = trimmed.lastIndex(of: "}") else {
+            throw ContextualSentenceError.invalidResponse
+        }
+
+        let json = String(trimmed[openingBrace...closingBrace])
+        guard let data = json.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(Self.self, from: data),
+              payload.examples.count == 2,
+              payload.examples.allSatisfy({
+                  !$0.chinese.isEmpty && !$0.english.isEmpty && $0.chinese.contains(vocabulary)
+              }) else {
+            throw ContextualSentenceError.invalidResponse
+        }
+        return payload
+    }
+
+    static func storedExamples(from value: String?) -> [ContextualSentence] {
+        guard let value, !value.isEmpty else { return [] }
+        if let data = value.data(using: .utf8),
+           let payload = try? JSONDecoder().decode(Self.self, from: data) {
+            return payload.examples
+        }
+
+        // Keep sentences generated by earlier app versions visible after this UI update.
+        return [ContextualSentence(chinese: value, english: "")]
+    }
+}
+
+nonisolated private struct ContextualSentence: Codable, Identifiable {
+    var id: String { chinese + english }
+    let chinese: String
+    let english: String
+}
+
+nonisolated private enum ContextualSentenceError: LocalizedError {
+    case invalidResponse
+
+    var errorDescription: String? {
+        "Local AI did not return two complete bilingual examples. Please try again."
+    }
+}
+
+// Presents one example with the studied vocabulary visually anchored in the Chinese sentence.
+private struct ContextualSentenceCard: View {
+    let example: ContextualSentence
+    let vocabulary: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            highlightedSentence
+                .font(.system(size: 21, weight: .medium, design: .rounded))
+                .foregroundStyle(TingXiePalette.onBackground)
+                .lineSpacing(5)
+
+            if !example.english.isEmpty {
+                Text(example.english)
+                    .font(.system(size: 15, design: .rounded))
+                    .foregroundStyle(TingXiePalette.secondary)
+                    .lineSpacing(3)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white.opacity(0.42), in: RoundedRectangle(cornerRadius: 16))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.white.opacity(0.55), lineWidth: 1)
+        }
+    }
+
+    private var highlightedSentence: Text {
+        guard !vocabulary.isEmpty else { return Text(example.chinese) }
+        let parts = example.chinese.components(separatedBy: vocabulary)
+        guard parts.count > 1 else { return Text(example.chinese) }
+
+        var result = Text("")
+        for index in parts.indices {
+            result = result + Text(parts[index])
+            if index < parts.index(before: parts.endIndex) {
+                result = result + Text(vocabulary).bold().foregroundColor(TingXiePalette.accent)
+            }
+        }
+        return result
+    }
 }
 
 // Standardizes headings within the vocabulary inspector.
@@ -884,13 +1014,19 @@ private struct WordEditorSheet: View {
 // Seeds the populated preview with representative regular, missed, and idiom records.
 private func populatedVocabularyHubPreview() -> some View {
     let setTitle = "HSK 5 full set"
+    let featuredWord = VocabularyWord(
+        chinese: "把握", englishTranslation: "to grasp", pinyin: "bǎ wò", tags: [setTitle]
+    )
+    featuredWord.generatedSentence = """
+    {"examples":[{"chinese":"你要好好把握这个难得的机会。","english":"You should really grasp this rare opportunity."},{"chinese":"他对这次考试很有把握。","english":"He is very certain about this exam."}]}
+    """
     let idiom = VocabularyWord(
         chinese: "莫名其妙", englishTranslation: "Baffling; without rhyme or reason",
         pinyin: "mò míng qí miào", isMissedWord: true, isIdiom: true, tags: [setTitle]
     )
     idiom.generatedSentence = "他今天突然朝我发脾气，真是莫名其妙。"
     let words = [
-        VocabularyWord(chinese: "把握", englishTranslation: "to grasp", pinyin: "bǎ wò", tags: [setTitle]),
+        featuredWord,
         VocabularyWord(chinese: "集中", englishTranslation: "to concentrate", pinyin: "jí zhōng", isMissedWord: true, tags: [setTitle]),
         VocabularyWord(chinese: "核心", englishTranslation: "core", pinyin: "hé xīn", tags: [setTitle]),
         VocabularyWord(chinese: "反复", englishTranslation: "repeatedly", pinyin: "fǎn fù", tags: [setTitle]),

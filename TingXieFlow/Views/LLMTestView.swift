@@ -14,8 +14,9 @@ struct LLMTestView: View {
     @State private var errorMessage: String?
     @State private var isGenerating = false
     @State private var generationTask: Task<Void, Never>?
+    @State private var modelDownloadCoordinator = ModelDownloadCoordinator.shared
 
-    private let modelName = "Qwen 3 0.6B · MLX"
+    private let modelName = "\(LocalModelSpec.displayName) · MLX"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -58,13 +59,22 @@ struct LLMTestView: View {
     private var actionBar: some View {
         HStack(spacing: 12) {
             Button(action: generate) {
-                Label(isGenerating ? "Generating…" : "Generate", systemImage: "paperplane.fill")
+                if modelDownloadCoordinator.phase == .downloading {
+                    Label(
+                        "Downloading \(modelDownloadCoordinator.percentageText)",
+                        systemImage: "arrow.down.circle.fill"
+                    )
+                } else if modelDownloadCoordinator.isPreparing {
+                    Label("Preparing AI…", systemImage: "cpu")
+                } else {
+                    Label(isGenerating ? "Generating…" : "Generate", systemImage: "paperplane.fill")
+                }
             }
             .buttonStyle(.borderedProminent)
             .keyboardShortcut(.return, modifiers: .command)
-            .disabled(trimmedPrompt.isEmpty || isGenerating)
+            .disabled(trimmedPrompt.isEmpty || isGenerating || modelDownloadCoordinator.isPreparing)
 
-            if isGenerating {
+            if isGenerating || modelDownloadCoordinator.isPreparing {
                 ProgressView()
                     .controlSize(.small)
             }

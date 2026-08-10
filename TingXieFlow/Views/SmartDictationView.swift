@@ -1101,6 +1101,7 @@ struct NewDictationSetSheet: View {
     @State private var repairModelOutput = ""
     @State private var isSaving = false
     @State private var isGenerating = false
+    @State private var modelDownloadCoordinator = ModelDownloadCoordinator.shared
 
     init(
         mode: DictationSetEditorMode = .create,
@@ -1184,7 +1185,14 @@ struct NewDictationSetSheet: View {
                                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
                                 Spacer()
                                 Button(action: enrichChineseWords) {
-                                    if isGenerating {
+                                    if modelDownloadCoordinator.phase == .downloading {
+                                        HStack(spacing: 6) {
+                                            ProgressView().controlSize(.small)
+                                            Text(modelDownloadCoordinator.percentageText)
+                                        }
+                                    } else if modelDownloadCoordinator.isPreparing {
+                                        Label("Preparing AI", systemImage: "cpu")
+                                    } else if isGenerating {
                                         ProgressView().controlSize(.small)
                                     } else {
                                         Label("Fill Details", systemImage: "wand.and.stars")
@@ -1199,7 +1207,11 @@ struct NewDictationSetSheet: View {
                                         height: 32
                                     )
                                 )
-                                .disabled(inputChineseWords.isEmpty || isGenerating)
+                                .disabled(
+                                    inputChineseWords.isEmpty
+                                        || isGenerating
+                                        || modelDownloadCoordinator.isPreparing
+                                )
                             }
                         }
                         .padding(16)
