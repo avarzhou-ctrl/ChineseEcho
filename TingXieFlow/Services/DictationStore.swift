@@ -2,8 +2,7 @@ import Foundation
 import SwiftData
 
 // Transfers editable vocabulary values across actor boundaries without carrying live SwiftData models.
-nonisolated struct NewVocabularyWord: Sendable, Identifiable {
-    let id = UUID()
+nonisolated struct NewVocabularyWord: Sendable {
     let chinese: String
     let pinyin: String
     let translation: String
@@ -24,20 +23,41 @@ nonisolated struct NewVocabularyWord: Sendable, Identifiable {
     }
 }
 
+// Packages every save argument into one immutable value for the model-actor hop.
+nonisolated struct DictationSetSaveRequest: Sendable {
+    enum Destination: Sendable {
+        case new
+        case existing(PersistentIdentifier)
+    }
+
+    let destination: Destination
+    let title: String
+    let words: [NewVocabularyWord]
+}
+
 // Performs all set and vocabulary mutations inside a dedicated SwiftData model actor.
 @ModelActor
 actor DictationStore {
-    func createSet(title: String, words: [NewVocabularyWord]) throws {
-        let set = DictationSet(title: title)
+    func saveSet(_ request: DictationSetSaveRequest) throws {
+        switch request.destination {
+        case .new:
+            try createSet(request)
+        case .existing(let setID):
+            try updateSet(setID: setID, request: request)
+        }
+    }
+
+    private func createSet(_ request: DictationSetSaveRequest) throws {
+        let set = DictationSet(title: request.title)
         modelContext.insert(set)
 
-        for value in words {
+        for value in request.words {
             let word = VocabularyWord(
                 chinese: value.chinese,
                 englishTranslation: value.translation,
                 pinyin: value.pinyin,
                 isIdiom: value.isIdiom,
-                tags: [title]
+                tags: [request.title]
             )
             word.session = set
             set.vocabularyWords.append(word)
@@ -47,19 +67,18 @@ actor DictationStore {
         try modelContext.save()
     }
 
-    func updateSet(
+    private func updateSet(
         setID: PersistentIdentifier,
-        title: String,
-        words: [NewVocabularyWord]
+        request: DictationSetSaveRequest
     ) throws {
         guard let set = self[setID, as: DictationSet.self] else {
             throw DictationStoreError.setNotFound
         }
-        set.title = title
+        set.title = request.title
         var unmatchedWords = set.vocabularyWords
         var updatedWords: [VocabularyWord] = []
 
-        for value in words {
+        for value in request.words {
             let existingIndex = unmatchedWords.firstIndex {
                 $0.chinese == value.chinese && $0.pinyin == value.pinyin
             }
@@ -68,14 +87,14 @@ actor DictationStore {
                 word = unmatchedWords.remove(at: existingIndex)
                 word.englishTranslation = value.translation
                 word.isIdiom = value.isIdiom
-                word.tags = [title]
+                word.tags = [request.title]
             } else {
                 word = VocabularyWord(
                     chinese: value.chinese,
                     englishTranslation: value.translation,
                     pinyin: value.pinyin,
                     isIdiom: value.isIdiom,
-                    tags: [title]
+                    tags: [request.title]
                 )
                 modelContext.insert(word)
             }

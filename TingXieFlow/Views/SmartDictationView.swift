@@ -138,16 +138,11 @@ struct SmartDictationView: View {
 
             NewDictationSetSheet(
                 mode: .edit,
+                modelContainer: modelContext.container,
+                setID: setID,
                 initialTitle: initialTitle,
                 initialWords: initialWords
-            ) { title, words in
-                let store = DictationStore(modelContainer: modelContext.container)
-                try await store.updateSet(
-                    setID: setID,
-                    title: title,
-                    words: words
-                )
-            }
+            )
         }
         .alert(
             "Delete “\(setPendingDeletion?.title ?? "Set")”?",
@@ -480,6 +475,13 @@ private enum PracticeFilter: String, CaseIterable, Identifiable {
     var id: Self { self }
 }
 
+// Captures the persisted word state needed to reverse one grading decision.
+private struct PracticeGradeAction {
+    let wordID: PersistentIdentifier
+    let queueIndex: Int
+    let wasMissed: Bool
+}
+
 // Coordinates filtered practice progress, speech repetition, and missed-word updates.
 private struct PracticeSessionView: View {
     @Environment(\.modelContext) private var modelContext
@@ -490,20 +492,25 @@ private struct PracticeSessionView: View {
 
     @AppStorage(AppPreferenceKey.repeatCount)
     private var repeatCount = AppPreferenceDefault.repeatCount
-    @AppStorage(AppPreferenceKey.automaticProgression)
-    private var automaticProgression = AppPreferenceDefault.automaticProgression
     @AppStorage(AppPreferenceKey.keepCardsRevealed)
     private var keepCardsRevealed = AppPreferenceDefault.keepCardsRevealed
 
     @State private var filter: PracticeFilter = .all
+    @State private var filterTransitionEdge: Edge = .trailing
+    @State private var cardTransitionEdge: Edge = .trailing
+    @State private var sessionWordIDs: [PersistentIdentifier] = []
     @State private var currentIndex = 0
     @State private var isCardFlipped = false
-    @State private var currentRepetition = 1
-    @State private var pendingMissedWordIDs: Set<PersistentIdentifier> = []
-    @State private var isContinuousPlaybackActive = false
+    @State private var remainingAutomaticRepetitions = 0
+    @State private var missedOverrides: [PersistentIdentifier: Bool] = [:]
+    @State private var gradeHistory: [PracticeGradeAction] = []
+    @State private var isUpdatingGrade = false
+    @State private var hasGradedCurrentCard = false
+    @State private var hasInitializedQueue = false
+    @State private var isQueueShuffled = false
     @State private var audioEngine = SpeechAudioEngine()
 
-    private var words: [VocabularyWord] {
+    private var filteredWords: [VocabularyWord] {
         switch filter {
         case .all: set.vocabularyWords
         case .missed: set.vocabularyWords.filter(isMissed)
@@ -512,8 +519,24 @@ private struct PracticeSessionView: View {
     }
 
     private var currentWord: VocabularyWord? {
-        guard words.indices.contains(currentIndex) else { return nil }
-        return words[currentIndex]
+        guard sessionWordIDs.indices.contains(currentIndex) else { return nil }
+        let wordID = sessionWordIDs[currentIndex]
+        return set.vocabularyWords.first { $0.persistentModelID == wordID }
+    }
+
+    private var canGradeCurrentCard: Bool {
+        isCardFlipped && !isUpdatingGrade && !hasGradedCurrentCard
+    }
+
+    private var canUndoLastGrade: Bool {
+        !gradeHistory.isEmpty && (currentIndex > 0 || hasGradedCurrentCard) && !isUpdatingGrade
+    }
+
+    private var animatedFilter: Binding<PracticeFilter> {
+        Binding(
+            get: { filter },
+            set: updateFilter
+        )
     }
 
     var body: some View {
@@ -526,8 +549,8 @@ private struct PracticeSessionView: View {
                     summary: "Listen first, then flip each card to check the characters before deciding whether the word needs more review.",
                     tips: [
                         "Select the card or press Return or Space to flip between the listening prompt and the answer.",
-                        "Mark Missed becomes available after the answer is visible.",
-                        "Playback repeats and automatic progression follow your choices in Settings."
+                        "The missed and known actions appear only after the answer is visible.",
+                        "Each card plays automatically using the repeat count in Settings; use the speaker for one extra playback."
                     ]
                 )
             )
@@ -542,13 +565,15 @@ private struct PracticeSessionView: View {
                         .font(.system(size: 24, weight: .medium, design: .rounded))
                 }
                 Spacer()
-                PracticeFilterBar(selection: $filter)
+                PracticeFilterBar(selection: animatedFilter)
                     .frame(maxWidth: 430)
             }
             .padding(.horizontal, 40)
 
             Group {
-                if words.isEmpty {
+                if !hasInitializedQueue {
+                    ProgressView()
+                } else if sessionWordIDs.isEmpty {
                     ContentUnavailableView(
                         "No Words in This Filter",
                         systemImage: "text.magnifyingglass",
@@ -564,24 +589,17 @@ private struct PracticeSessionView: View {
         .background(TingXiePalette.background)
         .onAppear {
             audioEngine.configureFromPreferences()
-            isCardFlipped = keepCardsRevealed
             audioEngine.onUtteranceFinished = {
-                Task { @MainActor in advanceContinuousPlayback() }
+                Task { @MainActor in continueAutomaticPlayback() }
             }
+            resetSessionQueue()
         }
         .onDisappear {
-            stopContinuousPlayback()
+            stopPlayback()
             audioEngine.onUtteranceFinished = nil
         }
         .onChange(of: filter) { _, _ in
-            currentIndex = 0
-            currentRepetition = 1
-            isCardFlipped = keepCardsRevealed
-            restartContinuousPlaybackIfNeeded()
-        }
-        .onChange(of: currentIndex) { _, _ in
-            currentRepetition = 1
-            isCardFlipped = keepCardsRevealed
+            resetSessionQueue()
         }
         .onChange(of: keepCardsRevealed) { _, shouldReveal in
             isCardFlipped = shouldReveal
@@ -592,50 +610,155 @@ private struct PracticeSessionView: View {
         VStack(spacing: 0) {
             Spacer(minLength: 22)
 
-            if let currentWord {
-                PracticeFlipCard(
-                    word: currentWord,
-                    isFlipped: $isCardFlipped,
-                    reduceMotion: reduceMotion
+            ZStack {
+                VStack(spacing: 0) {
+                    if let currentWord {
+                HStack {
+                    Button("Shuffle", systemImage: "shuffle", action: shuffleRemainingWords)
+                        .help("Shuffle the current and remaining cards")
+                        .disabled(sessionWordIDs.count - currentIndex < 2 || isUpdatingGrade)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            isQueueShuffled
+                                ? TingXiePalette.secondary.opacity(0.12)
+                                : .clear,
+                            in: Capsule()
+                        )
+                        .overlay {
+                            Capsule()
+                                .stroke(
+                                    isQueueShuffled ? TingXiePalette.secondary : .clear,
+                                    lineWidth: 1.5
+                                )
+                        }
+                        .animation(.easeOut(duration: 0.18), value: isQueueShuffled)
+
+                    Spacer()
+
+                    Button("Undo", systemImage: "arrow.uturn.backward", action: undoLastGrade)
+                        .help("Undo the last grading decision")
+                        .foregroundStyle(
+                            canUndoLastGrade
+                                ? TingXiePalette.onSurfaceVariant
+                                : TingXiePalette.outline.opacity(0.55)
+                        )
+                        .disabled(!canUndoLastGrade)
+                }
+                .buttonStyle(.borderless)
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                .frame(maxWidth: 650)
+                .padding(.bottom, 10)
+                .offset(y: 32)
+
+                ZStack(alignment: .topTrailing) {
+                    PracticeFlipCard(
+                        word: currentWord,
+                        showsMissed: isMissed(currentWord),
+                        isFlipped: $isCardFlipped,
+                        reduceMotion: reduceMotion
+                    )
+
+                    Button(action: replayCurrentWord) {
+                        Image(systemName: "speaker.wave.2.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(width: 38, height: 38)
+                            .background(TingXiePalette.surfaceContainerHigh, in: Circle())
+                            .overlay { Circle().stroke(TingXiePalette.outlineVariant, lineWidth: 1) }
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(TingXiePalette.accent)
+                    .help("Play once more")
+                    .accessibilityLabel("Play \(currentWord.chinese) once more")
+                    .padding(20)
+                }
+                .frame(maxWidth: 650, minHeight: 300, maxHeight: 360)
+                .id(currentWord.persistentModelID)
+                .transition(
+                    TingXieMotion.directionalTransition(
+                        enteringFrom: cardTransitionEdge,
+                        reduceMotion: reduceMotion
+                    )
                 )
-                    .frame(maxWidth: 650, minHeight: 300, maxHeight: 360)
+                .animation(
+                    TingXieMotion.contentChange(reduceMotion: reduceMotion),
+                    value: currentWord.persistentModelID
+                )
+                .offset(y: 32)
+
+                Text("Press Space or click the card to flip")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.68))
+                    .frame(height: 18)
+                    .opacity(isCardFlipped ? 0 : 1)
+                    .accessibilityHidden(isCardFlipped)
+                    .animation(.easeOut(duration: 0.18), value: isCardFlipped)
+                    .padding(.top, 10)
+                    .offset(y: 32)
 
                 HStack(spacing: 30) {
-                    PracticeRoundButton(
-                        title: isContinuousPlaybackActive ? "STOP AUDIO" : "PLAY AUDIO",
-                        symbol: isContinuousPlaybackActive ? "stop.fill" : "play.fill",
-                        color: TingXiePalette.accent,
-                        action: toggleContinuousPlayback
-                    )
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                    .frame(minWidth: 170)
-
-                    PracticeRoundButton(
-                        title: "MARK MISSED",
-                        symbol: "flag",
+                    PracticeGradeButton(
+                        symbol: "xmark",
                         color: TingXiePalette.missed,
-                        isDisabled: !isCardFlipped,
-                        action: markCurrentWordMissed
-                    )
+                        accessibilityLabel: "Mark Missed",
+                        help: "Mark Missed (X)",
+                        shortcut: "x"
+                    ) {
+                        gradeCurrentWord(asMissed: true)
+                    }
+
+                    PracticeGradeButton(
+                        symbol: "checkmark",
+                        color: TingXiePalette.secondary,
+                        accessibilityLabel: "Mark Known",
+                        help: "Mark Known (Right Arrow)",
+                        shortcut: .rightArrow
+                    ) {
+                        gradeCurrentWord(asMissed: false)
+                    }
                 }
-                .padding(.top, 28)
+                .frame(height: 74)
+                .opacity(canGradeCurrentCard ? 1 : 0)
+                .allowsHitTesting(canGradeCurrentCard)
+                .accessibilityHidden(!canGradeCurrentCard)
+                .animation(.easeOut(duration: 0.18), value: canGradeCurrentCard)
+                .padding(.top, 16)
+                    }
+                }
+                .id(filter)
+                .transition(
+                    TingXieMotion.directionalTransition(
+                        enteringFrom: filterTransitionEdge,
+                        reduceMotion: reduceMotion
+                    )
+                )
             }
+            .animation(
+                TingXieMotion.contentChange(reduceMotion: reduceMotion),
+                value: filter
+            )
 
             Spacer(minLength: 22)
 
-            HStack(alignment: .bottom) {
+            HStack(alignment: .bottom, spacing: 32) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Card \(min(currentIndex + 1, words.count)) of \(words.count)")
+                    Text("Card \(min(currentIndex + 1, sessionWordIDs.count)) of \(sessionWordIDs.count)")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    ProgressView(value: Double(currentIndex + 1), total: Double(max(words.count, 1)))
+                    ProgressView(value: Double(currentIndex + 1), total: Double(max(sessionWordIDs.count, 1)))
                         .tint(TingXiePalette.accent)
                         .frame(maxWidth: .infinity)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 Button("Finish Set", systemImage: "rectangle.portrait.and.arrow.right", action: onFinish)
-                    .buttonStyle(OutlineCapsuleButtonStyle())
+                    .buttonStyle(
+                        OutlineCapsuleButtonStyle(
+                            fontSize: 13,
+                            horizontalPadding: 16,
+                            height: 34
+                        )
+                    )
             }
             .padding(.horizontal, 40)
             .padding(.bottom, 32)
@@ -648,67 +771,135 @@ private struct PracticeSessionView: View {
         audioEngine.speak(currentWord.chinese)
     }
 
-    private func toggleContinuousPlayback() {
-        if isContinuousPlaybackActive {
-            stopContinuousPlayback()
-        } else {
-            isContinuousPlaybackActive = true
-            currentRepetition = 1
-            audioEngine.stop()
-            speakCurrentWord()
+    private func updateFilter(_ newFilter: PracticeFilter) {
+        guard newFilter != filter else { return }
+        let filters = PracticeFilter.allCases
+        let oldIndex = filters.firstIndex(of: filter) ?? 0
+        let newIndex = filters.firstIndex(of: newFilter) ?? 0
+        filterTransitionEdge = newIndex > oldIndex ? .trailing : .leading
+        cardTransitionEdge = filterTransitionEdge
+        filter = newFilter
+    }
+
+    private func resetSessionQueue() {
+        stopPlayback()
+        sessionWordIDs = filteredWords.map(\.persistentModelID)
+        currentIndex = 0
+        gradeHistory.removeAll()
+        hasGradedCurrentCard = false
+        hasInitializedQueue = true
+        isQueueShuffled = false
+        isCardFlipped = keepCardsRevealed
+        scheduleAutomaticPlayback()
+    }
+
+    private func stopPlayback() {
+        remainingAutomaticRepetitions = 0
+        audioEngine.stop()
+    }
+
+    private func scheduleAutomaticPlayback() {
+        Task { @MainActor in
+            await Task.yield()
+            startAutomaticPlayback()
         }
     }
 
-    private func stopContinuousPlayback() {
-        isContinuousPlaybackActive = false
+    private func startAutomaticPlayback() {
+        guard currentWord != nil else { return }
         audioEngine.stop()
+        remainingAutomaticRepetitions = max(repeatCount, 1)
+        speakNextAutomaticRepetition()
     }
 
-    private func restartContinuousPlaybackIfNeeded() {
-        guard isContinuousPlaybackActive else { return }
-        audioEngine.stop()
+    private func speakNextAutomaticRepetition() {
+        guard remainingAutomaticRepetitions > 0 else { return }
+        remainingAutomaticRepetitions -= 1
         speakCurrentWord()
     }
 
-    private func advanceContinuousPlayback() {
-        guard isContinuousPlaybackActive else { return }
-        if currentRepetition < max(repeatCount, 1) {
-            currentRepetition += 1
-            speakCurrentWord()
-        } else if automaticProgression, currentIndex < words.count - 1 {
-            currentIndex += 1
-            currentRepetition = 1
-            audioEngine.speak(words[currentIndex].chinese)
-        } else {
-            isContinuousPlaybackActive = false
-            currentRepetition = 1
+    private func continueAutomaticPlayback() {
+        guard remainingAutomaticRepetitions > 0 else { return }
+        speakNextAutomaticRepetition()
+    }
+
+    private func replayCurrentWord() {
+        stopPlayback()
+        speakCurrentWord()
+    }
+
+    private func shuffleRemainingWords() {
+        guard sessionWordIDs.count - currentIndex > 1 else { return }
+        stopPlayback()
+        cardTransitionEdge = .trailing
+        sessionWordIDs.replaceSubrange(
+            currentIndex..<sessionWordIDs.endIndex,
+            with: sessionWordIDs[currentIndex...].shuffled()
+        )
+        isQueueShuffled = true
+        hasGradedCurrentCard = false
+        isCardFlipped = false
+        scheduleAutomaticPlayback()
+    }
+
+    private func gradeCurrentWord(asMissed: Bool) {
+        guard canGradeCurrentCard, let currentWord else { return }
+        let store = DictationStore(modelContainer: modelContext.container)
+        let wordID = currentWord.persistentModelID
+        let action = PracticeGradeAction(
+            wordID: wordID,
+            queueIndex: currentIndex,
+            wasMissed: isMissed(currentWord)
+        )
+        isUpdatingGrade = true
+        stopPlayback()
+
+        Task {
+            do {
+                try await store.setMissed(asMissed, wordID: wordID)
+                missedOverrides[wordID] = asMissed
+                gradeHistory.append(action)
+                hasGradedCurrentCard = true
+
+                if currentIndex < sessionWordIDs.count - 1 {
+                    cardTransitionEdge = .trailing
+                    currentIndex += 1
+                    hasGradedCurrentCard = false
+                    isCardFlipped = keepCardsRevealed
+                    scheduleAutomaticPlayback()
+                }
+            } catch {
+                // Keep the current card available when persistence fails.
+            }
+            isUpdatingGrade = false
         }
     }
 
-    private func markCurrentWordMissed() {
-        guard let currentWord else { return }
+    private func undoLastGrade() {
+        guard !isUpdatingGrade, let action = gradeHistory.last else { return }
         let store = DictationStore(modelContainer: modelContext.container)
-        let wordID = currentWord.persistentModelID
-        let markedIndex = currentIndex
-        pendingMissedWordIDs.insert(wordID)
+        isUpdatingGrade = true
+        stopPlayback()
+
         Task {
             do {
-                try await store.setMissed(true, wordID: wordID)
-                let isStillOnMarkedWord = currentIndex == markedIndex
-                    && words.indices.contains(markedIndex)
-                    && words[markedIndex].persistentModelID == wordID
-                if isStillOnMarkedWord, currentIndex < words.count - 1 {
-                    currentIndex += 1
-                    restartContinuousPlaybackIfNeeded()
-                }
+                try await store.setMissed(action.wasMissed, wordID: action.wordID)
+                missedOverrides[action.wordID] = action.wasMissed
+                gradeHistory.removeLast()
+                cardTransitionEdge = .leading
+                currentIndex = min(action.queueIndex, max(sessionWordIDs.count - 1, 0))
+                hasGradedCurrentCard = false
+                isCardFlipped = false
+                scheduleAutomaticPlayback()
             } catch {
-                pendingMissedWordIDs.remove(wordID)
+                // Leave history intact so Undo can be retried.
             }
+            isUpdatingGrade = false
         }
     }
 
     private func isMissed(_ word: VocabularyWord) -> Bool {
-        word.isMissedWord || pendingMissedWordIDs.contains(word.persistentModelID)
+        missedOverrides[word.persistentModelID] ?? word.isMissedWord
     }
 }
 
@@ -717,47 +908,42 @@ private struct PracticeFilterBar: View {
     @Binding var selection: PracticeFilter
 
     var body: some View {
-        HStack(spacing: 4) {
-            ForEach(PracticeFilter.allCases) { item in
-                Button {
-                    selection = item
-                } label: {
-                    Text(item.rawValue)
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(selection == item ? TingXiePalette.accent : TingXiePalette.onSurfaceVariant)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity)
-                .frame(height: 36)
-                .background(selection == item ? Color.white : .clear, in: Capsule())
-                .accessibilityAddTraits(selection == item ? .isSelected : [])
-            }
-        }
-        .padding(4)
-        .background(TingXiePalette.surfaceContainerHigh, in: Capsule())
+        SlidingFilterBar(
+            items: PracticeFilter.allCases,
+            selection: $selection,
+            title: \.rawValue
+        )
     }
 }
 
 // Flips between an audio-first prompt and the complete vocabulary answer.
 private struct PracticeFlipCard: View {
     let word: VocabularyWord
+    let showsMissed: Bool
     @Binding var isFlipped: Bool
     let reduceMotion: Bool
 
     var body: some View {
         Button(action: flip) {
             ZStack {
+                RoundedRectangle(cornerRadius: 28)
+                    .fill(TingXiePalette.surface)
+
                 cardFace(isAnswer: false)
                     .opacity(isFlipped ? 0 : 1)
-                    .rotation3DEffect(.degrees(isFlipped ? -180 : 0), axis: (x: 0, y: 1, z: 0))
 
                 cardFace(isAnswer: true)
                     .opacity(isFlipped ? 1 : 0)
-                    .rotation3DEffect(.degrees(isFlipped ? 0 : 180), axis: (x: 0, y: 1, z: 0))
+                    .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
             }
             .contentShape(RoundedRectangle(cornerRadius: 28))
+            .overlay { RoundedRectangle(cornerRadius: 28).stroke(.white.opacity(0.8), lineWidth: 1) }
+            .shadow(color: TingXiePalette.accent.opacity(0.11), radius: 28, y: 16)
+            .rotation3DEffect(
+                .degrees(isFlipped ? 180 : 0),
+                axis: (x: 0, y: 1, z: 0),
+                perspective: 0.7
+            )
         }
         .buttonStyle(.plain)
         .keyboardShortcut(.return, modifiers: [])
@@ -773,18 +959,10 @@ private struct PracticeFlipCard: View {
 
     private func cardFace(isAnswer: Bool) -> some View {
         VStack(spacing: 18) {
-            Image(systemName: isAnswer ? "checkmark.circle.fill" : "speaker.wave.2.fill")
-                .font(.system(size: 30, weight: .medium))
-                .foregroundStyle(
-                    isAnswer && word.isMissedWord
-                        ? TingXiePalette.missed
-                        : TingXiePalette.secondary.opacity(isAnswer ? 0.8 : 0.5)
-                )
-
             if isAnswer {
                 Text(word.chinese)
                     .font(.system(size: word.chinese.count > 4 ? 48 : 64, weight: .bold, design: .rounded))
-                    .foregroundStyle(word.isMissedWord ? TingXiePalette.missed : TingXiePalette.accent)
+                    .foregroundStyle(showsMissed ? TingXiePalette.missed : TingXiePalette.accent)
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
 
@@ -799,31 +977,10 @@ private struct PracticeFlipCard: View {
                 Text(word.pinyin.isEmpty ? "Listen carefully" : word.pinyin)
                     .font(.system(size: 40, weight: .bold, design: .rounded))
                     .foregroundStyle(TingXiePalette.accent)
-
-                HStack(spacing: 12) {
-                    ForEach(Array(word.chinese.enumerated()), id: \.offset) { _, _ in
-                        Text("?")
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
-                            .foregroundStyle(TingXiePalette.secondary.opacity(0.18))
-                            .frame(width: 64, height: 72)
-                            .background(TingXiePalette.surfaceContainerHigh.opacity(0.75), in: RoundedRectangle(cornerRadius: 14))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 14)
-                                    .stroke(
-                                        TingXiePalette.secondary.opacity(0.18),
-                                        style: StrokeStyle(lineWidth: 1, dash: [5])
-                                    )
-                            }
-                    }
-                }
             }
         }
         .padding(28)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28))
-        .background(TingXiePalette.surface.opacity(0.72), in: RoundedRectangle(cornerRadius: 28))
-        .overlay { RoundedRectangle(cornerRadius: 28).stroke(.white.opacity(0.8), lineWidth: 1) }
-        .shadow(color: TingXiePalette.accent.opacity(0.11), radius: 28, y: 16)
     }
 
     private func flip() {
@@ -837,29 +994,29 @@ private struct PracticeFlipCard: View {
     }
 }
 
-// Standardizes circular actions shown beneath the practice card.
-private struct PracticeRoundButton: View {
-    let title: String
+// Presents one icon-only grading action while retaining tooltip and accessibility context.
+private struct PracticeGradeButton: View {
     let symbol: String
     let color: Color
-    var isDisabled = false
+    let accessibilityLabel: String
+    let help: String
+    let shortcut: KeyEquivalent
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 7) {
-                Image(systemName: symbol)
-                    .font(.system(size: 16, weight: .bold))
-                    .frame(width: 44, height: 44)
-                    .background(color.opacity(0.04), in: Circle())
-                    .overlay { Circle().stroke(color.opacity(0.25), lineWidth: 1.5) }
-                Text(title)
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-            }
-            .foregroundStyle(color.opacity(isDisabled ? 0.35 : 1))
+            Image(systemName: symbol)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(color)
+                .frame(width: 58, height: 58)
+                .background(color.opacity(0.06), in: Circle())
+                .overlay { Circle().stroke(color.opacity(0.32), lineWidth: 1.5) }
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .disabled(isDisabled)
+        .keyboardShortcut(shortcut, modifiers: [])
+        .help(help)
+        .accessibilityLabel(accessibilityLabel)
     }
 }
 
@@ -927,11 +1084,13 @@ private struct DraftVocabularyWord: Identifiable {
 }
 
 // Builds or edits a set through dictionary lookup, Local AI fallback, import, and review.
+@MainActor
 struct NewDictationSetSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let mode: DictationSetEditorMode
-    let onSave: (String, [NewVocabularyWord]) async throws -> Void
+    let modelContainer: ModelContainer
+    let setID: PersistentIdentifier?
 
     @State private var title: String
     @State private var chineseWordInput = ""
@@ -945,12 +1104,14 @@ struct NewDictationSetSheet: View {
 
     init(
         mode: DictationSetEditorMode = .create,
+        modelContainer: ModelContainer,
+        setID: PersistentIdentifier? = nil,
         initialTitle: String = "",
-        initialWords: [NewVocabularyWord] = [],
-        onSave: @escaping (String, [NewVocabularyWord]) async throws -> Void
+        initialWords: [NewVocabularyWord] = []
     ) {
         self.mode = mode
-        self.onSave = onSave
+        self.modelContainer = modelContainer
+        self.setID = setID
         _title = State(initialValue: initialTitle)
         _draftWords = State(initialValue: initialWords.map { DraftVocabularyWord($0) })
     }
@@ -1004,7 +1165,7 @@ struct NewDictationSetSheet: View {
                                 .font(.system(size: 15, weight: .bold, design: .rounded))
                                 .foregroundStyle(TingXiePalette.accent)
 
-                            Text("Enter Chinese words separated by commas, spaces, or new lines. TingXieFlow looks them up in its offline CC-CEDICT dictionary, then uses Local AI only for unmatched words.")
+                            Text("Enter Chinese words separated by commas, spaces, or new lines.")
                                 .font(.system(size: 12, design: .rounded))
                                 .foregroundStyle(TingXiePalette.onSurfaceVariant)
                                 .lineSpacing(2)
@@ -1018,7 +1179,7 @@ struct NewDictationSetSheet: View {
                                 .accessibilityLabel("Chinese words to enrich")
 
                             HStack {
-                                Text("Example: 苹果, 学习  坚持")
+                                Text("Example: 苹果, 学习, 坚持")
                                     .font(.system(size: 12, design: .rounded))
                                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
                                 Spacer()
@@ -1428,19 +1589,26 @@ struct NewDictationSetSheet: View {
         return error.localizedDescription
     }
 
+    @MainActor
     private func save() {
         if let saveValidationMessage {
             errorMessage = saveValidationMessage
             return
         }
 
-        let words = validWords
+        let request = DictationSetSaveRequest(
+            destination: setID.map(DictationSetSaveRequest.Destination.existing)
+                ?? .new,
+            title: cleanTitle,
+            words: validWords
+        )
         isSaving = true
         errorMessage = nil
 
-        Task {
+        Task { @MainActor in
             do {
-                try await onSave(cleanTitle, words)
+                let store = DictationStore(modelContainer: modelContainer)
+                try await store.saveSet(request)
                 dismiss()
             } catch {
                 errorMessage = error.localizedDescription

@@ -13,6 +13,7 @@ private enum VocabularyFilter: String, CaseIterable, Identifiable {
 // Coordinates vocabulary filtering, search, selection, editing, review state, and deletion.
 struct VocabularyHubView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let words: [VocabularyWord]
     @Binding var selectedWordID: PersistentIdentifier?
@@ -21,6 +22,7 @@ struct VocabularyHubView: View {
     @State private var isSearchResultsPresented = false
     @State private var highlightedSearchWordID: PersistentIdentifier?
     @State private var filter: VocabularyFilter = .all
+    @State private var filterTransitionEdge: Edge = .trailing
     @State private var pendingLearnedWordIDs: Set<PersistentIdentifier> = []
     @State private var editingWord: VocabularyWord?
     @State private var wordPendingDeletion: VocabularyWord?
@@ -55,6 +57,13 @@ struct VocabularyHubView: View {
             return selected
         }
         return categoryWords.first
+    }
+
+    private var animatedFilter: Binding<VocabularyFilter> {
+        Binding(
+            get: { filter },
+            set: updateFilter
+        )
     }
 
     private var searchResultsOverlay: AnyView {
@@ -110,12 +119,20 @@ struct VocabularyHubView: View {
                 vocabularyCatalog
                     .frame(minWidth: 390, idealWidth: 440)
 
-                VocabularyInspector(
-                    word: selectedWord,
-                    isMissed: selectedWord.map(isEffectivelyMissed) ?? false,
-                    onMarkAsLearned: markAsLearned
+                ZStack {
+                    VocabularyInspector(
+                        word: selectedWord,
+                        isMissed: selectedWord.map(isEffectivelyMissed) ?? false,
+                        onMarkAsLearned: markAsLearned
+                    )
+                    .id(selectedWord?.persistentModelID)
+                    .transition(TingXieMotion.inspectorTransition(reduceMotion: reduceMotion))
+                }
+                .animation(
+                    TingXieMotion.contentChange(reduceMotion: reduceMotion),
+                    value: selectedWord?.persistentModelID
                 )
-                    .frame(minWidth: 360, idealWidth: 500)
+                .frame(minWidth: 360, idealWidth: 500)
             }
             .onTapGesture { isSearchResultsPresented = false }
         }
@@ -169,32 +186,54 @@ struct VocabularyHubView: View {
 
     private var vocabularyCatalog: some View {
         VStack(spacing: 20) {
-            VocabularyFilterBar(selection: $filter)
+            VocabularyFilterBar(selection: animatedFilter)
 
-            if categoryWords.isEmpty {
-                ContentUnavailableView(
-                    emptyStateTitle,
-                    systemImage: emptyStateSymbol,
-                    description: Text(emptyStateDescription)
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 9) {
-                        ForEach(categoryWords) { word in
-                            VocabularyRow(
-                                word: word,
-                                isSelected: word.persistentModelID == selectedWord?.persistentModelID,
-                                isMissed: isEffectivelyMissed(word),
-                                onSelect: { selectedWordID = word.persistentModelID },
-                                onEdit: { editingWord = word },
-                                onToggleMissed: { setMissed(!isEffectivelyMissed(word), for: word) },
-                                onDelete: { wordPendingDeletion = word }
+            ZStack {
+                Group {
+                    if categoryWords.isEmpty {
+                        ContentUnavailableView(
+                            emptyStateTitle,
+                            systemImage: emptyStateSymbol,
+                            description: Text(emptyStateDescription)
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 9) {
+                                ForEach(categoryWords) { word in
+                                    VocabularyRow(
+                                        word: word,
+                                        isSelected: word.persistentModelID == selectedWord?.persistentModelID,
+                                        isMissed: isEffectivelyMissed(word),
+                                        onSelect: { selectedWordID = word.persistentModelID },
+                                        onEdit: { editingWord = word },
+                                        onToggleMissed: { setMissed(!isEffectivelyMissed(word), for: word) },
+                                        onDelete: { wordPendingDeletion = word }
+                                    )
+                                    .transition(TingXieMotion.rowTransition(reduceMotion: reduceMotion))
+                                }
+                            }
+                            .animation(
+                                TingXieMotion.contentChange(reduceMotion: reduceMotion),
+                                value: categoryWords.map(\.persistentModelID)
                             )
                         }
                     }
                 }
+                .id(filter)
+                .transition(
+                    TingXieMotion.directionalTransition(
+                        enteringFrom: filterTransitionEdge,
+                        reduceMotion: reduceMotion
+                    )
+                )
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
+            .animation(
+                TingXieMotion.contentChange(reduceMotion: reduceMotion),
+                value: filter
+            )
         }
         .padding(.leading, 40)
         .padding(.trailing, 24)
@@ -212,6 +251,15 @@ struct VocabularyHubView: View {
         case .missed: "No Missed Words"
         case .idioms: "No Idioms Yet"
         }
+    }
+
+    private func updateFilter(_ newFilter: VocabularyFilter) {
+        guard newFilter != filter else { return }
+        let filters = VocabularyFilter.allCases
+        let oldIndex = filters.firstIndex(of: filter) ?? 0
+        let newIndex = filters.firstIndex(of: newFilter) ?? 0
+        filterTransitionEdge = newIndex > oldIndex ? .trailing : .leading
+        filter = newFilter
     }
 
     private var emptyStateSymbol: String {
@@ -316,29 +364,13 @@ private struct VocabularyFilterBar: View {
     @Binding var selection: VocabularyFilter
 
     var body: some View {
-        HStack(spacing: 4) {
-            ForEach(VocabularyFilter.allCases) { item in
-                Button {
-                    selection = item
-                } label: {
-                    Text(item.rawValue)
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(selection == item ? TingXiePalette.accent : TingXiePalette.onSurfaceVariant)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .contentShape(RoundedRectangle(cornerRadius: 9))
-                }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity)
-                .frame(height: 36)
-                .background(
-                    selection == item ? Color.white : .clear,
-                    in: RoundedRectangle(cornerRadius: 9)
-                )
-                .accessibilityAddTraits(selection == item ? .isSelected : [])
-            }
-        }
-        .padding(4)
-        .background(TingXiePalette.surfaceContainerHigh, in: RoundedRectangle(cornerRadius: 12))
+        SlidingFilterBar(
+            items: VocabularyFilter.allCases,
+            selection: $selection,
+            selectionShape: AnyShape(RoundedRectangle(cornerRadius: 9)),
+            containerShape: AnyShape(RoundedRectangle(cornerRadius: 12)),
+            title: \.rawValue
+        )
     }
 }
 

@@ -17,8 +17,6 @@ struct SettingsDashboard: View {
     private var interWordPause = AppPreferenceDefault.interWordPause
     @AppStorage(AppPreferenceKey.repeatCount)
     private var repeatCount = AppPreferenceDefault.repeatCount
-    @AppStorage(AppPreferenceKey.automaticProgression)
-    private var automaticProgression = AppPreferenceDefault.automaticProgression
     @AppStorage(AppPreferenceKey.keepCardsRevealed)
     private var keepCardsRevealed = AppPreferenceDefault.keepCardsRevealed
     @State private var audioEngine = SpeechAudioEngine()
@@ -36,7 +34,7 @@ struct SettingsDashboard: View {
                     summary: "These preferences are stored locally on this Mac and apply to future TingXieFlow practice sessions.",
                     tips: [
                         "Speech choices change the voice, pace, pitch, and pause used during dictation.",
-                        "Practice choices control repeats, automatic movement, and whether new cards begin revealed.",
+                        "Practice choices control audio repeats and whether new cards begin revealed.",
                         "The Practice card also shows the number of sets and vocabulary words stored on this Mac."
                     ]
                 )
@@ -136,7 +134,6 @@ struct SettingsDashboard: View {
             minimumHeight: primaryCardMinimumHeight
         ) {
             Stepper("Repeat each word \(repeatCount) time\(repeatCount == 1 ? "" : "s")", value: $repeatCount, in: 1...5)
-            Toggle("Automatically advance after playback", isOn: $automaticProgression)
             Toggle("Begin each new card with the answer shown", isOn: $keepCardsRevealed)
 
             Label(

@@ -89,10 +89,7 @@ struct ContentView: View {
         .frame(minWidth: 900, idealWidth: 1024, minHeight: 650, idealHeight: 768)
         .background(TingXiePalette.workspace)
         .sheet(isPresented: $isCreatingSet) {
-            NewDictationSetSheet { title, words in
-                let store = DictationStore(modelContainer: modelContext.container)
-                try await store.createSet(title: title, words: words)
-            }
+            NewDictationSetSheet(modelContainer: modelContext.container)
         }
     }
 

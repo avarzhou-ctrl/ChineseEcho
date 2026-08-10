@@ -1,5 +1,17 @@
 import SwiftUI
 
+// Applies the small offset and fade used by directional content replacement.
+private struct TingXieDirectionalTransitionModifier: ViewModifier {
+    let offset: CGSize
+    let opacity: Double
+
+    func body(content: Content) -> some View {
+        content
+            .offset(x: offset.width, y: offset.height)
+            .opacity(opacity)
+    }
+}
+
 // Centralizes adaptive colors shared by every TingXieFlow workspace and control.
 enum TingXiePalette {
     static let sidebar = Color(red: 41 / 255, green: 97 / 255, blue: 36 / 255)
@@ -19,6 +31,142 @@ enum TingXiePalette {
     static let wordOfDay = Color(red: 253 / 255, green: 251 / 255, blue: 167 / 255)
     static let missed = Color(red: 196 / 255, green: 31 / 255, blue: 35 / 255)
     static let tableStripe = Color(red: 165 / 255, green: 198 / 255, blue: 162 / 255).opacity(0.4)
+}
+
+// Centralizes short, restrained animations used when filters and collection content change.
+enum TingXieMotion {
+    static func filterSelection(reduceMotion: Bool) -> Animation {
+        reduceMotion
+            ? .easeOut(duration: 0.12)
+            : .snappy(duration: 0.28, extraBounce: 0.04)
+    }
+
+    static func contentChange(reduceMotion: Bool) -> Animation {
+        reduceMotion ? .easeOut(duration: 0.12) : .smooth(duration: 0.24)
+    }
+
+    static func directionalTransition(
+        enteringFrom edge: Edge,
+        reduceMotion: Bool
+    ) -> AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        let insertionOffset = offset(for: edge)
+        let removalOffset = offset(for: opposite(edge))
+        return .asymmetric(
+            insertion: .modifier(
+                active: TingXieDirectionalTransitionModifier(
+                    offset: insertionOffset,
+                    opacity: 0
+                ),
+                identity: TingXieDirectionalTransitionModifier(offset: .zero, opacity: 1)
+            ),
+            removal: .modifier(
+                active: TingXieDirectionalTransitionModifier(
+                    offset: removalOffset,
+                    opacity: 0
+                ),
+                identity: TingXieDirectionalTransitionModifier(offset: .zero, opacity: 1)
+            )
+        )
+    }
+
+    static func rowTransition(reduceMotion: Bool) -> AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        return .asymmetric(
+            insertion: .move(edge: .top).combined(with: .opacity),
+            removal: .scale(scale: 0.98).combined(with: .opacity)
+        )
+    }
+
+    static func inspectorTransition(reduceMotion: Bool) -> AnyTransition {
+        reduceMotion
+            ? .opacity
+            : .opacity.combined(with: .scale(scale: 0.99))
+    }
+
+    private static func opposite(_ edge: Edge) -> Edge {
+        return switch edge {
+        case .top: .bottom
+        case .leading: .trailing
+        case .bottom: .top
+        case .trailing: .leading
+        }
+    }
+
+    private static func offset(for edge: Edge) -> CGSize {
+        return switch edge {
+        case .top: CGSize(width: 0, height: -16)
+        case .leading: CGSize(width: -16, height: 0)
+        case .bottom: CGSize(width: 0, height: 16)
+        case .trailing: CGSize(width: 16, height: 0)
+        }
+    }
+}
+
+// Slides one shared selection surface between equal-width filter choices.
+struct SlidingFilterBar<Item: Hashable & Identifiable>: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Namespace private var selectionAnimation
+
+    let items: [Item]
+    @Binding var selection: Item
+    let title: (Item) -> String
+    let selectionShape: AnyShape
+    let containerShape: AnyShape
+
+    init(
+        items: [Item],
+        selection: Binding<Item>,
+        selectionShape: AnyShape = AnyShape(Capsule()),
+        containerShape: AnyShape = AnyShape(Capsule()),
+        title: @escaping (Item) -> String
+    ) {
+        self.items = items
+        _selection = selection
+        self.title = title
+        self.selectionShape = selectionShape
+        self.containerShape = containerShape
+    }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(items) { item in
+                Button {
+                    guard selection != item else { return }
+                    withAnimation(TingXieMotion.filterSelection(reduceMotion: reduceMotion)) {
+                        selection = item
+                    }
+                } label: {
+                    ZStack {
+                        if selection == item {
+                            selectionShape
+                                .fill(Color.white)
+                                .matchedGeometryEffect(
+                                    id: "selected-filter",
+                                    in: selectionAnimation
+                                )
+                        }
+
+                        Text(title(item))
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(
+                                selection == item
+                                    ? TingXiePalette.accent
+                                    : TingXiePalette.onSurfaceVariant
+                            )
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(selectionShape)
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+                .frame(height: 36)
+                .accessibilityAddTraits(selection == item ? .isSelected : [])
+            }
+        }
+        .padding(4)
+        .background(TingXiePalette.surfaceContainerHigh, in: containerShape)
+    }
 }
 
 // Provides primary navigation, collapse behavior, and the daily vocabulary shortcut.

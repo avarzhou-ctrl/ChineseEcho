@@ -8,7 +8,6 @@ enum AppPreferenceKey {
     static let speechPitch = "speechPitch"
     static let interWordPause = "interWordPause"
     static let repeatCount = "practiceRepeatCount"
-    static let automaticProgression = "practiceAutomaticProgression"
     static let keepCardsRevealed = "practiceKeepCardsRevealed"
 
     static let all = [
@@ -18,7 +17,6 @@ enum AppPreferenceKey {
         speechPitch,
         interWordPause,
         repeatCount,
-        automaticProgression,
         keepCardsRevealed
     ]
 }
@@ -30,7 +28,6 @@ enum AppPreferenceDefault {
     static let speechPitch = 1.0
     static let interWordPause = 1.25
     static let repeatCount = 1
-    static let automaticProgression = true
     static let keepCardsRevealed = false
 }
 
