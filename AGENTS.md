@@ -58,6 +58,10 @@ Ask first:
 - Format: "**YYYY-MM-DD**: [Brief description of changes with which files were edited]"
 
 # Project Log
+- **2026-08-10**: Restored the bundled local generation configuration from Qwen2.5 7B Instruct 4-bit to Qwen 3 4B 4-bit. Files edited: `TingXieFlow/Services/LLM.swift`, `AGENTS.md`.
+- **2026-08-10**: Switched the bundled local generation configuration from Qwen 3 4B 4-bit to Qwen2.5 7B Instruct 4-bit. Files edited: `TingXieFlow/Services/LLM.swift`, `AGENTS.md`.
+- **2026-08-10**: Upgraded the bundled local generation configuration from Qwen 3 1.7B 4-bit to Qwen 3 4B 4-bit for stronger Chinese sentence generation. Files edited: `TingXieFlow/Services/LLM.swift`, `AGENTS.md`.
+- **2026-08-10**: Removed the Chinese terminal-punctuation emphasis from the local model's sentence-quality contract to avoid encouraging duplicated sentence endings. Files edited: `TingXieFlow/Services/LLM.swift`, `AGENTS.md`.
 - **2026-08-10**: Upgraded the bundled local generation configuration from Qwen 3 0.6B 4-bit to Qwen 3 1.7B 4-bit for stronger sentence quality and instruction following. Files edited: `TingXieFlow/Services/LLM.swift`, `AGENTS.md`.
 - **2026-08-10**: Aligned the Vocabulary Hub sentence-generation prompt with the system sentence-quality contract by requiring a complete, concrete modern Chinese example and removing the conflicting brevity instruction. Files edited: `TingXieFlow/Views/VocabularyHubView.swift`, `AGENTS.md`.
 - **2026-08-10**: Added a conditional sentence-quality contract to the local model's system prompt covering completeness, length, exact vocabulary use, concrete context, Chinese punctuation, non-generic output, and learner-appropriate language. Files edited: `TingXieFlow/Services/LLM.swift`, `AGENTS.md`.

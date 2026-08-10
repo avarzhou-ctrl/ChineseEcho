@@ -120,7 +120,6 @@ actor LocalLanguageModel {
             - Write exactly one complete sentence in modern Chinese, roughly 15–35 Chinese characters long.
             - Naturally include the exact vocabulary word supplied by the learner.
             - Ground the sentence in a concrete situation, action, reason, or consequence.
-            - End with Chinese sentence punctuation such as 。, ！, or ？.
             - Do not write a definition, heading, fragment, or generic template.
             - Use age-appropriate language for elementary to early-middle-school learners.
             """,
@@ -140,7 +139,7 @@ actor LocalLanguageModel {
         let container = try await MLXLMCommon.loadModelContainer(
             from: HuggingFaceDownloader(),
             using: HuggingFaceTokenizerLoader(),
-            configuration: LLMRegistry.qwen3_1_7b_4bit
+            configuration: LLMRegistry.qwen3_4b_4bit
         )
         modelContainer = container
         return container
