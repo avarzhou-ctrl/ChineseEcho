@@ -9,7 +9,7 @@ import Foundation
 import SwiftData
 
 @Model
-class DictationSet {
+nonisolated final class DictationSet {
     var title: String
     var dateCreated: Date
     

@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-struct NewVocabularyWord: Sendable, Identifiable {
+nonisolated struct NewVocabularyWord: Sendable, Identifiable {
     let id = UUID()
     let chinese: String
     let pinyin: String
@@ -50,7 +50,9 @@ actor DictationStore {
         title: String,
         words: [NewVocabularyWord]
     ) throws {
-        guard let set = modelContext.model(for: setID) as? DictationSet else { return }
+        guard let set = self[setID, as: DictationSet.self] else {
+            throw DictationStoreError.setNotFound
+        }
         set.title = title
         var unmatchedWords = set.vocabularyWords
         var updatedWords: [VocabularyWord] = []
@@ -147,5 +149,13 @@ actor DictationStore {
         guard let word = modelContext.model(for: wordID) as? VocabularyWord else { return }
         word.generatedSentence = sentence
         try modelContext.save()
+    }
+}
+
+private enum DictationStoreError: LocalizedError {
+    case setNotFound
+
+    var errorDescription: String? {
+        "The dictation set could not be found. Close this editor and try again."
     }
 }

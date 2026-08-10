@@ -591,12 +591,16 @@ struct GreenCapsuleButtonStyle: ButtonStyle {
 }
 
 struct OutlineCapsuleButtonStyle: ButtonStyle {
+    var fontSize: CGFloat = 15
+    var horizontalPadding: CGFloat = 22
+    var height: CGFloat = 40
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 15, weight: .bold, design: .rounded))
+            .font(.system(size: fontSize, weight: .bold, design: .rounded))
             .foregroundStyle(TingXiePalette.accent)
-            .padding(.horizontal, 22)
-            .frame(height: 40)
+            .padding(.horizontal, horizontalPadding)
+            .frame(height: height)
             .background(TingXiePalette.accent.opacity(configuration.isPressed ? 0.08 : 0.01))
             .clipShape(Capsule())
             .overlay { Capsule().stroke(TingXiePalette.accent.opacity(0.25), lineWidth: 1) }

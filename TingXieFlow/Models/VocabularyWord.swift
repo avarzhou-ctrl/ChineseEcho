@@ -8,7 +8,7 @@
 import SwiftData
 
 @Model
-class VocabularyWord {
+nonisolated final class VocabularyWord {
     var chinese: String
     var englishTranslation: String
     var pinyin: String

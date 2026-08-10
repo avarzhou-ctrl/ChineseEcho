@@ -131,14 +131,18 @@ struct SmartDictationView: View {
             isSearchResultsPresented = !searchText.tingXieTrimmed.isEmpty
         }
         .sheet(item: $editingSet) { set in
+            let setID = set.persistentModelID
+            let initialTitle = set.title
+            let initialWords = set.vocabularyWords.map { NewVocabularyWord($0) }
+
             NewDictationSetSheet(
                 mode: .edit,
-                initialTitle: set.title,
-                initialWords: set.vocabularyWords.map(NewVocabularyWord.init)
+                initialTitle: initialTitle,
+                initialWords: initialWords
             ) { title, words in
                 let store = DictationStore(modelContainer: modelContext.container)
                 try await store.updateSet(
-                    setID: set.persistentModelID,
+                    setID: setID,
                     title: title,
                     words: words
                 )
@@ -935,7 +939,7 @@ struct NewDictationSetSheet: View {
         self.mode = mode
         self.onSave = onSave
         _title = State(initialValue: initialTitle)
-        _draftWords = State(initialValue: initialWords.map(DraftVocabularyWord.init))
+        _draftWords = State(initialValue: initialWords.map { DraftVocabularyWord($0) })
     }
 
     var body: some View {
@@ -964,8 +968,17 @@ struct NewDictationSetSheet: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         VStack(alignment: .leading, spacing: 7) {
-                            Text("Set Name")
-                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            HStack(spacing: 8) {
+                                Text("Set Name")
+                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                if let errorMessage {
+                                    Label(errorMessage, systemImage: "exclamationmark.circle.fill")
+                                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                                        .foregroundStyle(TingXiePalette.missed)
+                                        .lineLimit(1)
+                                        .help(errorMessage)
+                                }
+                            }
                             TextField("e.g., Travel essentials", text: $title)
                                 .textFieldStyle(.plain)
                                 .padding(.horizontal, 14)
@@ -1001,9 +1014,17 @@ struct NewDictationSetSheet: View {
                                         ProgressView().controlSize(.small)
                                     } else {
                                         Label("Fill Details", systemImage: "wand.and.stars")
+                                            .lineLimit(1)
+                                            .fixedSize(horizontal: true, vertical: false)
                                     }
                                 }
-                                .buttonStyle(OutlineCapsuleButtonStyle())
+                                .buttonStyle(
+                                    OutlineCapsuleButtonStyle(
+                                        fontSize: 12,
+                                        horizontalPadding: 12,
+                                        height: 32
+                                    )
+                                )
                                 .disabled(inputChineseWords.isEmpty || isGenerating)
                             }
                         }
@@ -1034,11 +1055,6 @@ struct NewDictationSetSheet: View {
                             }
                         }
 
-                        if let errorMessage {
-                            Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
-                                .font(.caption)
-                                .foregroundStyle(TingXiePalette.missed)
-                        }
                     }
                     .padding(24)
                 }
@@ -1105,7 +1121,7 @@ struct NewDictationSetSheet: View {
                         .labelStyle(.titleAndIcon)
                 }
                 .buttonStyle(GreenCapsuleButtonStyle())
-                .disabled(cleanTitle.isEmpty || validWords.isEmpty || isSaving || isGenerating)
+                .disabled(isSaving)
             }
             .padding(.horizontal, 28)
             .frame(height: 76)
@@ -1137,6 +1153,19 @@ struct NewDictationSetSheet: View {
 
     private var validWords: [NewVocabularyWord] {
         draftWords.compactMap(\.savedValue)
+    }
+
+    private var saveValidationMessage: String? {
+        if cleanTitle.isEmpty {
+            return "Enter a set name before saving."
+        }
+        if validWords.isEmpty {
+            return "Add at least one word before saving."
+        }
+        if isGenerating {
+            return "Wait for Fill Details to finish before saving."
+        }
+        return nil
     }
 
     @ViewBuilder
@@ -1387,6 +1416,11 @@ struct NewDictationSetSheet: View {
     }
 
     private func save() {
+        if let saveValidationMessage {
+            errorMessage = saveValidationMessage
+            return
+        }
+
         let words = validWords
         isSaving = true
         errorMessage = nil
