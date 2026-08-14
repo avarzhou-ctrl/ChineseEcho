@@ -406,7 +406,7 @@ private struct SettingsSectionCard<Content: View>: View {
         }
         .padding(22)
         .frame(maxWidth: .infinity, minHeight: minimumHeight, alignment: .topLeading)
-        .tonalCard(cornerRadius: 18)
+        .tonalCard(cornerRadius: 18, fill: TingXiePalette.lightGreenSurface)
     }
 }
 

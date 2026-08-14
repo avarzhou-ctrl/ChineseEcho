@@ -19,6 +19,7 @@ enum TingXiePalette {
     static let background = Color(red: 235 / 255, green: 255 / 255, blue: 230 / 255)
     static let workspace = background
     static let surface = Color(red: 236 / 255, green: 247 / 255, blue: 235 / 255)
+    static let lightGreenSurface = Color(red: 230 / 255, green: 249 / 255, blue: 224 / 255)
     static let surfaceContainer = Color(red: 215 / 255, green: 246 / 255, blue: 211 / 255)
     static let surfaceContainerHigh = Color(red: 209 / 255, green: 241 / 255, blue: 206 / 255)
     static let surfaceContainerHighest = Color(red: 203 / 255, green: 235 / 255, blue: 200 / 255)
@@ -785,10 +786,11 @@ struct OutlineCapsuleButtonStyle: ButtonStyle {
 // Applies the shared translucent card surface and subtle outline.
 struct TonalCardModifier: ViewModifier {
     var cornerRadius: CGFloat = 16
+    var fill = TingXiePalette.surface
 
     func body(content: Content) -> some View {
         content
-            .background(TingXiePalette.surface.opacity(0.76), in: RoundedRectangle(cornerRadius: cornerRadius))
+            .background(fill.opacity(0.76), in: RoundedRectangle(cornerRadius: cornerRadius))
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .stroke(.white.opacity(0.72), lineWidth: 1)
@@ -797,8 +799,11 @@ struct TonalCardModifier: ViewModifier {
 }
 
 extension View {
-    func tonalCard(cornerRadius: CGFloat = 16) -> some View {
-        modifier(TonalCardModifier(cornerRadius: cornerRadius))
+    func tonalCard(
+        cornerRadius: CGFloat = 16,
+        fill: Color = TingXiePalette.surface
+    ) -> some View {
+        modifier(TonalCardModifier(cornerRadius: cornerRadius, fill: fill))
     }
 }
 
@@ -810,6 +815,7 @@ private struct TingXieColorPalettePreview: View {
         ("Background", "#EBFFE6", TingXiePalette.background),
         ("Workspace", "Background", TingXiePalette.workspace),
         ("Surface", "#ECF7EB", TingXiePalette.surface),
+        ("Light Green Surface", "#E6F9E0", TingXiePalette.lightGreenSurface),
         ("Surface Container", "#D7F6D3", TingXiePalette.surfaceContainer),
         ("Surface Container High", "#D1F1CE", TingXiePalette.surfaceContainerHigh),
         ("Surface Container Highest", "#CBEBC8", TingXiePalette.surfaceContainerHighest),

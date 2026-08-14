@@ -139,7 +139,7 @@ struct VocabularyHubView: View {
                     TingXieMotion.contentChange(reduceMotion: reduceMotion),
                     value: selectedWord?.persistentModelID
                 )
-                .frame(minWidth: 360, idealWidth: 500)
+                .frame(minWidth: 420, idealWidth: 560)
                 .clipped()
             }
             .onTapGesture { isSearchResultsPresented = false }
@@ -470,7 +470,7 @@ private struct VocabularyRow: View {
                 .padding(.trailing, 16)
         }
         .background(
-            isSelected ? TingXiePalette.surface : Color.clear,
+            isSelected ? TingXiePalette.lightGreenSurface : Color.clear,
             in: RoundedRectangle(cornerRadius: 13)
         )
         .overlay {
@@ -580,22 +580,19 @@ private struct VocabularyInspector: View {
             if let word {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        HStack(alignment: .top, spacing: 18) {
+                        HStack(alignment: .center, spacing: 18) {
                             Text(word.chinese)
-                                .font(.system(size: word.chinese.count > 3 ? 62 : 88, weight: .bold, design: .rounded))
+                                .font(.system(size: word.chinese.count > 3 ? 52 : 66, weight: .bold, design: .rounded))
                                 .foregroundStyle(TingXiePalette.accent)
                                 .minimumScaleFactor(0.7)
                                 .lineLimit(1)
 
                             Spacer()
-
-                            WordTags(word: word, compact: false, showsMissed: isMissed)
-                                .padding(.top, 10)
                         }
 
-                        HStack(spacing: 10) {
+                        HStack(spacing: 12) {
                             Text(word.pinyin.isEmpty ? "No pinyin" : word.pinyin)
-                                .font(.system(size: 20, weight: .semibold, design: .rounded))
+                                .font(.system(size: 19, weight: .semibold, design: .rounded))
                                 .foregroundStyle(TingXiePalette.onBackground)
 
                             Button {
@@ -603,8 +600,8 @@ private struct VocabularyInspector: View {
                                 audioEngine.speak(word.chinese)
                             } label: {
                                 Image(systemName: "speaker.wave.2.fill")
-                                    .font(.system(size: 15, weight: .semibold))
-                                    .frame(width: 32, height: 32)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .frame(width: 42, height: 42)
                                     .background(TingXiePalette.surfaceContainerHigh, in: Circle())
                                     .contentShape(Circle())
                             }
@@ -613,19 +610,21 @@ private struct VocabularyInspector: View {
                             .help("Play \(word.chinese)")
                             .accessibilityLabel("Play \(word.chinese)")
 
-                            Spacer(minLength: 0)
+                            WordTags(word: word, compact: false, showsMissed: isMissed)
+
+                            Spacer(minLength: 8)
                         }
-                        .padding(.top, 14)
+                        .padding(.top, 8)
 
                         Divider()
                             .overlay(TingXiePalette.outlineVariant.opacity(0.5))
-                            .padding(.vertical, 22)
+                            .padding(.vertical, 18)
 
-                        InspectorSectionTitle("Translation")
+                        InspectorSectionTitle("Meaning")
                         Text(word.englishTranslation.isEmpty ? "No translation yet" : word.englishTranslation)
-                            .font(.system(size: 22, design: .rounded))
-                            .lineSpacing(4)
-                            .padding(.top, 10)
+                            .font(.system(size: 20, design: .rounded))
+                            .lineSpacing(3)
+                            .padding(.top, 7)
 
                         HStack(alignment: .center) {
                             InspectorSectionTitle("Contextual Sentences")
@@ -649,25 +648,35 @@ private struct VocabularyInspector: View {
                                 }
                             }
                             .buttonStyle(.plain)
-                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
                             .foregroundStyle(TingXiePalette.accent)
+                            .frame(minHeight: 32)
+                            .contentShape(Rectangle())
                             .disabled(isGenerating || modelDownloadCoordinator.isPreparing)
+                            .help(
+                                contextualSentences.isEmpty
+                                    ? "Generate two contextual sentences"
+                                    : "Replace both contextual sentences"
+                            )
                         }
-                        .padding(.top, 34)
+                        .padding(.top, 26)
 
                         if contextualSentences.isEmpty {
-                            Text("Generate two natural example sentences to see how \(word.chinese) is used in everyday situations.")
-                                .font(.system(size: 15, design: .rounded))
-                                .foregroundStyle(TingXiePalette.secondary)
-                                .lineSpacing(4)
-                                .padding(.top, 12)
+                            Text("No sentences generated yet")
+                                .font(.system(size: 14, design: .rounded))
+                                .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.7))
+                                .padding(.top, 10)
                         } else {
-                            VStack(spacing: 14) {
+                            VStack(spacing: 12) {
                                 ForEach(contextualSentences) { example in
-                                    ContextualSentenceCard(example: example, vocabulary: word.chinese)
+                                    ContextualSentenceCard(
+                                        example: example,
+                                        chineseVocabulary: word.chinese,
+                                        englishMeaning: word.englishTranslation
+                                    )
                                 }
                             }
-                            .padding(.top, 14)
+                            .padding(.top, 12)
                         }
 
                         if let generationError {
@@ -695,10 +704,13 @@ private struct VocabularyInspector: View {
                                 .buttonStyle(GreenCapsuleButtonStyle())
                                 .frame(maxWidth: .infinity)
                             }
-                            .padding(.top, 34)
+                            .padding(.top, 26)
                         }
                     }
-                    .padding(30)
+                    .frame(maxWidth: 720, alignment: .leading)
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 24)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else {
                 ContentUnavailableView(
@@ -709,11 +721,7 @@ private struct VocabularyInspector: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .background(TingXiePalette.surface.opacity(0.62))
-        .clipShape(RoundedRectangle(cornerRadius: 24))
-        .overlay { RoundedRectangle(cornerRadius: 24).stroke(.white.opacity(0.7), lineWidth: 1) }
-        .padding(.trailing, 40)
-        .padding(.bottom, 32)
+        .background(TingXiePalette.background)
         .onAppear { audioEngine.configureFromPreferences() }
         .onDisappear { audioEngine.stop() }
     }
@@ -722,10 +730,10 @@ private struct VocabularyInspector: View {
         guard let word else { return }
         let wordID = word.persistentModelID
         let prompt = """
-        请用词语“\(word.chinese)”写两个不同的现代中文例句，并为每句提供自然、简洁的英文翻译。每个中文例句都必须自然包含完全相同的词语“\(word.chinese)”，并严格遵守系统提供的例句质量要求。
+        请用词语“\(word.chinese)”（英文含义：\(word.englishTranslation)）写两个不同的现代中文例句，并为每句提供自然、简洁的英文翻译。每个中文例句都必须自然包含完全相同的词语“\(word.chinese)”，并严格遵守系统提供的例句质量要求。英文翻译必须完整翻译该词语，不能保留任何中文字符。每个 englishVocabulary 字段必须逐字复制该英文翻译中对应“\(word.chinese)”的英文词语或短语，包括实际使用的词形。
 
         只输出以下 JSON，不要使用 Markdown 或添加其他文字：
-        {"examples":[{"chinese":"第一个中文例句","english":"First English translation."},{"chinese":"第二个中文例句","english":"Second English translation."}]}
+        {"examples":[{"chinese":"第一个中文例句","english":"First English translation.","englishVocabulary":"translated term"},{"chinese":"第二个中文例句","english":"Second English translation.","englishVocabulary":"translated term"}]}
         """
         isGenerating = true
         generationError = nil
@@ -733,7 +741,24 @@ private struct VocabularyInspector: View {
         Task {
             do {
                 let response = try await generateText(prompt: prompt)
-                let payload = try ContextualSentencePayload.parse(response, vocabulary: word.chinese)
+                let payload: ContextualSentencePayload
+                do {
+                    payload = try ContextualSentencePayload.parse(
+                        response,
+                        vocabulary: word.chinese
+                    )
+                } catch ContextualSentenceError.invalidResponse {
+                    let repairedResponse = try await generateText(
+                        prompt: contextualSentenceRepairPrompt(
+                            response,
+                            vocabulary: word.chinese
+                        )
+                    )
+                    payload = try ContextualSentencePayload.parse(
+                        repairedResponse,
+                        vocabulary: word.chinese
+                    )
+                }
                 let sentence = try payload.encoded()
                 let store = DictationStore(modelContainer: modelContext.container)
                 try await store.setGeneratedSentence(sentence, wordID: wordID)
@@ -742,6 +767,22 @@ private struct VocabularyInspector: View {
             }
             isGenerating = false
         }
+    }
+
+    private func contextualSentenceRepairPrompt(
+        _ candidate: String,
+        vocabulary: String
+    ) -> String {
+        """
+        Repair the candidate output into exactly two complete bilingual examples for the Chinese vocabulary word “\(vocabulary)”. Each Chinese sentence must naturally contain the exact word “\(vocabulary)”. Each English field must be a complete, natural English translation of its Chinese sentence and must not contain any Chinese characters. Translate the vocabulary word instead of copying it into the English field. Each englishVocabulary field must copy the exact English word or phrase used to translate “\(vocabulary)” in that example's English sentence, including its actual inflection.
+
+        Return only valid JSON in this exact shape, with no Markdown or commentary:
+        {"examples":[{"chinese":"第一个中文例句","english":"First English translation.","englishVocabulary":"translated term"},{"chinese":"第二个中文例句","english":"Second English translation.","englishVocabulary":"translated term"}]}
+
+        <candidate_output>
+        \(candidate)
+        </candidate_output>
+        """
     }
 
     private var contextualSentences: [ContextualSentence] {
@@ -774,7 +815,14 @@ nonisolated private struct ContextualSentencePayload: Codable {
               let payload = try? JSONDecoder().decode(Self.self, from: data),
               payload.examples.count == 2,
               payload.examples.allSatisfy({
-                  !$0.chinese.isEmpty && !$0.english.isEmpty && $0.chinese.contains(vocabulary)
+                  !$0.chinese.isEmpty
+                      && !$0.english.isEmpty
+                      && $0.chinese.contains(vocabulary)
+                      && !containsHan($0.english)
+                      && !($0.englishVocabulary ?? "").isEmpty
+                      && $0.english.localizedCaseInsensitiveContains(
+                          $0.englishVocabulary ?? ""
+                      )
               }) else {
             throw ContextualSentenceError.invalidResponse
         }
@@ -785,11 +833,16 @@ nonisolated private struct ContextualSentencePayload: Codable {
         guard let value, !value.isEmpty else { return [] }
         if let data = value.data(using: .utf8),
            let payload = try? JSONDecoder().decode(Self.self, from: data) {
+            guard payload.examples.allSatisfy({ !containsHan($0.english) }) else { return [] }
             return payload.examples
         }
 
         // Keep sentences generated by earlier app versions visible after this UI update.
-        return [ContextualSentence(chinese: value, english: "")]
+        return [ContextualSentence(chinese: value, english: "", englishVocabulary: nil)]
+    }
+
+    private static func containsHan(_ text: String) -> Bool {
+        text.range(of: "\\p{Han}", options: .regularExpression) != nil
     }
 }
 
@@ -797,6 +850,7 @@ nonisolated private struct ContextualSentence: Codable, Identifiable {
     var id: String { chinese + english }
     let chinese: String
     let english: String
+    let englishVocabulary: String?
 }
 
 nonisolated private enum ContextualSentenceError: LocalizedError {
@@ -807,48 +861,98 @@ nonisolated private enum ContextualSentenceError: LocalizedError {
     }
 }
 
-// Presents one example with the studied vocabulary visually anchored in the Chinese sentence.
+// Presents one example with the studied vocabulary visually anchored in both languages.
 private struct ContextualSentenceCard: View {
     let example: ContextualSentence
-    let vocabulary: String
+    let chineseVocabulary: String
+    let englishMeaning: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            highlightedSentence
-                .font(.system(size: 21, weight: .medium, design: .rounded))
+        VStack(alignment: .leading, spacing: 9) {
+            highlightedChineseSentence
+                .font(.system(size: 18, weight: .medium, design: .rounded))
                 .foregroundStyle(TingXiePalette.onBackground)
-                .lineSpacing(5)
+                .lineSpacing(4)
 
             if !example.english.isEmpty {
-                Text(example.english)
-                    .font(.system(size: 15, design: .rounded))
+                highlightedEnglishSentence
+                    .font(.system(size: 14, design: .rounded))
                     .foregroundStyle(TingXiePalette.secondary)
-                    .lineSpacing(3)
+                    .lineSpacing(2)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 18)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.42), in: RoundedRectangle(cornerRadius: 16))
+        .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 14))
         .overlay {
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.55), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(TingXiePalette.outlineVariant.opacity(0.65), lineWidth: 1)
         }
     }
 
-    private var highlightedSentence: Text {
-        guard !vocabulary.isEmpty else { return Text(example.chinese) }
-        let parts = example.chinese.components(separatedBy: vocabulary)
-        guard parts.count > 1 else { return Text(example.chinese) }
+    private var highlightedChineseSentence: Text {
+        highlightedText(
+            example.chinese,
+            term: chineseVocabulary,
+            color: TingXiePalette.accent
+        )
+    }
 
-        var result = Text("")
-        for index in parts.indices {
-            result = result + Text(parts[index])
-            if index < parts.index(before: parts.endIndex) {
-                result = result + Text(vocabulary).bold().foregroundColor(TingXiePalette.accent)
-            }
+    private var highlightedEnglishSentence: Text {
+        let recordedTerm = example.englishVocabulary?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if let recordedTerm, !recordedTerm.isEmpty {
+            return highlightedText(example.english, term: recordedTerm)
         }
-        return result
+
+        let matchingTerm = englishMeaningCandidates.first {
+            example.english.localizedCaseInsensitiveContains($0)
+        }
+        return highlightedText(example.english, term: matchingTerm ?? "")
+    }
+
+    private var englishMeaningCandidates: [String] {
+        englishMeaning
+            .components(separatedBy: CharacterSet(charactersIn: ";,/|"))
+            .flatMap { rawTerm -> [String] in
+                let term = rawTerm.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !term.isEmpty else { return [] }
+                let prefixes = ["to ", "a ", "an ", "the "]
+                if let prefix = prefixes.first(where: {
+                    term.lowercased().hasPrefix($0)
+                }) {
+                    return [term, String(term.dropFirst(prefix.count))]
+                }
+                return [term]
+            }
+            .filter { !$0.isEmpty }
+            .sorted { $0.count > $1.count }
+    }
+
+    private func highlightedText(
+        _ text: String,
+        term: String,
+        color: Color? = nil
+    ) -> Text {
+        guard !term.isEmpty else { return Text(text) }
+        var remainder = text[...]
+        var result = Text("")
+        var foundMatch = false
+
+        while let range = remainder.range(of: term, options: .caseInsensitive) {
+            foundMatch = true
+            result = result + Text(String(remainder[..<range.lowerBound]))
+            var emphasized = Text(String(remainder[range])).bold()
+            if let color {
+                emphasized = emphasized.foregroundColor(color)
+            }
+            result = result + emphasized
+            remainder = remainder[range.upperBound...]
+        }
+
+        guard foundMatch else { return Text(text) }
+        return result + Text(String(remainder))
     }
 }
 

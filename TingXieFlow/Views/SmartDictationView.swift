@@ -101,6 +101,8 @@ struct SmartDictationView: View {
                                     onDuplicateSet: duplicateSet,
                                     onDeleteSet: { setPendingDeletion = $0 }
                                 )
+
+                                DictationLearningMetrics(sets: sets)
                             }
                             .padding(.horizontal, 40)
                             .padding(.bottom, 96)
@@ -224,6 +226,112 @@ struct SmartDictationView: View {
                 operationError = error.localizedDescription
             }
         }
+    }
+}
+
+// Summarizes persistent practice outcomes across all dictation sets.
+private struct DictationLearningMetrics: View {
+    let sets: [DictationSet]
+
+    @State private var analytics = PracticeAnalyticsSnapshot.empty
+
+    private var vocabularyKeys: Set<String> {
+        Set(sets.flatMap(\.vocabularyWords).map(Self.vocabularyKey))
+    }
+
+    private var masteredVocabulary: Set<String> {
+        analytics.masteredVocabulary.intersection(vocabularyKeys)
+    }
+
+    private var charactersLearned: Int {
+        Set(
+            masteredVocabulary
+                .joined()
+                .unicodeScalars
+                .filter(Self.isHanCharacter)
+        ).count
+    }
+
+    var body: some View {
+        HStack(spacing: 18) {
+            LearningMetricCard(
+                title: "STUDY STREAK",
+                value: "\(analytics.studyStreak)",
+                detail: analytics.studyStreak == 1 ? "Day" : "Days",
+                symbol: "flame.fill"
+            )
+            LearningMetricCard(
+                title: "CHARACTERS LEARNED",
+                value: "\(charactersLearned)",
+                detail: "characters",
+                symbol: "character.book.closed.fill"
+            )
+            LearningMetricCard(
+                title: "ACCURACY",
+                value: analytics.accuracy.map { ($0 * 100).formatted(.number.precision(.fractionLength(1))) } ?? "—",
+                detail: analytics.totalAttempts == 0 ? "No attempts yet" : "%",
+                symbol: "target"
+            )
+        }
+        .onAppear(perform: refreshAnalytics)
+        .onReceive(NotificationCenter.default.publisher(for: .practiceAnalyticsDidChange)) { _ in
+            refreshAnalytics()
+        }
+    }
+
+    private func refreshAnalytics() {
+        analytics = PracticeAnalyticsStore.snapshot()
+    }
+
+    nonisolated private static func vocabularyKey(_ word: VocabularyWord) -> String {
+        word.chinese.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    nonisolated private static func isHanCharacter(_ scalar: Unicode.Scalar) -> Bool {
+        (0x3400...0x4DBF).contains(scalar.value)
+            || (0x4E00...0x9FFF).contains(scalar.value)
+            || (0xF900...0xFAFF).contains(scalar.value)
+            || (0x20000...0x2FA1F).contains(scalar.value)
+    }
+}
+
+// Keeps the three headline learning signals visually equal at flexible window widths.
+private struct LearningMetricCard: View {
+    let title: String
+    let value: String
+    let detail: String
+    let symbol: String
+
+    var body: some View {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .tracking(1.2)
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.68))
+
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(value)
+                        .font(.system(size: 30, weight: .bold, design: .rounded))
+                        .foregroundStyle(TingXiePalette.accent)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                    Text(detail)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                        .lineLimit(2)
+                }
+            }
+
+            Spacer(minLength: 4)
+
+            Image(systemName: symbol)
+                .font(.system(size: 28, weight: .medium))
+                .foregroundStyle(TingXiePalette.secondary.opacity(0.2))
+        }
+        .padding(.horizontal, 24)
+        .frame(maxWidth: .infinity, minHeight: 112)
+        .tonalCard(fill: TingXiePalette.lightGreenSurface)
     }
 }
 
@@ -382,7 +490,7 @@ private struct DictationSetCollection: View {
                 .padding(.horizontal, 32)
                 .padding(.vertical, 28)
                 .frame(maxWidth: .infinity, minHeight: 180)
-                .tonalCard()
+                .tonalCard(fill: TingXiePalette.lightGreenSurface)
             } else {
                 LazyVStack(spacing: 12) {
                     ForEach(sets) { set in
@@ -408,6 +516,22 @@ private struct DictationSetRow: View {
     let onDuplicate: () -> Void
     let onDelete: () -> Void
 
+    @State private var analytics = PracticeAnalyticsSnapshot.empty
+
+    private var vocabularyKeys: Set<String> {
+        Set(
+            set.vocabularyWords.map {
+                $0.chinese.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        )
+    }
+
+    private var progress: Double {
+        guard !vocabularyKeys.isEmpty else { return 0 }
+        let masteredCount = analytics.masteredVocabulary.intersection(vocabularyKeys).count
+        return Double(masteredCount) / Double(vocabularyKeys.count)
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             Button(action: onOpen) {
@@ -418,7 +542,7 @@ private struct DictationSetRow: View {
                         .frame(width: 52, height: 52)
                         .background(TingXiePalette.surfaceContainerHigh, in: RoundedRectangle(cornerRadius: 14))
 
-                    VStack(alignment: .leading, spacing: 5) {
+                    VStack(alignment: .leading, spacing: 6) {
                         Text(set.title)
                             .font(.system(size: 18, weight: .medium, design: .rounded))
                         HStack(spacing: 12) {
@@ -427,12 +551,30 @@ private struct DictationSetRow: View {
                         }
                         .font(.system(size: 12, design: .rounded))
                         .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.72))
+
+                        HStack(spacing: 9) {
+                            Text("Progress")
+                                .font(.system(size: 11, weight: .medium, design: .rounded))
+                                .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.72))
+
+                            ProgressView(value: progress)
+                                .tint(TingXiePalette.accent)
+                                .frame(maxWidth: 240)
+
+                            Text(progress, format: .percent.precision(.fractionLength(0)))
+                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                .foregroundStyle(TingXiePalette.secondary)
+                                .monospacedDigit()
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Learning progress")
+                        .accessibilityValue(progress.formatted(.percent.precision(.fractionLength(0))))
                     }
 
                     Spacer()
                 }
                 .padding(.leading, 18)
-                .frame(maxWidth: .infinity, minHeight: 78)
+                .frame(maxWidth: .infinity, minHeight: 96)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -461,8 +603,16 @@ private struct DictationSetRow: View {
                 .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.45))
                 .padding(.trailing, 18)
         }
-        .frame(maxWidth: .infinity, minHeight: 78)
-        .tonalCard()
+        .frame(maxWidth: .infinity, minHeight: 96)
+        .tonalCard(fill: TingXiePalette.lightGreenSurface)
+        .onAppear(perform: refreshAnalytics)
+        .onReceive(NotificationCenter.default.publisher(for: .practiceAnalyticsDidChange)) { _ in
+            refreshAnalytics()
+        }
+    }
+
+    private func refreshAnalytics() {
+        analytics = PracticeAnalyticsStore.snapshot()
     }
 }
 
@@ -480,6 +630,9 @@ private struct PracticeGradeAction {
     let wordID: PersistentIdentifier
     let queueIndex: Int
     let wasMissed: Bool
+    let markedMissed: Bool
+    let vocabularyKey: String
+    let previousMastery: Bool?
 }
 
 // Coordinates filtered practice progress, speech repetition, and missed-word updates.
@@ -849,7 +1002,12 @@ private struct PracticeSessionView: View {
         let action = PracticeGradeAction(
             wordID: wordID,
             queueIndex: currentIndex,
-            wasMissed: isMissed(currentWord)
+            wasMissed: isMissed(currentWord),
+            markedMissed: asMissed,
+            vocabularyKey: currentWord.chinese.tingXieTrimmed,
+            previousMastery: PracticeAnalyticsStore.masteryState(
+                for: currentWord.chinese.tingXieTrimmed
+            )
         )
         isUpdatingGrade = true
         stopPlayback()
@@ -858,6 +1016,10 @@ private struct PracticeSessionView: View {
             do {
                 try await store.setMissed(asMissed, wordID: wordID)
                 missedOverrides[wordID] = asMissed
+                PracticeAnalyticsStore.recordResult(
+                    isCorrect: !asMissed,
+                    vocabularyKey: action.vocabularyKey
+                )
                 gradeHistory.append(action)
                 hasGradedCurrentCard = true
 
@@ -885,6 +1047,11 @@ private struct PracticeSessionView: View {
             do {
                 try await store.setMissed(action.wasMissed, wordID: action.wordID)
                 missedOverrides[action.wordID] = action.wasMissed
+                PracticeAnalyticsStore.undoResult(
+                    isCorrect: !action.markedMissed,
+                    vocabularyKey: action.vocabularyKey,
+                    restoringMastery: action.previousMastery
+                )
                 gradeHistory.removeLast()
                 cardTransitionEdge = .leading
                 currentIndex = min(action.queueIndex, max(sessionWordIDs.count - 1, 0))
@@ -927,7 +1094,7 @@ private struct PracticeFlipCard: View {
         Button(action: flip) {
             ZStack {
                 RoundedRectangle(cornerRadius: 28)
-                    .fill(TingXiePalette.surface)
+                    .fill(TingXiePalette.lightGreenSurface)
 
                 cardFace(isAnswer: false)
                     .opacity(isFlipped ? 0 : 1)
@@ -1158,7 +1325,7 @@ struct NewDictationSetSheet: View {
                                 .textFieldStyle(.plain)
                                 .padding(.horizontal, 14)
                                 .frame(height: 44)
-                                .background(TingXiePalette.surface, in: RoundedRectangle(cornerRadius: 9))
+                                .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 9))
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
@@ -1176,7 +1343,7 @@ struct NewDictationSetSheet: View {
                                 .scrollContentBackground(.hidden)
                                 .padding(9)
                                 .frame(minHeight: 110)
-                                .background(TingXiePalette.surface, in: RoundedRectangle(cornerRadius: 9))
+                                .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 9))
                                 .accessibilityLabel("Chinese words to enrich")
 
                             HStack {
@@ -1227,7 +1394,7 @@ struct NewDictationSetSheet: View {
                                 .scrollContentBackground(.hidden)
                                 .padding(8)
                                 .frame(minHeight: 90)
-                                .background(TingXiePalette.surface, in: RoundedRectangle(cornerRadius: 9))
+                                .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 9))
                             HStack {
                                 Text("One per line: Chinese | pinyin | translation")
                                     .font(.system(size: 10, design: .rounded))
@@ -1315,7 +1482,7 @@ struct NewDictationSetSheet: View {
         }
         .foregroundStyle(TingXiePalette.onBackground)
         .background(.ultraThinMaterial)
-        .background(TingXiePalette.surface.opacity(0.84))
+        .background(TingXiePalette.lightGreenSurface.opacity(0.84))
         .frame(width: 900, height: 680)
     }
 
@@ -1399,7 +1566,7 @@ struct NewDictationSetSheet: View {
                     .padding(10)
             }
             .frame(maxHeight: 150)
-            .background(TingXiePalette.surface, in: RoundedRectangle(cornerRadius: 8))
+            .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 8))
         }
     }
 
@@ -1686,7 +1853,7 @@ private struct DraftVocabularyRow: View {
                 .font(.system(size: 12, design: .rounded))
         }
         .padding(14)
-        .background(TingXiePalette.surface.opacity(0.78), in: RoundedRectangle(cornerRadius: 12))
+        .background(TingXiePalette.lightGreenSurface.opacity(0.78), in: RoundedRectangle(cornerRadius: 12))
         .overlay {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(TingXiePalette.outlineVariant.opacity(0.6), lineWidth: 1)
