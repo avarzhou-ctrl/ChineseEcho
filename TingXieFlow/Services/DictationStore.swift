@@ -38,18 +38,23 @@ nonisolated struct DictationSetSaveRequest: Sendable {
 // Performs all set and vocabulary mutations inside a dedicated SwiftData model actor.
 @ModelActor
 actor DictationStore {
-    func saveSet(_ request: DictationSetSaveRequest) throws {
+    func saveSet(
+        _ request: DictationSetSaveRequest
+    ) throws -> [ContextualSentenceGenerationTarget] {
         switch request.destination {
         case .new:
-            try createSet(request)
+            return try createSet(request)
         case .existing(let setID):
-            try updateSet(setID: setID, request: request)
+            return try updateSet(setID: setID, request: request)
         }
     }
 
-    private func createSet(_ request: DictationSetSaveRequest) throws {
+    private func createSet(
+        _ request: DictationSetSaveRequest
+    ) throws -> [ContextualSentenceGenerationTarget] {
         let set = DictationSet(title: request.title)
         modelContext.insert(set)
+        var newlyCreatedWords: [VocabularyWord] = []
 
         for value in request.words {
             let word = VocabularyWord(
@@ -62,21 +67,30 @@ actor DictationStore {
             word.session = set
             set.vocabularyWords.append(word)
             modelContext.insert(word)
+            newlyCreatedWords.append(word)
         }
 
         try modelContext.save()
+        return newlyCreatedWords.map {
+            ContextualSentenceGenerationTarget(
+                wordID: $0.persistentModelID,
+                chinese: $0.chinese,
+                englishTranslation: $0.englishTranslation
+            )
+        }
     }
 
     private func updateSet(
         setID: PersistentIdentifier,
         request: DictationSetSaveRequest
-    ) throws {
+    ) throws -> [ContextualSentenceGenerationTarget] {
         guard let set = self[setID, as: DictationSet.self] else {
             throw DictationStoreError.setNotFound
         }
         set.title = request.title
         var unmatchedWords = set.vocabularyWords
         var updatedWords: [VocabularyWord] = []
+        var newlyCreatedWords: [VocabularyWord] = []
 
         for value in request.words {
             let existingIndex = unmatchedWords.firstIndex {
@@ -97,6 +111,7 @@ actor DictationStore {
                     tags: [request.title]
                 )
                 modelContext.insert(word)
+                newlyCreatedWords.append(word)
             }
             word.session = set
             updatedWords.append(word)
@@ -107,6 +122,13 @@ actor DictationStore {
         }
         set.vocabularyWords = updatedWords
         try modelContext.save()
+        return newlyCreatedWords.map {
+            ContextualSentenceGenerationTarget(
+                wordID: $0.persistentModelID,
+                chinese: $0.chinese,
+                englishTranslation: $0.englishTranslation
+            )
+        }
     }
 
     func duplicateSet(setID: PersistentIdentifier) throws {

@@ -729,37 +729,15 @@ private struct VocabularyInspector: View {
     private func regenerateSentence() {
         guard let word else { return }
         let wordID = word.persistentModelID
-        let prompt = """
-        请用词语“\(word.chinese)”（英文含义：\(word.englishTranslation)）写两个不同的现代中文例句，并为每句提供自然、简洁的英文翻译。每个中文例句都必须自然包含完全相同的词语“\(word.chinese)”，并严格遵守系统提供的例句质量要求。英文翻译必须完整翻译该词语，不能保留任何中文字符。每个 englishVocabulary 字段必须逐字复制该英文翻译中对应“\(word.chinese)”的英文词语或短语，包括实际使用的词形。
-
-        只输出以下 JSON，不要使用 Markdown 或添加其他文字：
-        {"examples":[{"chinese":"第一个中文例句","english":"First English translation.","englishVocabulary":"translated term"},{"chinese":"第二个中文例句","english":"Second English translation.","englishVocabulary":"translated term"}]}
-        """
         isGenerating = true
         generationError = nil
 
         Task {
             do {
-                let response = try await generateText(prompt: prompt)
-                let payload: ContextualSentencePayload
-                do {
-                    payload = try ContextualSentencePayload.parse(
-                        response,
-                        vocabulary: word.chinese
-                    )
-                } catch ContextualSentenceError.invalidResponse {
-                    let repairedResponse = try await generateText(
-                        prompt: contextualSentenceRepairPrompt(
-                            response,
-                            vocabulary: word.chinese
-                        )
-                    )
-                    payload = try ContextualSentencePayload.parse(
-                        repairedResponse,
-                        vocabulary: word.chinese
-                    )
-                }
-                let sentence = try payload.encoded()
+                let sentence = try await ContextualSentenceGenerator.generateStoredSentence(
+                    chinese: word.chinese,
+                    englishTranslation: word.englishTranslation
+                )
                 let store = DictationStore(modelContainer: modelContext.container)
                 try await store.setGeneratedSentence(sentence, wordID: wordID)
             } catch {
@@ -769,96 +747,10 @@ private struct VocabularyInspector: View {
         }
     }
 
-    private func contextualSentenceRepairPrompt(
-        _ candidate: String,
-        vocabulary: String
-    ) -> String {
-        """
-        Repair the candidate output into exactly two complete bilingual examples for the Chinese vocabulary word “\(vocabulary)”. Each Chinese sentence must naturally contain the exact word “\(vocabulary)”. Each English field must be a complete, natural English translation of its Chinese sentence and must not contain any Chinese characters. Translate the vocabulary word instead of copying it into the English field. Each englishVocabulary field must copy the exact English word or phrase used to translate “\(vocabulary)” in that example's English sentence, including its actual inflection.
-
-        Return only valid JSON in this exact shape, with no Markdown or commentary:
-        {"examples":[{"chinese":"第一个中文例句","english":"First English translation.","englishVocabulary":"translated term"},{"chinese":"第二个中文例句","english":"Second English translation.","englishVocabulary":"translated term"}]}
-
-        <candidate_output>
-        \(candidate)
-        </candidate_output>
-        """
-    }
-
     private var contextualSentences: [ContextualSentence] {
         ContextualSentencePayload.storedExamples(from: word?.generatedSentence)
     }
 
-}
-
-// Stores bilingual examples inside the existing sentence field without requiring a SwiftData migration.
-nonisolated private struct ContextualSentencePayload: Codable {
-    let examples: [ContextualSentence]
-
-    func encoded() throws -> String {
-        let data = try JSONEncoder().encode(self)
-        guard let value = String(data: data, encoding: .utf8) else {
-            throw ContextualSentenceError.invalidResponse
-        }
-        return value
-    }
-
-    static func parse(_ response: String, vocabulary: String) throws -> Self {
-        let trimmed = response.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let openingBrace = trimmed.firstIndex(of: "{"),
-              let closingBrace = trimmed.lastIndex(of: "}") else {
-            throw ContextualSentenceError.invalidResponse
-        }
-
-        let json = String(trimmed[openingBrace...closingBrace])
-        guard let data = json.data(using: .utf8),
-              let payload = try? JSONDecoder().decode(Self.self, from: data),
-              payload.examples.count == 2,
-              payload.examples.allSatisfy({
-                  !$0.chinese.isEmpty
-                      && !$0.english.isEmpty
-                      && $0.chinese.contains(vocabulary)
-                      && !containsHan($0.english)
-                      && !($0.englishVocabulary ?? "").isEmpty
-                      && $0.english.localizedCaseInsensitiveContains(
-                          $0.englishVocabulary ?? ""
-                      )
-              }) else {
-            throw ContextualSentenceError.invalidResponse
-        }
-        return payload
-    }
-
-    static func storedExamples(from value: String?) -> [ContextualSentence] {
-        guard let value, !value.isEmpty else { return [] }
-        if let data = value.data(using: .utf8),
-           let payload = try? JSONDecoder().decode(Self.self, from: data) {
-            guard payload.examples.allSatisfy({ !containsHan($0.english) }) else { return [] }
-            return payload.examples
-        }
-
-        // Keep sentences generated by earlier app versions visible after this UI update.
-        return [ContextualSentence(chinese: value, english: "", englishVocabulary: nil)]
-    }
-
-    private static func containsHan(_ text: String) -> Bool {
-        text.range(of: "\\p{Han}", options: .regularExpression) != nil
-    }
-}
-
-nonisolated private struct ContextualSentence: Codable, Identifiable {
-    var id: String { chinese + english }
-    let chinese: String
-    let english: String
-    let englishVocabulary: String?
-}
-
-nonisolated private enum ContextualSentenceError: LocalizedError {
-    case invalidResponse
-
-    var errorDescription: String? {
-        "Local AI did not return two complete bilingual examples. Please try again."
-    }
 }
 
 // Presents one example with the studied vocabulary visually anchored in both languages.
@@ -870,14 +762,12 @@ private struct ContextualSentenceCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
             highlightedChineseSentence
-                .font(.system(size: 18, weight: .medium, design: .rounded))
                 .foregroundStyle(TingXiePalette.onBackground)
                 .lineSpacing(4)
 
             if !example.english.isEmpty {
                 highlightedEnglishSentence
-                    .font(.system(size: 14, design: .rounded))
-                    .foregroundStyle(TingXiePalette.secondary)
+                    .foregroundStyle(TingXiePalette.onBackground)
                     .lineSpacing(2)
             }
         }
@@ -895,7 +785,7 @@ private struct ContextualSentenceCard: View {
         highlightedText(
             example.chinese,
             term: chineseVocabulary,
-            color: TingXiePalette.accent
+            size: 18
         )
     }
 
@@ -903,13 +793,17 @@ private struct ContextualSentenceCard: View {
         let recordedTerm = example.englishVocabulary?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         if let recordedTerm, !recordedTerm.isEmpty {
-            return highlightedText(example.english, term: recordedTerm)
+            return highlightedText(example.english, term: recordedTerm, size: 14)
         }
 
         let matchingTerm = englishMeaningCandidates.first {
             example.english.localizedCaseInsensitiveContains($0)
         }
-        return highlightedText(example.english, term: matchingTerm ?? "")
+        return highlightedText(
+            example.english,
+            term: matchingTerm ?? "",
+            size: 14
+        )
     }
 
     private var englishMeaningCandidates: [String] {
@@ -933,26 +827,26 @@ private struct ContextualSentenceCard: View {
     private func highlightedText(
         _ text: String,
         term: String,
-        color: Color? = nil
+        size: CGFloat
     ) -> Text {
-        guard !term.isEmpty else { return Text(text) }
+        let regularFont = Font.system(size: size, weight: .regular, design: .rounded)
+        let boldFont = Font.system(size: size, weight: .bold, design: .rounded)
+        guard !term.isEmpty else { return Text(text).font(regularFont) }
         var remainder = text[...]
         var result = Text("")
         var foundMatch = false
 
         while let range = remainder.range(of: term, options: .caseInsensitive) {
             foundMatch = true
-            result = result + Text(String(remainder[..<range.lowerBound]))
-            var emphasized = Text(String(remainder[range])).bold()
-            if let color {
-                emphasized = emphasized.foregroundColor(color)
-            }
-            result = result + emphasized
+            result = result
+                + Text(String(remainder[..<range.lowerBound])).font(regularFont)
+            result = result
+                + Text(String(remainder[range])).font(boldFont)
             remainder = remainder[range.upperBound...]
         }
 
-        guard foundMatch else { return Text(text) }
-        return result + Text(String(remainder))
+        guard foundMatch else { return Text(text).font(regularFont) }
+        return result + Text(String(remainder)).font(regularFont)
     }
 }
 
@@ -1122,7 +1016,7 @@ private func populatedVocabularyHubPreview() -> some View {
         chinese: "把握", englishTranslation: "to grasp", pinyin: "bǎ wò", tags: [setTitle]
     )
     featuredWord.generatedSentence = """
-    {"examples":[{"chinese":"你要好好把握这个难得的机会。","english":"You should really grasp this rare opportunity."},{"chinese":"他对这次考试很有把握。","english":"He is very certain about this exam."}]}
+    {"examples":[{"chinese":"你要好好把握这个难得的机会。","english":"You should really grasp this rare opportunity.","englishVocabulary":"grasp"},{"chinese":"他对这次考试很有把握。","english":"He is very certain about this exam.","englishVocabulary":"certain"}]}
     """
     let idiom = VocabularyWord(
         chinese: "莫名其妙", englishTranslation: "Baffling; without rhyme or reason",

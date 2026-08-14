@@ -1787,8 +1787,14 @@ struct NewDictationSetSheet: View {
         Task { @MainActor in
             do {
                 let store = DictationStore(modelContainer: modelContainer)
-                try await store.saveSet(request)
+                let generationTargets = try await store.saveSet(request)
                 dismiss()
+                Task { @MainActor in
+                    await ContextualSentenceGenerator.generateAndStore(
+                        targets: generationTargets,
+                        modelContainer: modelContainer
+                    )
+                }
             } catch {
                 errorMessage = error.localizedDescription
                 isSaving = false
