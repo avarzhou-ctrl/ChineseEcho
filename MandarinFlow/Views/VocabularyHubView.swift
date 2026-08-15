@@ -422,13 +422,13 @@ private struct VocabularyRow: View {
             Button(action: onSelect) {
                 HStack(spacing: 14) {
                     Text(word.chinese)
-                        .font(.system(size: 30, weight: .medium, design: .rounded))
+                        .font(TingXieTypography.vocabulary(size: 30, weight: .medium))
                         .foregroundStyle(isMissed ? TingXiePalette.missed : TingXiePalette.onBackground)
                         .frame(minWidth: 78, alignment: .leading)
 
                     VStack(alignment: .leading, spacing: 6) {
                         Text(word.pinyin.isEmpty ? "No pinyin" : word.pinyin)
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(TingXiePalette.onSurfaceVariant)
                         WordTags(word: word, compact: true, showsMissed: isMissed)
                     }
@@ -498,17 +498,17 @@ private struct VocabularySearchResultRow: View {
         Button(action: onSelect) {
             HStack(spacing: 12) {
                 Text(word.chinese)
-                    .font(.system(size: 24, weight: .semibold, design: .rounded))
+                    .font(TingXieTypography.vocabulary(size: 24))
                     .foregroundStyle(isMissed ? TingXiePalette.missed : TingXiePalette.accent)
                     .frame(minWidth: 52, alignment: .leading)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(word.pinyin.isEmpty ? "No pinyin" : word.pinyin)
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(TingXiePalette.onBackground)
                         .lineLimit(1)
                     Text(word.englishTranslation.isEmpty ? "No translation yet" : word.englishTranslation)
-                        .font(.system(size: 12, design: .rounded))
+                        .font(.system(size: 12))
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                         .lineLimit(1)
                 }
@@ -554,7 +554,7 @@ private struct SearchResultBadge: View {
 
     var body: some View {
         Text(title)
-            .font(.system(size: 9, weight: .bold, design: .rounded))
+            .font(.system(size: 9, weight: .bold))
             .foregroundStyle(color)
             .padding(.horizontal, 6)
             .frame(height: 20)
@@ -582,7 +582,7 @@ private struct VocabularyInspector: View {
                     VStack(alignment: .leading, spacing: 0) {
                         HStack(alignment: .center, spacing: 18) {
                             Text(word.chinese)
-                                .font(.system(size: word.chinese.count > 3 ? 52 : 66, weight: .bold, design: .rounded))
+                                .font(TingXieTypography.vocabulary(size: word.chinese.count > 3 ? 52 : 66, weight: .bold))
                                 .foregroundStyle(TingXiePalette.accent)
                                 .minimumScaleFactor(0.7)
                                 .lineLimit(1)
@@ -592,7 +592,7 @@ private struct VocabularyInspector: View {
 
                         HStack(spacing: 12) {
                             Text(word.pinyin.isEmpty ? "No pinyin" : word.pinyin)
-                                .font(.system(size: 19, weight: .semibold, design: .rounded))
+                                .font(.system(size: 19, weight: .semibold))
                                 .foregroundStyle(TingXiePalette.onBackground)
 
                             Button {
@@ -600,8 +600,8 @@ private struct VocabularyInspector: View {
                                 audioEngine.speak(word.chinese)
                             } label: {
                                 Image(systemName: "speaker.wave.2.fill")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .frame(width: 42, height: 42)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .frame(width: 34, height: 34)
                                     .background(TingXiePalette.surfaceContainerHigh, in: Circle())
                                     .contentShape(Circle())
                             }
@@ -622,7 +622,7 @@ private struct VocabularyInspector: View {
 
                         InspectorSectionTitle("Meaning")
                         Text(word.englishTranslation.isEmpty ? "No translation yet" : word.englishTranslation)
-                            .font(.system(size: 20, design: .rounded))
+                            .font(TingXieTypography.sectionTitle)
                             .lineSpacing(3)
                             .padding(.top, 7)
 
@@ -648,7 +648,7 @@ private struct VocabularyInspector: View {
                                 }
                             }
                             .buttonStyle(.plain)
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(TingXiePalette.accent)
                             .frame(minHeight: 32)
                             .contentShape(Rectangle())
@@ -663,7 +663,7 @@ private struct VocabularyInspector: View {
 
                         if contextualSentences.isEmpty {
                             Text("No sentences generated yet")
-                                .font(.system(size: 14, design: .rounded))
+                                .font(TingXieTypography.body)
                                 .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.7))
                                 .padding(.top, 10)
                         } else {
@@ -692,7 +692,7 @@ private struct VocabularyInspector: View {
                                     "This word is in Missed Words.",
                                     systemImage: "flag.fill"
                                 )
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(TingXiePalette.missed)
 
                                 Button(
@@ -829,8 +829,8 @@ private struct ContextualSentenceCard: View {
         term: String,
         size: CGFloat
     ) -> Text {
-        let regularFont = Font.system(size: size, weight: .regular, design: .rounded)
-        let boldFont = Font.system(size: size, weight: .bold, design: .rounded)
+        let regularFont = Font.system(size: size, weight: .regular)
+        let boldFont = Font.system(size: size, weight: .bold)
         guard !term.isEmpty else { return Text(text).font(regularFont) }
         var remainder = text[...]
         var result = Text("")
@@ -857,9 +857,9 @@ private struct InspectorSectionTitle: View {
     init(_ title: String) { self.title = title }
 
     var body: some View {
-        Text(title.uppercased())
-            .font(.system(size: 10, weight: .bold, design: .rounded))
-            .tracking(1.2)
+        Text(title)
+            .font(TingXieTypography.eyebrow)
+            .tracking(0.15)
             .foregroundStyle(TingXiePalette.secondary.opacity(0.65))
     }
 }
@@ -889,7 +889,7 @@ private struct TagLabel: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: compact ? 9 : 10, weight: .bold, design: .rounded))
+            .font(.system(size: compact ? 9 : 10, weight: .bold))
             .foregroundStyle(color)
             .padding(.horizontal, compact ? 7 : 9)
             .frame(height: compact ? 20 : 24)
@@ -926,7 +926,7 @@ private struct WordEditorSheet: View {
         VStack(spacing: 0) {
             HStack {
                 Label("Edit Vocabulary", systemImage: "pencil")
-                    .font(.system(size: 23, weight: .bold, design: .rounded))
+                    .font(.system(size: 23, weight: .semibold))
                     .foregroundStyle(TingXiePalette.accent)
                 Spacer()
                 Button {

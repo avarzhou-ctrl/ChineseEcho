@@ -14,13 +14,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		47C37C903001F3B600285D18 /* TingXieFlow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TingXieFlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		47C37C903001F3B600285D18 /* MandarinFlow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MandarinFlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		47C37C923001F3B600285D18 /* TingXieFlow */ = {
+		47C37C923001F3B600285D18 /* MandarinFlow */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = TingXieFlow;
+			path = MandarinFlow;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -43,7 +43,7 @@
 		47C37C873001F3B600285D18 = {
 			isa = PBXGroup;
 			children = (
-				47C37C923001F3B600285D18 /* TingXieFlow */,
+				47C37C923001F3B600285D18 /* MandarinFlow */,
 				47C37C913001F3B600285D18 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -51,7 +51,7 @@
 		47C37C913001F3B600285D18 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				47C37C903001F3B600285D18 /* TingXieFlow.app */,
+				47C37C903001F3B600285D18 /* MandarinFlow.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -59,9 +59,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		47C37C8F3001F3B600285D18 /* TingXieFlow */ = {
+		47C37C8F3001F3B600285D18 /* MandarinFlow */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 47C37C9D3001F3B900285D18 /* Build configuration list for PBXNativeTarget "TingXieFlow" */;
+			buildConfigurationList = 47C37C9D3001F3B900285D18 /* Build configuration list for PBXNativeTarget "MandarinFlow" */;
 			buildPhases = (
 				47C37C8C3001F3B600285D18 /* Sources */,
 				47C37C8D3001F3B600285D18 /* Frameworks */,
@@ -72,17 +72,17 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				47C37C923001F3B600285D18 /* TingXieFlow */,
+				47C37C923001F3B600285D18 /* MandarinFlow */,
 			);
-			name = TingXieFlow;
+			name = MandarinFlow;
 			packageProductDependencies = (
 				A10000110000000000000001 /* MLXLLM */,
 				A10000120000000000000001 /* MLXLMCommon */,
 				A10000140000000000000001 /* HuggingFace */,
 				A10000150000000000000001 /* Tokenizers */,
 			);
-			productName = TingXieFlow;
-			productReference = 47C37C903001F3B600285D18 /* TingXieFlow.app */;
+			productName = MandarinFlow;
+			productReference = 47C37C903001F3B600285D18 /* MandarinFlow.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -100,7 +100,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 47C37C8B3001F3B600285D18 /* Build configuration list for PBXProject "TingXieFlow" */;
+			buildConfigurationList = 47C37C8B3001F3B600285D18 /* Build configuration list for PBXProject "MandarinFlow" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -119,7 +119,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				47C37C8F3001F3B600285D18 /* TingXieFlow */,
+				47C37C8F3001F3B600285D18 /* MandarinFlow */,
 			);
 		};
 /* End PBXProject section */
@@ -348,7 +348,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		47C37C8B3001F3B600285D18 /* Build configuration list for PBXProject "TingXieFlow" */ = {
+		47C37C8B3001F3B600285D18 /* Build configuration list for PBXProject "MandarinFlow" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				47C37C9B3001F3B900285D18 /* Debug */,
@@ -357,7 +357,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		47C37C9D3001F3B900285D18 /* Build configuration list for PBXNativeTarget "TingXieFlow" */ = {
+		47C37C9D3001F3B900285D18 /* Build configuration list for PBXNativeTarget "MandarinFlow" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				47C37C9E3001F3B900285D18 /* Debug */,

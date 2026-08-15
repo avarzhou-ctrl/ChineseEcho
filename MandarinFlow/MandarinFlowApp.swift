@@ -1,6 +1,6 @@
 //
-//  TingXieFlowApp.swift
-//  TingXieFlow
+//  MandarinFlowApp.swift
+//  MandarinFlow
 //
 //  Created by Ava Zhou on 2026/7/10.
 //
@@ -10,7 +10,7 @@ import SwiftData
 
 // Configures the app window and injects the shared local SwiftData container.
 @main
-struct TingXieFlowApp: App {
+struct MandarinFlowApp: App {
     // Shared SwiftData container for app-wide local persistence.
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([

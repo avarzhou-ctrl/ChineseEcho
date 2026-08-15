@@ -1,6 +1,6 @@
 //
 //  DictationSet.swift
-//  TingXieFlow
+//  MandarinFlow
 //
 //  Created by Ava Zhou on 2026/7/11.
 //

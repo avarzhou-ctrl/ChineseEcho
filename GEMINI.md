@@ -2,7 +2,7 @@
 
 ## Project Structure
 ### Function
-- Chinese language learning assistant (Product Name: **TingXieFlow**)
+- Chinese language learning assistant (Product Name: **MandarinFlow**)
     - Smart 听写: The app uses native Apple TTS to read out dictation content using `AVSpeechSynthesizer`.
     - 错词 organization: Local Ollama (llama3 / gemma2) generates modern contextual sentences containing the user's specific 错词 via local JSON streaming.
     - 成语 logs: When an idiom is saved, the local LLM generates a casual sentence using it, adding custom tags (e.g., #joy, #sad, #humorous) and a breakdown of individual character meanings.

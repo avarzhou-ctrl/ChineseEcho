@@ -153,7 +153,7 @@ enum AppPreferenceDefault {
     static let keepCardsRevealed = false
 }
 
-// Provides one reset operation for every TingXieFlow-specific preference.
+// Provides one reset operation for every MandarinFlow-specific preference.
 extension UserDefaults {
     func resetTingXiePreferences() {
         AppPreferenceKey.all.forEach(removeObject(forKey:))

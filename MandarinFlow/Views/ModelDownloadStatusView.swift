@@ -15,19 +15,19 @@ struct ModelDownloadStatusView: View {
             VStack(alignment: .leading, spacing: 7) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(coordinator.statusTitle)
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .font(TingXieTypography.controlLabel)
 
                     Spacer(minLength: 8)
 
                     if coordinator.phase == .downloading {
                         Text(coordinator.percentageText)
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(TingXiePalette.accent)
                     }
                 }
 
                 Text(coordinator.statusDetail)
-                    .font(.system(size: 11, design: .rounded))
+                    .font(.system(size: 11))
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
                     .lineLimit(2)
 
@@ -39,7 +39,7 @@ struct ModelDownloadStatusView: View {
                         .accessibilityValue(coordinator.percentageText)
 
                     Label(coordinator.predictedTimeText, systemImage: "clock")
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                         .accessibilityLabel("Predicted Local AI download time")
                 } else if coordinator.phase == .checking || coordinator.phase == .loading {

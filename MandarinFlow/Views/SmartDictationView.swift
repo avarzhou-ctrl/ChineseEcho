@@ -255,19 +255,19 @@ private struct DictationLearningMetrics: View {
     var body: some View {
         HStack(spacing: 18) {
             LearningMetricCard(
-                title: "STUDY STREAK",
+                title: "Study Streak",
                 value: "\(analytics.studyStreak)",
                 detail: analytics.studyStreak == 1 ? "Day" : "Days",
                 symbol: "flame.fill"
             )
             LearningMetricCard(
-                title: "CHARACTERS LEARNED",
+                title: "Characters Learned",
                 value: "\(charactersLearned)",
                 detail: "characters",
                 symbol: "character.book.closed.fill"
             )
             LearningMetricCard(
-                title: "ACCURACY",
+                title: "Accuracy",
                 value: analytics.accuracy.map { ($0 * 100).formatted(.number.precision(.fractionLength(1))) } ?? "—",
                 detail: analytics.totalAttempts == 0 ? "No attempts yet" : "%",
                 symbol: "target"
@@ -306,18 +306,18 @@ private struct LearningMetricCard: View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(title)
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .tracking(1.2)
+                    .font(TingXieTypography.eyebrow)
+                    .tracking(0.15)
                     .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.68))
 
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(value)
-                        .font(.system(size: 30, weight: .bold, design: .rounded))
+                        .font(TingXieTypography.learningValue)
                         .foregroundStyle(TingXiePalette.accent)
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                     Text(detail)
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                         .lineLimit(2)
                 }
@@ -362,7 +362,7 @@ private struct DictationSearchResultRow: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(set.title)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(TingXiePalette.onBackground)
                         .lineLimit(1)
 
@@ -373,7 +373,7 @@ private struct DictationSearchResultRow: View {
                         Text("\(set.vocabularyWords.count) vocabulary words")
                     }
                 }
-                .font(.system(size: 12, design: .rounded))
+                .font(.system(size: 12))
                 .foregroundStyle(TingXiePalette.onSurfaceVariant)
 
                 Spacer()
@@ -409,12 +409,12 @@ private struct DictationHero: View {
         HStack(spacing: 28) {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Master your listening with focused audio drills.")
-                    .font(.system(size: 25, weight: .medium, design: .rounded))
+                    .font(.system(size: 25, weight: .medium))
                     .foregroundStyle(TingXiePalette.accent)
                     .frame(maxWidth: 480, alignment: .leading)
 
                 Text("Build a custom set from the Chinese you are learning, then listen, flip, and review at your own pace.")
-                    .font(.system(size: 15, design: .rounded))
+                    .font(.system(size: 15))
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
                     .lineSpacing(3)
                     .frame(maxWidth: 510, alignment: .leading)
@@ -469,7 +469,7 @@ private struct DictationSetCollection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Recent Dictation Practice")
-                .font(.system(size: 20, weight: .medium, design: .rounded))
+                .font(TingXieTypography.sectionTitle)
 
             if sets.isEmpty {
                 VStack(spacing: 12) {
@@ -477,9 +477,9 @@ private struct DictationSetCollection: View {
                         .font(.system(size: 34, weight: .medium))
                         .foregroundStyle(TingXiePalette.secondary.opacity(0.7))
                     Text(isSearching ? "No matching sets" : "No Sessions Yet")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .font(TingXieTypography.sectionTitle)
                     Text(isSearching ? "Try a different set name or vocabulary word." : "Create your first custom practice round to start testing your vocabulary.")
-                        .font(.system(size: 14, design: .rounded))
+                        .font(TingXieTypography.body)
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                         .multilineTextAlignment(.center)
                     if !isSearching {
@@ -544,17 +544,17 @@ private struct DictationSetRow: View {
 
                     VStack(alignment: .leading, spacing: 6) {
                         Text(set.title)
-                            .font(.system(size: 18, weight: .medium, design: .rounded))
+                            .font(.system(size: 18, weight: .medium))
                         HStack(spacing: 12) {
                             Label(set.dateCreated.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
                             Label("\(set.vocabularyWords.count) words", systemImage: "list.bullet")
                         }
-                        .font(.system(size: 12, design: .rounded))
+                        .font(.system(size: 12))
                         .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.72))
 
                         HStack(spacing: 9) {
                             Text("Progress")
-                                .font(.system(size: 11, weight: .medium, design: .rounded))
+                                .font(.system(size: 11, weight: .medium))
                                 .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.72))
 
                             ProgressView(value: progress)
@@ -562,7 +562,7 @@ private struct DictationSetRow: View {
                                 .frame(maxWidth: 240)
 
                             Text(progress, format: .percent.precision(.fractionLength(0)))
-                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                .font(.system(size: 11, weight: .semibold))
                                 .foregroundStyle(TingXiePalette.secondary)
                                 .monospacedDigit()
                         }
@@ -710,12 +710,12 @@ private struct PracticeSessionView: View {
 
             HStack(alignment: .bottom, spacing: 20) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("CURRENT SET")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .tracking(1.2)
+                    Text("Current Set")
+                        .font(TingXieTypography.eyebrow)
+                        .tracking(0.15)
                         .foregroundStyle(TingXiePalette.secondary)
                     Text(set.title)
-                        .font(.system(size: 24, weight: .medium, design: .rounded))
+                        .font(.system(size: 24, weight: .medium))
                 }
                 Spacer()
                 PracticeFilterBar(selection: animatedFilter)
@@ -799,7 +799,7 @@ private struct PracticeSessionView: View {
                         .disabled(!canUndoLastGrade)
                 }
                 .buttonStyle(.borderless)
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(TingXiePalette.onSurfaceVariant)
                 .frame(maxWidth: 650)
                 .padding(.bottom, 10)
@@ -841,7 +841,7 @@ private struct PracticeSessionView: View {
                 .offset(y: 32)
 
                 Text("Press Space or click the card to flip")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.68))
                     .frame(height: 18)
                     .opacity(isCardFlipped ? 0 : 1)
@@ -897,7 +897,7 @@ private struct PracticeSessionView: View {
             HStack(alignment: .bottom, spacing: 32) {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Card \(min(currentIndex + 1, sessionWordIDs.count)) of \(sessionWordIDs.count)")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .font(.system(size: 13, weight: .semibold))
                     ProgressView(value: Double(currentIndex + 1), total: Double(max(sessionWordIDs.count, 1)))
                         .tint(TingXiePalette.accent)
                         .frame(maxWidth: .infinity)
@@ -1128,21 +1128,21 @@ private struct PracticeFlipCard: View {
         VStack(spacing: 18) {
             if isAnswer {
                 Text(word.chinese)
-                    .font(.system(size: word.chinese.count > 4 ? 48 : 64, weight: .bold, design: .rounded))
+                    .font(TingXieTypography.vocabulary(size: word.chinese.count > 4 ? 48 : 64, weight: .bold))
                     .foregroundStyle(showsMissed ? TingXiePalette.missed : TingXiePalette.accent)
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
 
                 Text(word.pinyin.isEmpty ? "No pinyin" : word.pinyin)
-                    .font(.system(size: 25, weight: .semibold, design: .rounded))
+                    .font(.system(size: 25, weight: .semibold))
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
 
                 Text(word.englishTranslation.isEmpty ? "No translation yet" : word.englishTranslation)
-                    .font(.system(size: 15, design: .rounded))
+                    .font(.system(size: 15))
                     .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.78))
             } else {
                 Text(word.pinyin.isEmpty ? "Listen carefully" : word.pinyin)
-                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .font(.system(size: 40, weight: .bold))
                     .foregroundStyle(TingXiePalette.accent)
             }
         }
@@ -1290,7 +1290,7 @@ struct NewDictationSetSheet: View {
                 Image(systemName: "character.book.closed")
                     .foregroundStyle(TingXiePalette.accent)
                 Text(mode.title)
-                    .font(.system(size: 24, weight: .medium, design: .rounded))
+                    .font(.system(size: 24, weight: .medium))
                     .foregroundStyle(TingXiePalette.accent)
                 Spacer()
                 Button { dismiss() } label: {
@@ -1312,10 +1312,10 @@ struct NewDictationSetSheet: View {
                         VStack(alignment: .leading, spacing: 7) {
                             HStack(spacing: 8) {
                                 Text("Set Name")
-                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 13, weight: .semibold))
                                 if let errorMessage {
                                     Label(errorMessage, systemImage: "exclamationmark.circle.fill")
-                                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                                        .font(.system(size: 10, weight: .medium))
                                         .foregroundStyle(TingXiePalette.missed)
                                         .lineLimit(1)
                                         .help(errorMessage)
@@ -1330,16 +1330,16 @@ struct NewDictationSetSheet: View {
 
                         VStack(alignment: .leading, spacing: 8) {
                             Label("Fill Vocabulary Details", systemImage: "text.book.closed")
-                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .font(.system(size: 15, weight: .bold))
                                 .foregroundStyle(TingXiePalette.accent)
 
                             Text("Enter Chinese words separated by commas, spaces, or new lines.")
-                                .font(.system(size: 12, design: .rounded))
+                                .font(.system(size: 12))
                                 .foregroundStyle(TingXiePalette.onSurfaceVariant)
                                 .lineSpacing(2)
 
                             TextEditor(text: $chineseWordInput)
-                                .font(.system(size: 13, design: .rounded))
+                                .font(.system(size: 13))
                                 .scrollContentBackground(.hidden)
                                 .padding(9)
                                 .frame(minHeight: 110)
@@ -1348,7 +1348,7 @@ struct NewDictationSetSheet: View {
 
                             HStack {
                                 Text("Example: 苹果, 学习, 坚持")
-                                    .font(.system(size: 12, design: .rounded))
+                                    .font(.system(size: 12))
                                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
                                 Spacer()
                                 Button(action: enrichChineseWords) {
@@ -1388,7 +1388,7 @@ struct NewDictationSetSheet: View {
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Manual Import")
-                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .font(.system(size: 13, weight: .semibold))
                             TextEditor(text: $manualText)
                                 .font(.system(size: 12, design: .monospaced))
                                 .scrollContentBackground(.hidden)
@@ -1397,12 +1397,12 @@ struct NewDictationSetSheet: View {
                                 .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 9))
                             HStack {
                                 Text("One per line: Chinese | pinyin | translation")
-                                    .font(.system(size: 10, design: .rounded))
+                                    .font(.system(size: 10))
                                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
                                 Spacer()
                                 Button("Import Lines", systemImage: "square.and.arrow.down", action: importManualLines)
                                     .buttonStyle(.plain)
-                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 11, weight: .semibold))
                                     .foregroundStyle(TingXiePalette.accent)
                                     .disabled(manualText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                             }
@@ -1417,15 +1417,15 @@ struct NewDictationSetSheet: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Review Words")
-                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .font(.system(size: 16, weight: .bold))
                             Text("\(validWords.count) ready to save")
-                                .font(.system(size: 11, design: .rounded))
+                                .font(.system(size: 11))
                                 .foregroundStyle(TingXiePalette.onSurfaceVariant)
                         }
                         Spacer()
                         Button("Add Word", systemImage: "plus", action: addBlankWord)
                             .buttonStyle(.plain)
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(TingXiePalette.accent)
                     }
 
@@ -1463,7 +1463,7 @@ struct NewDictationSetSheet: View {
 
             HStack(spacing: 14) {
                 Text("Dictionary lookups and AI fallbacks stay on this Mac and are always reviewed before saving.")
-                    .font(.system(size: 10, design: .rounded))
+                    .font(.system(size: 10))
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
                 Spacer()
                 Button("Cancel") { dismiss() }
@@ -1527,12 +1527,12 @@ struct NewDictationSetSheet: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Label("Model Output", systemImage: "text.bubble")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(TingXiePalette.accent)
                     Spacer()
                     Button("Copy", systemImage: "doc.on.doc", action: copyModelOutput)
                         .buttonStyle(.plain)
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(TingXiePalette.accent)
                 }
 
@@ -1555,7 +1555,7 @@ struct NewDictationSetSheet: View {
     private func modelOutputSection(title: String, text: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(TingXiePalette.onSurfaceVariant)
             ScrollView {
                 Text(text)
@@ -1825,13 +1825,13 @@ private struct DraftVocabularyRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 TextField("Chinese", text: $word.chinese)
-                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .font(.system(size: 18, weight: .semibold))
                     .textFieldStyle(.plain)
                     .frame(minWidth: 90)
 
                 Toggle("Idiom", isOn: $word.isIdiom)
                     .toggleStyle(.checkbox)
-                    .font(.system(size: 10, design: .rounded))
+                    .font(.system(size: 10))
 
                 Spacer()
 
@@ -1851,12 +1851,12 @@ private struct DraftVocabularyRow: View {
 
             TextField("Pinyin", text: $word.pinyin)
                 .textFieldStyle(.plain)
-                .font(.system(size: 12, design: .rounded))
+                .font(.system(size: 12))
                 .foregroundStyle(TingXiePalette.onSurfaceVariant)
 
             TextField("English translation", text: $word.translation)
                 .textFieldStyle(.plain)
-                .font(.system(size: 12, design: .rounded))
+                .font(.system(size: 12))
         }
         .padding(14)
         .background(TingXiePalette.lightGreenSurface.opacity(0.78), in: RoundedRectangle(cornerRadius: 12))

@@ -1,6 +1,6 @@
 //
 //  CCCEDICTDictionary.swift
-//  TingXieFlow
+//  MandarinFlow
 //
 
 import Foundation

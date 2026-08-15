@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "47C37C8F3001F3B600285D18"
-               BuildableName = "TingXieFlow.app"
-               BlueprintName = "TingXieFlow"
-               ReferencedContainer = "container:TingXieFlow.xcodeproj">
+               BuildableName = "MandarinFlow.app"
+               BlueprintName = "MandarinFlow"
+               ReferencedContainer = "container:MandarinFlow.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -46,9 +46,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "47C37C8F3001F3B600285D18"
-            BuildableName = "TingXieFlow.app"
-            BlueprintName = "TingXieFlow"
-            ReferencedContainer = "container:TingXieFlow.xcodeproj">
+            BuildableName = "MandarinFlow.app"
+            BlueprintName = "MandarinFlow"
+            ReferencedContainer = "container:MandarinFlow.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -63,9 +63,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "47C37C8F3001F3B600285D18"
-            BuildableName = "TingXieFlow.app"
-            BlueprintName = "TingXieFlow"
-            ReferencedContainer = "container:TingXieFlow.xcodeproj">
+            BuildableName = "MandarinFlow.app"
+            BlueprintName = "MandarinFlow"
+            ReferencedContainer = "container:MandarinFlow.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

@@ -34,7 +34,7 @@ struct SettingsDashboard: View {
                 info: WorkspaceInfo(
                     title: "About Settings",
                     symbol: "gearshape",
-                    summary: "These preferences are stored locally on this Mac and apply to future TingXieFlow practice sessions.",
+                    summary: "These preferences are stored locally on this Mac and apply to future MandarinFlow practice sessions.",
                     tips: [
                         "Speech choices change the voice, pace, pitch, and pause used during dictation.",
                         "Practice choices control audio repeats and whether new cards begin revealed.",
@@ -161,7 +161,7 @@ struct SettingsDashboard: View {
                     : "New cards open on the listening side and can be flipped with Return or Space.",
                 systemImage: "keyboard"
             )
-            .font(.system(size: 11, design: .rounded))
+            .font(.system(size: 11))
             .foregroundStyle(TingXiePalette.onSurfaceVariant)
 
             Divider()
@@ -183,16 +183,16 @@ struct SettingsDashboard: View {
             HStack(alignment: .center, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(modelDownloadCoordinator.modelName)
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(.system(size: 15, weight: .bold))
                     Text(modelDownloadCoordinator.statusTitle)
-                        .font(.system(size: 12, design: .rounded))
+                        .font(.system(size: 12))
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                 }
 
                 Spacer()
 
                 Label(localAIStateLabel, systemImage: localAIStateSymbol)
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(localAIStateColor)
                     .padding(.horizontal, 10)
                     .frame(height: 28)
@@ -208,7 +208,7 @@ struct SettingsDashboard: View {
                             .fontWeight(.bold)
                             .foregroundStyle(TingXiePalette.accent)
                     }
-                    .font(.system(size: 11, design: .rounded))
+                    .font(.system(size: 11))
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
 
                     ProgressView(value: modelDownloadCoordinator.fractionCompleted)
@@ -218,7 +218,7 @@ struct SettingsDashboard: View {
                         .accessibilityValue(modelDownloadCoordinator.percentageText)
 
                     Label(modelDownloadCoordinator.predictedTimeText, systemImage: "clock")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                         .accessibilityLabel("Predicted Local AI download time")
                 }
@@ -227,12 +227,12 @@ struct SettingsDashboard: View {
                 HStack(spacing: 10) {
                     ProgressView().controlSize(.small)
                     Text(modelDownloadCoordinator.statusDetail)
-                        .font(.system(size: 11, design: .rounded))
+                        .font(.system(size: 11))
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                 }
             } else {
                 Text(modelDownloadCoordinator.statusDetail)
-                    .font(.system(size: 11, design: .rounded))
+                    .font(.system(size: 11))
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
             }
 
@@ -277,7 +277,7 @@ struct SettingsDashboard: View {
                 "Preparation starts in the background at app launch. Pausing keeps downloaded files so the next attempt can resume.",
                 systemImage: "info.circle"
             )
-            .font(.system(size: 10, design: .rounded))
+            .font(.system(size: 10))
             .foregroundStyle(TingXiePalette.onSurfaceVariant)
         }
     }
@@ -389,10 +389,10 @@ private struct SettingsSectionCard<Content: View>: View {
                     .background(TingXiePalette.surfaceContainerHighest, in: RoundedRectangle(cornerRadius: 12))
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .font(TingXieTypography.sectionTitle)
                         .foregroundStyle(TingXiePalette.accent)
                     Text(summary)
-                        .font(.system(size: 12, design: .rounded))
+                        .font(TingXieTypography.metadata)
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                         .lineSpacing(2)
                 }
@@ -437,7 +437,7 @@ private struct SettingsGroupHeading: View {
 
     var body: some View {
         Label(title, systemImage: symbol)
-            .font(.system(size: 12, weight: .semibold, design: .rounded))
+            .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(TingXiePalette.accent)
     }
 }
@@ -454,9 +454,9 @@ private struct DataCountBadge: View {
                 .foregroundStyle(TingXiePalette.accent)
             VStack(alignment: .leading, spacing: 1) {
                 Text("\(value)")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .font(.system(size: 18, weight: .bold))
                 Text(label)
-                    .font(.system(size: 10, design: .rounded))
+                    .font(.system(size: 10))
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
             }
         }

@@ -12,7 +12,7 @@ private struct TingXieDirectionalTransitionModifier: ViewModifier {
     }
 }
 
-// Centralizes adaptive colors shared by every TingXieFlow workspace and control.
+// Centralizes adaptive colors shared by every MandarinFlow workspace and control.
 enum TingXiePalette {
     static let sidebar = Color(red: 41 / 255, green: 97 / 255, blue: 36 / 255)
     static let sidebarSelection = Color(red: 114 / 255, green: 174 / 255, blue: 108 / 255).opacity(0.4)
@@ -32,6 +32,20 @@ enum TingXiePalette {
     static let wordOfDay = Color(red: 253 / 255, green: 251 / 255, blue: 167 / 255)
     static let missed = Color(red: 196 / 255, green: 31 / 255, blue: 35 / 255)
     static let tableStripe = Color(red: 165 / 255, green: 198 / 255, blue: 162 / 255).opacity(0.4)
+}
+
+// Keeps rounded type reserved for learner content while interface text stays native to macOS.
+enum TingXieTypography {
+    static let eyebrow = Font.system(size: 11, weight: .semibold)
+    static let controlLabel = Font.system(size: 13, weight: .semibold)
+    static let sectionTitle = Font.system(size: 20, weight: .semibold)
+    static let body = Font.system(size: 14)
+    static let metadata = Font.system(size: 12)
+    static let learningValue = Font.system(size: 30, weight: .bold, design: .rounded)
+
+    static func vocabulary(size: CGFloat, weight: Font.Weight = .semibold) -> Font {
+        .system(size: size, weight: weight, design: .rounded)
+    }
 }
 
 // Centralizes short, restrained animations used when filters and collection content change.
@@ -149,7 +163,7 @@ struct SlidingFilterBar<Item: Hashable & Identifiable>: View {
                         }
 
                         Text(title(item))
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .font(TingXieTypography.controlLabel)
                             .foregroundStyle(
                                 selection == item
                                     ? TingXiePalette.accent
@@ -201,7 +215,7 @@ struct AppSidebar: View {
                         Rectangle().frame(width: 2, height: 18)
                         Text(activeSet.title).lineLimit(1)
                     }
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.7))
                     .padding(.leading, 18)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -248,11 +262,11 @@ struct AppSidebar: View {
         ZStack(alignment: .topTrailing) {
             if !isCollapsed {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("TingXieFlow")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                    Text("MandarinFlow")
+                        .font(.system(size: 32, weight: .bold))
                         .tracking(-1.2)
-                    Text("Audio-First Learning")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                    Text("Listen. Learn. Remember.")
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(.white.opacity(0.72))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -293,9 +307,9 @@ private struct WordOfDayCard: View {
             } label: {
                 VStack(alignment: .leading, spacing: 5) {
                     HStack {
-                        Text("WORD OF THE DAY")
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .tracking(0.7)
+                        Text("Word of the Day")
+                            .font(TingXieTypography.eyebrow)
+                            .tracking(0.15)
                             .foregroundStyle(TingXiePalette.wordOfDay)
                         Spacer()
                         if word != nil {
@@ -306,9 +320,9 @@ private struct WordOfDayCard: View {
                     }
 
                     Text(word?.chinese ?? "开始")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .font(TingXieTypography.vocabulary(size: 24, weight: .bold))
                     Text(wordDetails(word))
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.white.opacity(0.7))
                         .lineLimit(2)
                 }
@@ -372,7 +386,7 @@ private struct SidebarButton: View {
                     .frame(width: 24, height: 24)
                 if !isCollapsed {
                     Text(title)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .font(.system(size: 14, weight: .semibold))
                         .lineLimit(2)
                         .transition(.opacity.combined(with: .move(edge: .leading)))
                 }
@@ -420,12 +434,12 @@ struct WorkspaceHeader: View {
         HStack(alignment: .center, spacing: 24) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .font(.system(size: 40, weight: .semibold))
                     .tracking(-1)
                     .foregroundStyle(TingXiePalette.onBackground)
                 if let subtitle {
                     Text(subtitle)
-                        .font(.system(size: 14, design: .rounded))
+                        .font(TingXieTypography.body)
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                 }
             }
@@ -509,9 +523,9 @@ private struct WorkspaceInfoSheet: View {
 
                 VStack(alignment: .leading, spacing: 5) {
                     Text(info.title)
-                        .font(.system(size: 27, weight: .bold, design: .rounded))
+                        .font(.system(size: 27, weight: .semibold))
                     Text(info.summary)
-                        .font(.system(size: 14, design: .rounded))
+                        .font(TingXieTypography.body)
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                         .lineSpacing(3)
                 }
@@ -534,12 +548,12 @@ private struct WorkspaceInfoSheet: View {
                 ForEach(Array(info.tips.enumerated()), id: \.offset) { index, tip in
                     HStack(alignment: .top, spacing: 12) {
                         Text("\(index + 1)")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(.white)
                             .frame(width: 24, height: 24)
                             .background(TingXiePalette.accent, in: Circle())
                         Text(tip)
-                            .font(.system(size: 14, design: .rounded))
+                            .font(TingXieTypography.body)
                             .foregroundStyle(TingXiePalette.onSurfaceVariant)
                             .lineSpacing(3)
                             .padding(.top, 2)
@@ -582,7 +596,7 @@ struct SearchField: View {
                 .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.65))
             TextField(prompt, text: $text)
                 .textFieldStyle(.plain)
-                .font(.system(size: 14, design: .rounded))
+                .font(.system(size: 14))
                 .focused($isFocused)
                 .onSubmit { onSubmit?() }
                 .onKeyPress(.upArrow) {
@@ -683,12 +697,12 @@ struct SearchResultsPanel<Content: View>: View {
         VStack(spacing: 0) {
             HStack {
                 Text(resultCount == 1 ? "1 result" : "\(resultCount) results")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
                 Spacer()
                 Button("Clear", action: onClear)
                     .buttonStyle(.plain)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(TingXiePalette.accent)
                     .accessibilityLabel("Clear search")
             }
@@ -704,7 +718,7 @@ struct SearchResultsPanel<Content: View>: View {
                         .font(.system(size: 22, weight: .medium))
                         .foregroundStyle(TingXiePalette.secondary.opacity(0.55))
                     Text(emptyMessage)
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                 }
                 .frame(maxWidth: .infinity, minHeight: 112)
@@ -754,7 +768,7 @@ extension String {
 struct GreenCapsuleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 15, weight: .bold, design: .rounded))
+            .font(.system(size: 15, weight: .semibold))
             .foregroundStyle(.white)
             .padding(.horizontal, 22)
             .frame(height: 40)
@@ -773,7 +787,7 @@ struct OutlineCapsuleButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: fontSize, weight: .bold, design: .rounded))
+            .font(.system(size: fontSize, weight: .semibold))
             .foregroundStyle(TingXiePalette.accent)
             .padding(.horizontal, horizontalPadding)
             .frame(height: height)
@@ -834,11 +848,11 @@ private struct TingXieColorPalettePreview: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("TingXieFlow Color Palette")
-                        .font(.system(size: 36, weight: .bold, design: .rounded))
+                    Text("MandarinFlow Color Palette")
+                        .font(.system(size: 36, weight: .bold))
                         .foregroundStyle(TingXiePalette.onBackground)
                     Text("Named color tokens used across the app interface")
-                        .font(.system(size: 15, design: .rounded))
+                        .font(.system(size: 15))
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                 }
 
@@ -861,7 +875,7 @@ private struct TingXieColorPalettePreview: View {
                                 }
 
                             Text(sample.name)
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .font(.system(size: 14, weight: .bold))
                                 .foregroundStyle(TingXiePalette.onBackground)
                                 .padding(14)
                         }
@@ -883,6 +897,6 @@ private struct TingXieColorPalettePreview: View {
     }
 }
 
-#Preview("TingXieFlow Color Palette") {
+#Preview("MandarinFlow Color Palette") {
     TingXieColorPalettePreview()
 }
