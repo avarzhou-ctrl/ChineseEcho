@@ -415,8 +415,6 @@ struct WorkspaceHeader: View {
     var addAction: (() -> Void)?
     var info: WorkspaceInfo?
 
-    @State private var isShowingInfo = false
-
     var body: some View {
         HStack(alignment: .center, spacing: 24) {
             VStack(alignment: .leading, spacing: 2) {
@@ -459,29 +457,16 @@ struct WorkspaceHeader: View {
                 .accessibilityLabel("Create New Set")
             }
 
-            if info != nil {
-                Button {
-                    isShowingInfo = true
-                } label: {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 20, weight: .semibold))
-                        .frame(width: 40, height: 40)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                .help("About \(title)")
-                .accessibilityLabel("About \(title)")
+            if let info {
+                WorkspaceInfoButton(
+                    info: info,
+                    accessibilityLabel: "About \(title)"
+                )
             }
         }
         .padding(.horizontal, 40)
         .frame(height: 112)
         .zIndex(20)
-        .sheet(isPresented: $isShowingInfo) {
-            if let info {
-                WorkspaceInfoSheet(info: info)
-            }
-        }
     }
 }
 
@@ -491,6 +476,32 @@ struct WorkspaceInfo: Sendable {
     let symbol: String
     let summary: String
     let tips: [String]
+}
+
+// Reuses the standard information affordance and guidance sheet across workspaces.
+struct WorkspaceInfoButton: View {
+    let info: WorkspaceInfo
+    let accessibilityLabel: String
+
+    @State private var isShowingInfo = false
+
+    var body: some View {
+        Button {
+            isShowingInfo = true
+        } label: {
+            Image(systemName: "info.circle")
+                .font(.system(size: 20, weight: .semibold))
+                .frame(width: 40, height: 40)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+        .help(accessibilityLabel)
+        .accessibilityLabel(accessibilityLabel)
+        .sheet(isPresented: $isShowingInfo) {
+            WorkspaceInfoSheet(info: info)
+        }
+    }
 }
 
 // Presents concise guidance without leaving the current workspace.

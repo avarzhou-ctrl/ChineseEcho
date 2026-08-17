@@ -18,7 +18,7 @@ struct ContentView: View {
 
     @State private var selection: AppSection = .dictation
     @State private var sectionTransitionEdge: Edge = .trailing
-    @State private var activeSetID: PersistentIdentifier?
+    @State private var activeSetRecordID: UUID?
     @State private var selectedVocabularyWordID: PersistentIdentifier?
     @State private var isCreatingSet = false
     @State private var isSidebarCollapsed = false
@@ -30,8 +30,8 @@ struct ContentView: View {
     private let sidebarWidthRange = 220.0...420.0
 
     private var activeSet: DictationSet? {
-        guard let activeSetID else { return nil }
-        return dictationSets.first { $0.persistentModelID == activeSetID }
+        guard let activeSetRecordID else { return nil }
+        return dictationSets.first { $0.recordID == activeSetRecordID }
     }
 
     private var animatedSelection: Binding<AppSection> {
@@ -43,32 +43,40 @@ struct ContentView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            AppSidebar(
-                selection: animatedSelection,
-                vocabularyWords: vocabularyWords,
-                isCollapsed: isSidebarCollapsed,
-                onToggleCollapse: {
-                    withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
-                        isSidebarCollapsed.toggle()
+            if !isPracticePresented {
+                AppSidebar(
+                    selection: animatedSelection,
+                    vocabularyWords: vocabularyWords,
+                    isCollapsed: isSidebarCollapsed,
+                    onToggleCollapse: {
+                        withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
+                            isSidebarCollapsed.toggle()
+                        }
+                    },
+                    onShowDictationHome: {
+                        activeSetRecordID = nil
+                        updateSelection(.dictation)
+                    },
+                    onOpenWordOfDay: { word in
+                        selectedVocabularyWordID = word.persistentModelID
+                        updateSelection(.vocabulary)
                     }
-                },
-                onShowDictationHome: {
-                    activeSetID = nil
-                    updateSelection(.dictation)
-                },
-                onOpenWordOfDay: { word in
-                    selectedVocabularyWordID = word.persistentModelID
-                    updateSelection(.vocabulary)
-                }
-            )
-            .frame(width: isSidebarCollapsed ? 64 : clampedSidebarWidth)
+                )
+                .frame(width: isSidebarCollapsed ? 64 : clampedSidebarWidth)
+                .transition(
+                    reduceMotion
+                        ? .opacity
+                        : .move(edge: .leading).combined(with: .opacity)
+                )
 
-            SidebarResizeHandle(
-                width: $sidebarWidth,
-                allowedRange: sidebarWidthRange,
-                isEnabled: !isSidebarCollapsed,
-                onResizeEnded: { persistedSidebarWidth = $0 }
-            )
+                SidebarResizeHandle(
+                    width: $sidebarWidth,
+                    allowedRange: sidebarWidthRange,
+                    isEnabled: !isSidebarCollapsed,
+                    onResizeEnded: { persistedSidebarWidth = $0 }
+                )
+                .transition(.opacity)
+            }
 
             ZStack {
                 Group {
@@ -79,8 +87,8 @@ struct ContentView: View {
                             activeSet: activeSet,
                             onCreateSet: { isCreatingSet = true },
                             onOpenVocabulary: { updateSelection(.vocabulary) },
-                            onOpenSet: { activeSetID = $0.persistentModelID },
-                            onCloseSet: { activeSetID = nil }
+                            onOpenSet: openPractice,
+                            onCloseSet: closePractice
                         )
                     case .vocabulary:
                         VocabularyHubView(
@@ -121,7 +129,13 @@ struct ContentView: View {
         .sheet(isPresented: $isCreatingSet) {
             NewDictationSetSheet(modelContainer: modelContext.container)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .activePracticeSessionDidChange)) { _ in
+            // A restore can replace the saved session while Settings is visible.
+            guard selection != .dictation else { return }
+            activeSetRecordID = PracticeSessionStore.load()?.setRecordID
+        }
         .task {
+            restoreInterruptedPracticeIfAvailable()
             await modelDownloadCoordinator.refreshCachedByteCount()
             modelDownloadCoordinator.startPreparing()
         }
@@ -129,6 +143,10 @@ struct ContentView: View {
 
     private var clampedSidebarWidth: CGFloat {
         CGFloat(min(max(sidebarWidth, sidebarWidthRange.lowerBound), sidebarWidthRange.upperBound))
+    }
+
+    private var isPracticePresented: Bool {
+        selection == .dictation && activeSet != nil
     }
 
     private var modelStatusBottomPadding: CGFloat {
@@ -143,6 +161,28 @@ struct ContentView: View {
         sectionTransitionEdge = newIndex > oldIndex ? .trailing : .leading
         withAnimation(TingXieMotion.filterSelection(reduceMotion: reduceMotion)) {
             selection = newSelection
+        }
+    }
+
+    private func openPractice(_ set: DictationSet) {
+        withAnimation(TingXieMotion.contentChange(reduceMotion: reduceMotion)) {
+            activeSetRecordID = set.recordID
+        }
+    }
+
+    private func closePractice() {
+        withAnimation(TingXieMotion.contentChange(reduceMotion: reduceMotion)) {
+            activeSetRecordID = nil
+        }
+    }
+
+    private func restoreInterruptedPracticeIfAvailable() {
+        guard activeSetRecordID == nil, let savedSession = PracticeSessionStore.load() else { return }
+        if dictationSets.contains(where: { $0.recordID == savedSession.setRecordID }) {
+            activeSetRecordID = savedSession.setRecordID
+            selection = .dictation
+        } else {
+            PracticeSessionStore.clear()
         }
     }
 }

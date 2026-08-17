@@ -1,8 +1,11 @@
 import AVFoundation
+import SwiftData
 import SwiftUI
 
 // Presents persisted speech, practice, local-data, and app-information settings.
 struct SettingsDashboard: View {
+    @Environment(\.modelContext) private var modelContext
+
     let setCount: Int
     let wordCount: Int
 
@@ -23,6 +26,13 @@ struct SettingsDashboard: View {
     @State private var modelDownloadCoordinator = ModelDownloadCoordinator.shared
     @State private var isConfirmingModelRemoval = false
     @State private var modelRemovalError: String?
+    @State private var backupDocument: MandarinFlowBackupDocument?
+    @State private var importedBackup: MandarinFlowBackup?
+    @State private var isExportingBackup = false
+    @State private var isImportingBackup = false
+    @State private var isRestoringBackup = false
+    @State private var backupMessage: String?
+    @State private var backupError: String?
 
     private let sampleText = "今天我们练习听写。"
     private let primaryCardMinimumHeight: CGFloat = 470
@@ -55,6 +65,7 @@ struct SettingsDashboard: View {
                     }
 
                     localAISection
+                    localDataSection
                     aboutSection
                 }
                 .padding(.horizontal, 40)
@@ -84,6 +95,39 @@ struct SettingsDashboard: View {
             }
         } message: {
             Text("This removes the downloaded \(modelDownloadCoordinator.modelName) files from this Mac. Local AI will be unavailable until the model is downloaded again.")
+        }
+        .fileExporter(
+            isPresented: $isExportingBackup,
+            document: backupDocument,
+            contentType: .json,
+            defaultFilename: "MandarinFlow Backup"
+        ) { result in
+            if case .failure(let error) = result {
+                backupError = error.localizedDescription
+            } else {
+                backupMessage = "Backup exported successfully."
+            }
+        }
+        .fileImporter(isPresented: $isImportingBackup, allowedContentTypes: [.json]) {
+            importBackup(from: $0)
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { importedBackup != nil },
+                set: { if !$0 { importedBackup = nil } }
+            )
+        ) {
+            if let importedBackup {
+                BackupRestorePreview(
+                    backup: importedBackup,
+                    currentSetCount: setCount,
+                    currentWordCount: wordCount,
+                    isRestoring: isRestoringBackup,
+                    errorMessage: backupError,
+                    onCancel: { self.importedBackup = nil },
+                    onRestore: { restore(importedBackup) }
+                )
+            }
         }
     }
 
@@ -304,6 +348,110 @@ struct SettingsDashboard: View {
         }
     }
 
+    private var localDataSection: some View {
+        SettingsSectionCard(
+            title: "Local Backup",
+            symbol: "externaldrive.fill",
+            summary: "Move your sets, vocabulary enrichment, learner hints, and learning progress in one portable JSON file."
+        ) {
+            HStack(spacing: 12) {
+                DataCountBadge(value: setCount, label: "Sets", symbol: "square.stack.3d.up")
+                DataCountBadge(value: wordCount, label: "Words", symbol: "character.book.closed")
+            }
+
+            HStack(spacing: 10) {
+                Button("Export Backup", systemImage: "square.and.arrow.up", action: exportBackup)
+                    .buttonStyle(.borderedProminent)
+                    .tint(TingXiePalette.accent)
+                    .disabled(isRestoringBackup)
+
+                Button("Restore Backup", systemImage: "square.and.arrow.down") {
+                    backupError = nil
+                    backupMessage = nil
+                    isImportingBackup = true
+                }
+                .buttonStyle(.bordered)
+                .disabled(isRestoringBackup)
+            }
+
+            Label(
+                "Before restoring, MandarinFlow validates the file and shows exactly how many sets and words will replace the library on this Mac.",
+                systemImage: "checkmark.shield"
+            )
+            .font(.system(size: 11))
+            .foregroundStyle(TingXiePalette.onSurfaceVariant)
+            .fixedSize(horizontal: false, vertical: true)
+
+            if let backupMessage {
+                Label(backupMessage, systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(TingXiePalette.accent)
+            }
+            if let backupError, importedBackup == nil {
+                Label(backupError, systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(TingXiePalette.missed)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func exportBackup() {
+        backupError = nil
+        backupMessage = nil
+        let store = LocalBackupStore(modelContainer: modelContext.container)
+        let analytics = PracticeAnalyticsStore.backup()
+        let activeSession = PracticeSessionStore.load()
+        Task {
+            do {
+                let backup = try await store.makeBackup(
+                    analytics: analytics,
+                    activeSession: activeSession
+                )
+                backupDocument = MandarinFlowBackupDocument(backup: backup)
+                isExportingBackup = true
+            } catch {
+                backupError = error.localizedDescription
+            }
+        }
+    }
+
+    private func importBackup(from result: Result<URL, Error>) {
+        backupError = nil
+        backupMessage = nil
+        do {
+            let url = try result.get()
+            let hasAccess = url.startAccessingSecurityScopedResource()
+            defer { if hasAccess { url.stopAccessingSecurityScopedResource() } }
+            importedBackup = try MandarinFlowBackup.decode(Data(contentsOf: url))
+        } catch {
+            backupError = error.localizedDescription
+        }
+    }
+
+    private func restore(_ backup: MandarinFlowBackup) {
+        guard !isRestoringBackup else { return }
+        isRestoringBackup = true
+        backupError = nil
+        let store = LocalBackupStore(modelContainer: modelContext.container)
+        Task {
+            do {
+                try await store.replaceLibrary(with: backup)
+                PracticeAnalyticsStore.restore(backup.analytics)
+                if let activeSession = backup.activeSession {
+                    PracticeSessionStore.save(activeSession)
+                } else {
+                    PracticeSessionStore.clear()
+                }
+                importedBackup = nil
+                backupMessage = "Restored \(backup.sets.count) sets and \(backup.wordCount) words."
+            } catch {
+                backupError = error.localizedDescription
+            }
+            isRestoringBackup = false
+        }
+    }
+
     private var aboutSection: some View {
         SettingsSectionCard(
             title: "About",
@@ -381,6 +529,115 @@ struct SettingsDashboard: View {
 
     private func synchronizeAudioEngine() {
         audioEngine.configureFromPreferences()
+    }
+}
+
+// Shows validated restore contents before any existing local data is replaced.
+private struct BackupRestorePreview: View {
+    let backup: MandarinFlowBackup
+    let currentSetCount: Int
+    let currentWordCount: Int
+    let isRestoring: Bool
+    let errorMessage: String?
+    let onCancel: () -> Void
+    let onRestore: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            HStack(spacing: 14) {
+                Image(systemName: "externaldrive.badge.checkmark")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(TingXiePalette.accent)
+                    .frame(width: 48, height: 48)
+                    .background(TingXiePalette.surfaceContainerHighest, in: RoundedRectangle(cornerRadius: 14))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Preview Local Restore")
+                        .font(TingXieTypography.sectionTitle)
+                    Text("Backup created \(backup.createdAt.formatted(date: .abbreviated, time: .shortened))")
+                        .font(TingXieTypography.metadata)
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                }
+            }
+
+            HStack(spacing: 12) {
+                RestoreCountComparison(
+                    label: "Sets",
+                    currentValue: currentSetCount,
+                    restoredValue: backup.sets.count
+                )
+                RestoreCountComparison(
+                    label: "Words",
+                    currentValue: currentWordCount,
+                    restoredValue: backup.wordCount
+                )
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Included in this restore", systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(TingXiePalette.accent)
+                Text("Set names and dates, vocabulary, contextual sentences, breakdowns, tags, learner hints, missed-word status, and learning progress.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Label(
+                "Restoring replaces the current learning library and progress on this Mac. Export a backup first if you may need the current data later.",
+                systemImage: "exclamationmark.triangle.fill"
+            )
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(TingXiePalette.missed)
+            .padding(12)
+            .background(TingXiePalette.missed.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.system(size: 11))
+                    .foregroundStyle(TingXiePalette.missed)
+            }
+
+            HStack {
+                Button("Cancel", action: onCancel)
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(isRestoring)
+                Spacer()
+                Button("Replace and Restore", systemImage: "arrow.clockwise", action: onRestore)
+                    .buttonStyle(.borderedProminent)
+                    .tint(TingXiePalette.accent)
+                    .disabled(isRestoring)
+            }
+        }
+        .padding(26)
+        .frame(width: 530)
+        .background(TingXiePalette.background)
+    }
+}
+
+// Compares the current library size with the validated incoming backup.
+private struct RestoreCountComparison: View {
+    let label: String
+    let currentValue: Int
+    let restoredValue: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(TingXiePalette.onSurfaceVariant)
+            HStack(spacing: 8) {
+                Text("\(currentValue)")
+                Image(systemName: "arrow.right")
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                Text("\(restoredValue)")
+                    .fontWeight(.bold)
+                    .foregroundStyle(TingXiePalette.accent)
+            }
+            .font(.system(size: 18))
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 12))
     }
 }
 

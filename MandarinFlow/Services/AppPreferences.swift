@@ -10,6 +10,7 @@ enum AppPreferenceKey {
     static let repeatCount = "practiceRepeatCount"
     static let keepCardsRevealed = "practiceKeepCardsRevealed"
     static let practiceAnalytics = "practiceAnalytics"
+    static let activePracticeSession = "activePracticeSession"
 
     static let all = [
         voiceIdentifier,
@@ -48,6 +49,20 @@ nonisolated struct PracticeAnalyticsSnapshot: Equatable, Sendable {
     }
 }
 
+// Makes learning progress portable without exposing UserDefaults implementation details.
+nonisolated struct PracticeAnalyticsBackup: Codable, Equatable, Sendable {
+    nonisolated struct Day: Codable, Equatable, Sendable {
+        let correctAttempts: Int
+        let totalAttempts: Int
+    }
+
+    let days: [String: Day]
+    let mastery: [String: Bool]
+    let setMastery: [String: [String: Bool]]
+
+    static let empty = PracticeAnalyticsBackup(days: [:], mastery: [:], setMastery: [:])
+}
+
 extension Notification.Name {
     static let practiceAnalyticsDidChange = Notification.Name("practiceAnalyticsDidChange")
 }
@@ -80,6 +95,28 @@ enum PracticeAnalyticsStore {
                 Set(mastery.compactMap { key, isMastered in isMastered ? key : nil })
             }
         )
+    }
+
+    static func backup() -> PracticeAnalyticsBackup {
+        let analytics = load()
+        return PracticeAnalyticsBackup(
+            days: analytics.days.mapValues {
+                .init(correctAttempts: $0.correctAttempts, totalAttempts: $0.totalAttempts)
+            },
+            mastery: analytics.mastery,
+            setMastery: analytics.setMastery ?? [:]
+        )
+    }
+
+    static func restore(_ backup: PracticeAnalyticsBackup) {
+        let analytics = StoredAnalytics(
+            days: backup.days.mapValues {
+                DayRecord(correctAttempts: $0.correctAttempts, totalAttempts: $0.totalAttempts)
+            },
+            mastery: backup.mastery,
+            setMastery: backup.setMastery.isEmpty ? nil : backup.setMastery
+        )
+        save(analytics)
     }
 
     static func masteryState(
@@ -115,11 +152,12 @@ enum PracticeAnalyticsStore {
         isCorrect: Bool,
         vocabularyKey: String,
         setKey: String,
+        recordedAt: Date = Date(),
         restoringMastery previousMastery: Bool?,
         restoringSetMastery previousSetMastery: Bool?
     ) {
         var analytics = load()
-        let key = dayKey(for: Date())
+        let key = dayKey(for: recordedAt)
         if var day = analytics.days[key] {
             day.totalAttempts = max(day.totalAttempts - 1, 0)
             if isCorrect { day.correctAttempts = max(day.correctAttempts - 1, 0) }

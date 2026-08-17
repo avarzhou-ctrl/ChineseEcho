@@ -23,11 +23,11 @@
   - Show accuracy, learned words, and missed words after finishing a set.
   - Offer a one-click **Practice Missed Words** follow-up.
 
-- [ ] **Resume interrupted practice**
+- [x] **Resume interrupted practice**
   - Restore the active set, current card, queue order, and completed grading after relaunching.
   - Provide a clear action to discard the saved session and start over.
 
-- [ ] **Add local backup and restore**
+- [x] **Add local backup and restore**
   - Export sets, vocabulary, contextual sentences, hints, and learning progress to a portable file.
   - Validate imported data and preview what will be restored before changing the library.
 

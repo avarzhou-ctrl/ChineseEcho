@@ -66,7 +66,7 @@ Playback progress should be legible without creating urgency. Marking a word mis
 
 ### Private by default
 
-Vocabulary and practice state remain in SwiftData. Sentence generation runs in-process with Qwen through MLX after the model is downloaded and cached. Product copy should say “local” or “on this Mac” where technical context is useful, but should not turn privacy architecture into the main learning experience.
+Vocabulary and practice state remain in SwiftData. The active practice queue is checkpointed locally after meaningful changes so the exact set, card order, current card, and completed grading can resume after relaunch. Versioned JSON backups include the full learning library, enrichment, hints, missed-word state, analytics, and any interrupted session; imports are validated and previewed before replacing local data. Sentence generation runs in-process with Qwen through MLX after the model is downloaded and cached. Product copy should say “local” or “on this Mac” where technical context is useful, but should not turn privacy architecture into the main learning experience.
 
 ## Information Architecture
 

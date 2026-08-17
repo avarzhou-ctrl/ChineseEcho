@@ -6,6 +6,7 @@ import SwiftUI
 // Drives dictation-set search, list actions, practice presentation, and editor sheets.
 struct SmartDictationView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let sets: [DictationSet]
     let activeSet: DictationSet?
@@ -63,7 +64,17 @@ struct SmartDictationView: View {
     var body: some View {
         Group {
             if let activeSet {
-                PracticeSessionView(set: activeSet, onFinish: onCloseSet)
+                PracticeSessionView(
+                    set: activeSet,
+                    onClose: onCloseSet,
+                    onFinish: onCloseSet
+                )
+                .transition(
+                    TingXieMotion.directionalTransition(
+                        enteringFrom: .trailing,
+                        reduceMotion: reduceMotion
+                    )
+                )
             } else {
                 ZStack(alignment: .bottomTrailing) {
                     VStack(spacing: 0) {
@@ -125,8 +136,15 @@ struct SmartDictationView: View {
                     .padding(.trailing, 32)
                     .padding(.bottom, 30)
                 }
+                .transition(
+                    TingXieMotion.directionalTransition(
+                        enteringFrom: .leading,
+                        reduceMotion: reduceMotion
+                    )
+                )
             }
         }
+        .clipped()
         .foregroundStyle(TingXiePalette.onBackground)
         .background(TingXiePalette.background)
         .onChange(of: searchText) { _, _ in
@@ -646,6 +664,7 @@ private struct PracticeGradeAction {
     let wasMissed: Bool
     let markedMissed: Bool
     let vocabularyKey: String
+    let recordedAt: Date
     let previousMastery: Bool?
     let previousSetMastery: Bool?
 }
@@ -679,6 +698,7 @@ private struct PracticeSessionView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let set: DictationSet
+    let onClose: () -> Void
     let onFinish: () -> Void
 
     @AppStorage(AppPreferenceKey.repeatCount)
@@ -703,6 +723,9 @@ private struct PracticeSessionView: View {
     @State private var summary: PracticeSessionSummaryData?
     @State private var queuedFollowUpWordIDs: [PersistentIdentifier]?
     @State private var audioEngine = SpeechAudioEngine()
+    @State private var isConfirmingStartOver = false
+    @State private var suppressNextFilterReset = false
+    @State private var shouldDiscardOnDisappear = false
 
     private var filteredWords: [VocabularyWord] {
         switch filter {
@@ -739,31 +762,31 @@ private struct PracticeSessionView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            PracticeImmersiveHeader(
+                title: summary == nil ? nil : "Session Summary",
+                info: WorkspaceInfo(
+                    title: "About Practice Sessions",
+                    symbol: "rectangle.on.rectangle.angled",
+                    summary: "Listen first, then flip each card to check the characters before deciding whether the word needs more review.",
+                    tips: [
+                        "Select the card or press Return or Space to flip between the listening prompt and the answer.",
+                        "Request an optional learner hint without revealing the answer.",
+                        "The missed and known actions appear only after the answer is visible.",
+                        "Each card plays automatically using the repeat count in Settings; use the speaker for one extra playback."
+                    ]
+                ),
+                onClose: closeSession
+            )
+
             if let summary {
-                WorkspaceHeader(title: "Session Summary")
                 PracticeSessionSummaryView(
                     setTitle: set.title,
                     summary: summary,
                     onPracticeMissedWords: { startMissedWordsFollowUp(from: summary) },
                     onContinueSession: { self.summary = nil },
-                    onFinish: onFinish
+                    onFinish: finishSession
                 )
             } else {
-                WorkspaceHeader(
-                    title: "Practice Session",
-                    info: WorkspaceInfo(
-                        title: "About Practice Sessions",
-                        symbol: "rectangle.on.rectangle.angled",
-                        summary: "Listen first, then flip each card to check the characters before deciding whether the word needs more review.",
-                        tips: [
-                            "Select the card or press Return or Space to flip between the listening prompt and the answer.",
-                            "Request an optional learner hint without revealing the answer.",
-                            "The missed and known actions appear only after the answer is visible.",
-                            "Each card plays automatically using the repeat count in Settings; use the speaker for one extra playback."
-                        ]
-                    )
-                )
-
                 HStack(alignment: .bottom, spacing: 20) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Current Set")
@@ -802,13 +825,20 @@ private struct PracticeSessionView: View {
             audioEngine.onUtteranceFinished = {
                 Task { @MainActor in continueAutomaticPlayback() }
             }
-            resetSessionQueue()
+            restoreSessionOrStartNew()
         }
         .onDisappear {
             stopPlayback()
             audioEngine.onUtteranceFinished = nil
+            if !shouldDiscardOnDisappear {
+                persistSession()
+            }
         }
         .onChange(of: filter) { _, _ in
+            if suppressNextFilterReset {
+                suppressNextFilterReset = false
+                return
+            }
             if let queuedFollowUpWordIDs {
                 self.queuedFollowUpWordIDs = nil
                 resetSessionQueue(wordIDs: queuedFollowUpWordIDs)
@@ -818,6 +848,17 @@ private struct PracticeSessionView: View {
         }
         .onChange(of: keepCardsRevealed) { _, shouldReveal in
             isCardFlipped = shouldReveal
+        }
+        .onChange(of: isCardFlipped) { _, _ in persistSession() }
+        .confirmationDialog(
+            "Start This Practice Over?",
+            isPresented: $isConfirmingStartOver,
+            titleVisibility: .visible
+        ) {
+            Button("Start Over", role: .destructive, action: startSessionOver)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This discards the saved queue and completed grading for this session. Your overall learning progress and missed-word status stay recorded.")
         }
     }
 
@@ -962,7 +1003,7 @@ private struct PracticeSessionView: View {
 
             HStack(alignment: .bottom, spacing: 32) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Progress: \(gradeHistory.count) of \(sessionWordIDs.count) cards")
+                    Text("\(gradeHistory.count) of \(sessionWordIDs.count) cards")
                         .font(.system(size: 13, weight: .semibold))
                     ProgressView(
                         value: Double(gradeHistory.count),
@@ -973,7 +1014,10 @@ private struct PracticeSessionView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                Button("Finish Set", systemImage: "rectangle.portrait.and.arrow.right", action: presentSummary)
+                HStack(spacing: 10) {
+                    Button("Start Over", systemImage: "arrow.counterclockwise") {
+                        isConfirmingStartOver = true
+                    }
                     .buttonStyle(
                         OutlineCapsuleButtonStyle(
                             fontSize: 13,
@@ -981,6 +1025,17 @@ private struct PracticeSessionView: View {
                             height: 34
                         )
                     )
+                    .help("Discard saved progress and restart this practice mode")
+
+                    Button("Finish Set", systemImage: "rectangle.portrait.and.arrow.right", action: presentSummary)
+                        .buttonStyle(
+                            OutlineCapsuleButtonStyle(
+                                fontSize: 13,
+                                horizontalPadding: 16,
+                                height: 34
+                            )
+                        )
+                }
             }
             .padding(.horizontal, 40)
             .padding(.bottom, 32)
@@ -1014,7 +1069,123 @@ private struct PracticeSessionView: View {
         hasInitializedQueue = true
         isQueueShuffled = false
         isCardFlipped = keepCardsRevealed
+        persistSession()
         scheduleAutomaticPlayback()
+    }
+
+    private func restoreSessionOrStartNew() {
+        guard let saved = PracticeSessionStore.load(),
+              saved.setRecordID == set.recordID,
+              let restoredFilter = PracticeFilter(rawValue: saved.filter)
+        else {
+            resetSessionQueue()
+            return
+        }
+
+        let wordsByRecordID = Dictionary(uniqueKeysWithValues: set.vocabularyWords.map {
+            ($0.recordID, $0)
+        })
+        let restoredWords = saved.queueWordRecordIDs.compactMap { wordsByRecordID[$0] }
+        let restoredGrades = saved.grades.compactMap { savedGrade -> PracticeGradeAction? in
+            guard let word = wordsByRecordID[savedGrade.wordRecordID] else { return nil }
+            return PracticeGradeAction(
+                wordID: word.persistentModelID,
+                queueIndex: savedGrade.queueIndex,
+                wasMissed: savedGrade.wasMissed,
+                markedMissed: savedGrade.markedMissed,
+                vocabularyKey: savedGrade.vocabularyKey,
+                recordedAt: savedGrade.recordedAt,
+                previousMastery: savedGrade.previousMastery,
+                previousSetMastery: savedGrade.previousSetMastery
+            )
+        }
+        guard !restoredWords.isEmpty,
+              restoredWords.count == saved.queueWordRecordIDs.count,
+              restoredGrades.count == saved.grades.count,
+              saved.currentIndex >= 0,
+              saved.currentIndex < restoredWords.count
+        else {
+            PracticeSessionStore.clear()
+            resetSessionQueue()
+            return
+        }
+
+        stopPlayback()
+        if filter != restoredFilter {
+            suppressNextFilterReset = true
+            filter = restoredFilter
+        }
+        sessionWordIDs = restoredWords.map(\.persistentModelID)
+        currentIndex = saved.currentIndex
+        gradeHistory = restoredGrades
+        missedOverrides = Dictionary(uniqueKeysWithValues: restoredGrades.map {
+            ($0.wordID, $0.markedMissed)
+        })
+        revealedHintWordIDs.removeAll()
+        isQueueShuffled = saved.isQueueShuffled
+        isCardFlipped = saved.isCardFlipped
+        hasGradedCurrentCard = restoredGrades.last?.queueIndex == saved.currentIndex
+        hasInitializedQueue = true
+        shouldDiscardOnDisappear = false
+
+        if restoredGrades.count >= restoredWords.count {
+            presentSummary()
+        } else {
+            scheduleAutomaticPlayback()
+        }
+    }
+
+    private func persistSession() {
+        guard hasInitializedQueue, !sessionWordIDs.isEmpty, !shouldDiscardOnDisappear else { return }
+        let wordsByID = Dictionary(uniqueKeysWithValues: set.vocabularyWords.map {
+            ($0.persistentModelID, $0)
+        })
+        let queueRecordIDs = sessionWordIDs.compactMap { wordsByID[$0]?.recordID }
+        guard queueRecordIDs.count == sessionWordIDs.count else { return }
+        let savedGrades = gradeHistory.compactMap { action -> SavedPracticeGrade? in
+            guard let recordID = wordsByID[action.wordID]?.recordID else { return nil }
+            return SavedPracticeGrade(
+                wordRecordID: recordID,
+                queueIndex: action.queueIndex,
+                wasMissed: action.wasMissed,
+                markedMissed: action.markedMissed,
+                vocabularyKey: action.vocabularyKey,
+                recordedAt: action.recordedAt,
+                previousMastery: action.previousMastery,
+                previousSetMastery: action.previousSetMastery
+            )
+        }
+        guard savedGrades.count == gradeHistory.count else { return }
+        PracticeSessionStore.save(
+            SavedPracticeSession(
+                version: SavedPracticeSession.currentVersion,
+                setRecordID: set.recordID,
+                filter: filter.rawValue,
+                queueWordRecordIDs: queueRecordIDs,
+                currentIndex: currentIndex,
+                grades: savedGrades,
+                isQueueShuffled: isQueueShuffled,
+                isCardFlipped: isCardFlipped,
+                savedAt: Date()
+            )
+        )
+    }
+
+    private func startSessionOver() {
+        PracticeSessionStore.clear()
+        shouldDiscardOnDisappear = false
+        resetSessionQueue()
+    }
+
+    private func closeSession() {
+        persistSession()
+        onClose()
+    }
+
+    private func finishSession() {
+        shouldDiscardOnDisappear = true
+        PracticeSessionStore.clear()
+        onFinish()
     }
 
     private func stopPlayback() {
@@ -1063,6 +1234,7 @@ private struct PracticeSessionView: View {
         isQueueShuffled = true
         hasGradedCurrentCard = false
         isCardFlipped = false
+        persistSession()
         scheduleAutomaticPlayback()
     }
 
@@ -1076,6 +1248,7 @@ private struct PracticeSessionView: View {
             wasMissed: isMissed(currentWord),
             markedMissed: asMissed,
             vocabularyKey: currentWord.chinese.tingXieTrimmed,
+            recordedAt: Date(),
             previousMastery: PracticeAnalyticsStore.masteryState(
                 for: currentWord.chinese.tingXieTrimmed
             ),
@@ -1104,8 +1277,10 @@ private struct PracticeSessionView: View {
                     currentIndex += 1
                     hasGradedCurrentCard = false
                     isCardFlipped = keepCardsRevealed
+                    persistSession()
                     scheduleAutomaticPlayback()
                 } else {
+                    persistSession()
                     presentSummary()
                 }
             } catch {
@@ -1129,6 +1304,7 @@ private struct PracticeSessionView: View {
                     isCorrect: !action.markedMissed,
                     vocabularyKey: action.vocabularyKey,
                     setKey: setKey,
+                    recordedAt: action.recordedAt,
                     restoringMastery: action.previousMastery,
                     restoringSetMastery: action.previousSetMastery
                 )
@@ -1137,6 +1313,7 @@ private struct PracticeSessionView: View {
                 currentIndex = min(action.queueIndex, max(sessionWordIDs.count - 1, 0))
                 hasGradedCurrentCard = false
                 isCardFlipped = false
+                persistSession()
                 scheduleAutomaticPlayback()
             } catch {
                 // Leave history intact so Undo can be retried.
@@ -1186,6 +1363,45 @@ private struct PracticeSessionView: View {
             cardTransitionEdge = .trailing
             filter = .missed
         }
+    }
+}
+
+// Provides minimal navigation chrome while practice occupies the full workspace.
+private struct PracticeImmersiveHeader: View {
+    let title: String?
+    let info: WorkspaceInfo
+    let onClose: () -> Void
+
+    var body: some View {
+        ZStack {
+            if let title {
+                Text(title)
+                    .font(TingXieTypography.sectionTitle)
+                    .foregroundStyle(TingXiePalette.accent)
+            }
+
+            HStack {
+                Button(action: onClose) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 40, height: 40)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                .help("Return to dictation sets")
+                .accessibilityLabel("Return to dictation sets")
+
+                Spacer()
+
+                WorkspaceInfoButton(
+                    info: info,
+                    accessibilityLabel: "About Practice Sessions"
+                )
+            }
+        }
+        .frame(height: 58)
+        .padding(.horizontal, 24)
     }
 }
 
@@ -1409,20 +1625,30 @@ private struct PracticeFlipCard: View {
                     .accessibilityHidden(true)
             }
 
-            if !isFlipped, word.learnerHint?.tingXieNilIfEmpty != nil, !isHintRevealed {
+            if !isFlipped, let hint = word.learnerHint?.tingXieNilIfEmpty {
                 VStack {
                     Spacer()
-                    Button("Show Hint", systemImage: "lightbulb", action: onRevealHint)
-                        .buttonStyle(
-                            OutlineCapsuleButtonStyle(
-                                fontSize: 12,
-                                horizontalPadding: 13,
-                                height: 32
+                    if isHintRevealed {
+                        Text("hint: \(hint)")
+                            .font(.system(size: 11))
+                            .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.78))
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                            .transition(.opacity)
+                    } else {
+                        Button("Show Hint", systemImage: "lightbulb", action: onRevealHint)
+                            .buttonStyle(
+                                OutlineCapsuleButtonStyle(
+                                    fontSize: 12,
+                                    horizontalPadding: 13,
+                                    height: 32
+                                )
                             )
-                        )
-                        .help("Reveal the saved learner hint")
+                            .help("Reveal the saved learner hint")
+                    }
                 }
                 .padding(.bottom, 24)
+                .padding(.horizontal, 28)
             }
         }
     }
@@ -1447,16 +1673,6 @@ private struct PracticeFlipCard: View {
                 Text(word.pinyin.isEmpty ? "Listen carefully" : word.pinyin)
                     .font(.system(size: 40, weight: .bold))
                     .foregroundStyle(TingXiePalette.accent)
-
-                if isHintRevealed, let hint = word.learnerHint?.tingXieNilIfEmpty {
-                    Label(hint, systemImage: "lightbulb.fill")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 9)
-                        .background(TingXiePalette.secondary.opacity(0.1), in: Capsule())
-                        .transition(.opacity)
-                }
             }
         }
         .padding(28)
