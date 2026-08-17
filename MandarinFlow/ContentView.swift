@@ -45,7 +45,6 @@ struct ContentView: View {
         HStack(spacing: 0) {
             AppSidebar(
                 selection: animatedSelection,
-                activeSet: activeSet,
                 vocabularyWords: vocabularyWords,
                 isCollapsed: isSidebarCollapsed,
                 onToggleCollapse: {

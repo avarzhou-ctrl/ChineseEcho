@@ -13,6 +13,7 @@ nonisolated final class VocabularyWord {
     var chinese: String
     var englishTranslation: String
     var pinyin: String
+    var learnerHint: String?
     
     // Tracks review state and idiom-specific generation paths.
     var isMissedWord: Bool
@@ -26,10 +27,19 @@ nonisolated final class VocabularyWord {
     // Inverse link back to the owning dictation session.
     var session: DictationSet?
     
-    init(chinese: String, englishTranslation: String, pinyin: String, isMissedWord: Bool = false, isIdiom: Bool = false, tags: [String] = []) {
+    init(
+        chinese: String,
+        englishTranslation: String,
+        pinyin: String,
+        learnerHint: String? = nil,
+        isMissedWord: Bool = false,
+        isIdiom: Bool = false,
+        tags: [String] = []
+    ) {
         self.chinese = chinese
         self.englishTranslation = englishTranslation
         self.pinyin = pinyin
+        self.learnerHint = learnerHint
         self.isMissedWord = isMissedWord
         self.isIdiom = isIdiom
         self.tags = tags

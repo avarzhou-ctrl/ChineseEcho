@@ -166,15 +166,9 @@ struct VocabularyHubView: View {
             isSearchResultsPresented = !searchText.tingXieTrimmed.isEmpty
         }
         .sheet(item: $editingWord) { word in
-            WordEditorSheet(word: word) { chinese, pinyin, translation, isIdiom in
+            WordEditorSheet(word: word) { request in
                 let store = DictationStore(modelContainer: modelContext.container)
-                try await store.updateWord(
-                    wordID: word.persistentModelID,
-                    chinese: chinese,
-                    pinyin: pinyin,
-                    translation: translation,
-                    isIdiom: isIdiom
-                )
+                try await store.updateWord(request)
             }
         }
         .alert(
@@ -632,6 +626,15 @@ private struct VocabularyInspector: View {
                             .lineSpacing(3)
                             .padding(.top, 7)
 
+                        if let learnerHint = word.learnerHint?.tingXieNilIfEmpty {
+                            InspectorSectionTitle("Learner Hint")
+                                .padding(.top, 26)
+                            Label(learnerHint, systemImage: "lightbulb.fill")
+                                .font(TingXieTypography.body)
+                                .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                                .padding(.top, 8)
+                        }
+
                         HStack(alignment: .center) {
                             InspectorSectionTitle("Contextual Sentences")
                             Spacer()
@@ -908,23 +911,27 @@ private struct TagLabel: View {
 private struct WordEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
 
-    let onSave: (String, String, String, Bool) async throws -> Void
+    let wordID: PersistentIdentifier
+    let onSave: (VocabularyWordUpdateRequest) async throws -> Void
 
     @State private var chinese: String
     @State private var pinyin: String
     @State private var translation: String
+    @State private var learnerHint: String
     @State private var isIdiom: Bool
     @State private var isSaving = false
     @State private var errorMessage: String?
 
     init(
         word: VocabularyWord,
-        onSave: @escaping (String, String, String, Bool) async throws -> Void
+        onSave: @escaping (VocabularyWordUpdateRequest) async throws -> Void
     ) {
+        wordID = word.persistentModelID
         self.onSave = onSave
         _chinese = State(initialValue: word.chinese)
         _pinyin = State(initialValue: word.pinyin)
         _translation = State(initialValue: word.englishTranslation)
+        _learnerHint = State(initialValue: word.learnerHint ?? "")
         _isIdiom = State(initialValue: word.isIdiom)
     }
 
@@ -953,6 +960,7 @@ private struct WordEditorSheet: View {
                 TextField("Chinese", text: $chinese)
                 TextField("Pinyin", text: $pinyin)
                 TextField("English Translation", text: $translation)
+                TextField("Optional Learner Hint", text: $learnerHint)
                 Toggle("Treat as an idiom", isOn: $isIdiom)
             }
             .formStyle(.grouped)
@@ -994,12 +1002,15 @@ private struct WordEditorSheet: View {
         errorMessage = nil
         Task {
             do {
-                try await onSave(
-                    cleanChinese,
-                    pinyin.trimmingCharacters(in: .whitespacesAndNewlines),
-                    translation.trimmingCharacters(in: .whitespacesAndNewlines),
-                    isIdiom
+                let request = VocabularyWordUpdateRequest(
+                    wordID: wordID,
+                    chinese: cleanChinese,
+                    pinyin: pinyin.trimmingCharacters(in: .whitespacesAndNewlines),
+                    translation: translation.trimmingCharacters(in: .whitespacesAndNewlines),
+                    learnerHint: learnerHint.trimmingCharacters(in: .whitespacesAndNewlines),
+                    isIdiom: isIdiom
                 )
+                try await onSave(request)
                 dismiss()
             } catch {
                 errorMessage = error.localizedDescription

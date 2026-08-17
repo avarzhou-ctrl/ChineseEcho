@@ -6,12 +6,20 @@ nonisolated struct NewVocabularyWord: Sendable {
     let chinese: String
     let pinyin: String
     let translation: String
+    let learnerHint: String
     let isIdiom: Bool
 
-    init(chinese: String, pinyin: String, translation: String, isIdiom: Bool) {
+    init(
+        chinese: String,
+        pinyin: String,
+        translation: String,
+        learnerHint: String = "",
+        isIdiom: Bool
+    ) {
         self.chinese = chinese
         self.pinyin = pinyin
         self.translation = translation
+        self.learnerHint = learnerHint
         self.isIdiom = isIdiom
     }
 
@@ -19,6 +27,7 @@ nonisolated struct NewVocabularyWord: Sendable {
         chinese = word.chinese
         pinyin = word.pinyin
         translation = word.englishTranslation
+        learnerHint = word.learnerHint ?? ""
         isIdiom = word.isIdiom
     }
 }
@@ -33,6 +42,16 @@ nonisolated struct DictationSetSaveRequest: Sendable {
     let destination: Destination
     let title: String
     let words: [NewVocabularyWord]
+}
+
+// Keeps vocabulary edits intact while they cross from the editor to the model actor.
+nonisolated struct VocabularyWordUpdateRequest: Sendable {
+    let wordID: PersistentIdentifier
+    let chinese: String
+    let pinyin: String
+    let translation: String
+    let learnerHint: String
+    let isIdiom: Bool
 }
 
 // Performs all set and vocabulary mutations inside a dedicated SwiftData model actor.
@@ -61,6 +80,7 @@ actor DictationStore {
                 chinese: value.chinese,
                 englishTranslation: value.translation,
                 pinyin: value.pinyin,
+                learnerHint: value.learnerHint.tingXieNilIfEmpty,
                 isIdiom: value.isIdiom,
                 tags: [request.title]
             )
@@ -100,6 +120,7 @@ actor DictationStore {
             if let existingIndex {
                 word = unmatchedWords.remove(at: existingIndex)
                 word.englishTranslation = value.translation
+                word.learnerHint = value.learnerHint.tingXieNilIfEmpty
                 word.isIdiom = value.isIdiom
                 word.tags = [request.title]
             } else {
@@ -107,6 +128,7 @@ actor DictationStore {
                     chinese: value.chinese,
                     englishTranslation: value.translation,
                     pinyin: value.pinyin,
+                    learnerHint: value.learnerHint.tingXieNilIfEmpty,
                     isIdiom: value.isIdiom,
                     tags: [request.title]
                 )
@@ -142,6 +164,7 @@ actor DictationStore {
                 chinese: sourceWord.chinese,
                 englishTranslation: sourceWord.englishTranslation,
                 pinyin: sourceWord.pinyin,
+                learnerHint: sourceWord.learnerHint,
                 isMissedWord: sourceWord.isMissedWord,
                 isIdiom: sourceWord.isIdiom,
                 tags: [copyTitle]
@@ -167,18 +190,13 @@ actor DictationStore {
         try modelContext.save()
     }
 
-    func updateWord(
-        wordID: PersistentIdentifier,
-        chinese: String,
-        pinyin: String,
-        translation: String,
-        isIdiom: Bool
-    ) throws {
-        guard let word = modelContext.model(for: wordID) as? VocabularyWord else { return }
-        word.chinese = chinese
-        word.pinyin = pinyin
-        word.englishTranslation = translation
-        word.isIdiom = isIdiom
+    func updateWord(_ request: VocabularyWordUpdateRequest) throws {
+        guard let word = self[request.wordID, as: VocabularyWord.self] else { return }
+        word.chinese = request.chinese
+        word.pinyin = request.pinyin
+        word.englishTranslation = request.translation
+        word.learnerHint = request.learnerHint.tingXieNilIfEmpty
+        word.isIdiom = request.isIdiom
         try modelContext.save()
     }
 

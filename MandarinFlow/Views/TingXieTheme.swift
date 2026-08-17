@@ -189,7 +189,6 @@ struct AppSidebar: View {
     @Namespace private var selectionAnimation
 
     @Binding var selection: AppSection
-    let activeSet: DictationSet?
     let vocabularyWords: [VocabularyWord]
     let isCollapsed: Bool
     let onToggleCollapse: () -> Void
@@ -209,18 +208,6 @@ struct AppSidebar: View {
                     selectionAnimation: selectionAnimation,
                     action: onShowDictationHome
                 )
-
-                if let activeSet, !isCollapsed {
-                    HStack(spacing: 8) {
-                        Rectangle().frame(width: 2, height: 18)
-                        Text(activeSet.title).lineLimit(1)
-                    }
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.7))
-                    .padding(.leading, 18)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .transition(.opacity.combined(with: .move(edge: .leading)))
-                }
 
                 SidebarButton(
                     title: "Your Vocabulary Hub",
@@ -763,8 +750,13 @@ enum SearchText {
 }
 
 extension String {
-    var tingXieTrimmed: String {
+    nonisolated var tingXieTrimmed: String {
         trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    nonisolated var tingXieNilIfEmpty: String? {
+        let trimmed = tingXieTrimmed
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
 

@@ -58,6 +58,9 @@ Ask first:
 - Format: "**YYYY-MM-DD**: [Brief description of changes with which files were edited]"
 
 # Project Log
+- **2026-08-17**: Prevented Vocabulary Hub learner-hint saves from corrupting editor values across the SwiftData actor boundary by sending one immutable update request and snapshotting the edited word identifier. Files edited: `MandarinFlow/Services/DictationStore.swift`, `MandarinFlow/Views/VocabularyHubView.swift`, `AGENTS.md`.
+- **2026-08-17**: Removed the active dictation-set sub-tab shown beneath Smart Dictation in the sidebar while preserving the open practice session. Files edited: `MandarinFlow/ContentView.swift`, `MandarinFlow/Views/TingXieTheme.swift`, `AGENTS.md`.
+- **2026-08-17**: Added optional per-word learner hints editable from set and vocabulary editors, request-only hint reveals during listening, and automatic or partial end-of-session summaries with accuracy, learned and missed word lists, final-card review, and missed-only follow-up practice. Files edited: `MandarinFlow/Models/VocabularyWord.swift`, `MandarinFlow/Services/DictationStore.swift`, `MandarinFlow/Views/SmartDictationView.swift`, `MandarinFlow/Views/TingXieTheme.swift`, `MandarinFlow/Views/VocabularyHubView.swift`, `DESIGN.md`, `TODO.md`, `AGENTS.md`.
 - **2026-08-17**: Removed the redundant right-pointing chevron from dictation-set rows so the overflow menu is the final trailing control. Files edited: `MandarinFlow/Views/SmartDictationView.swift`, `AGENTS.md`.
 - **2026-08-17**: Vertically aligned each set progress bar with its adjacent overflow-menu dots while keeping the status label below the bar. Files edited: `MandarinFlow/Views/SmartDictationView.swift`, `AGENTS.md`.
 - **2026-08-17**: Set a fixed 32-point visual gap between each set progress bar and its overflow-menu dots. Files edited: `MandarinFlow/Views/SmartDictationView.swift`, `AGENTS.md`.

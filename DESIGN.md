@@ -172,6 +172,10 @@ The practice card contains:
 6. One play/stop control
 7. Reveal and completion actions
 
+Words may include a short optional learner hint. The listening side exposes a **Show Hint** action only when a hint exists; the hint remains concealed until requested and does not reveal the answer.
+
+Grading the final card opens a session summary automatically. **Finish Set** opens the same summary early with partial-session progress. The summary reports current-session accuracy, learned words, and missed words, and can start a follow-up queue containing only the words missed in that run.
+
 Playback proceeds through the filtered list and stops after its final item. Selecting a word moves playback to that position and continues forward. A 1.25-second post-utterance pause separates entries.
 
 If a filter has no matches, use **No Words in This Filter** with “Choose a different category to continue practicing.”

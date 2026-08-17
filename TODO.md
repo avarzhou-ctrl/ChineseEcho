@@ -15,11 +15,11 @@
 
 ## Learning improvements
 
-- [ ] **Add optional learner hints**
+- [x] **Add optional learner hints**
   - Allow a short hint to be saved per vocabulary word.
   - Keep hints hidden during listening until the learner requests one.
 
-- [ ] **Add an end-of-session summary**
+- [x] **Add an end-of-session summary**
   - Show accuracy, learned words, and missed words after finishing a set.
   - Offer a one-click **Practice Missed Words** follow-up.
 
