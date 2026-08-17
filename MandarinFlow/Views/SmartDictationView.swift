@@ -1480,22 +1480,26 @@ private struct PracticeSessionSummaryView: View {
                 }
 
                 HStack(spacing: 14) {
-                    Button(
-                        summary.isComplete ? "Review Last Card" : "Continue Session",
-                        systemImage: "arrow.backward",
-                        action: onContinueSession
-                    )
-                    .buttonStyle(OutlineCapsuleButtonStyle())
+                    if summary.isComplete {
+                        Button("Return to Sets", systemImage: "rectangle.grid.1x2", action: onFinish)
+                            .buttonStyle(OutlineCapsuleButtonStyle())
+                    } else {
+                        Button("Continue Session", systemImage: "arrow.backward", action: onContinueSession)
+                            .buttonStyle(OutlineCapsuleButtonStyle())
+                    }
 
                     Spacer()
 
-                    Button("Return to Sets", systemImage: "rectangle.grid.1x2", action: onFinish)
-                        .buttonStyle(.borderless)
-                        .foregroundStyle(TingXiePalette.accent)
+                    if !summary.isComplete {
+                        Button("Return to Sets", systemImage: "rectangle.grid.1x2", action: onFinish)
+                            .buttonStyle(.borderless)
+                            .foregroundStyle(TingXiePalette.accent)
+                    }
 
-                    Button("Practice Missed Words", systemImage: "arrow.clockwise", action: onPracticeMissedWords)
-                        .buttonStyle(GreenCapsuleButtonStyle())
-                        .disabled(summary.missedWords.isEmpty)
+                    if !summary.missedWords.isEmpty {
+                        Button("Practice Missed Words", systemImage: "arrow.clockwise", action: onPracticeMissedWords)
+                            .buttonStyle(GreenCapsuleButtonStyle())
+                    }
                 }
             }
             .frame(maxWidth: 760)
