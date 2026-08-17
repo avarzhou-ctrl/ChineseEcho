@@ -526,9 +526,16 @@ private struct DictationSetRow: View {
         )
     }
 
+    private var setKey: String {
+        PracticeAnalyticsStore.setKey(for: set.dateCreated)
+    }
+
     private var progress: Double {
         guard !vocabularyKeys.isEmpty else { return 0 }
-        let masteredCount = analytics.masteredVocabulary.intersection(vocabularyKeys).count
+        let masteredCount = analytics
+            .masteredVocabulary(forSetKey: setKey)
+            .intersection(vocabularyKeys)
+            .count
         return Double(masteredCount) / Double(vocabularyKeys.count)
     }
 
@@ -640,6 +647,7 @@ private struct PracticeGradeAction {
     let markedMissed: Bool
     let vocabularyKey: String
     let previousMastery: Bool?
+    let previousSetMastery: Bool?
 }
 
 // Freezes the current session results so the summary stays stable while it is visible.
@@ -716,6 +724,10 @@ private struct PracticeSessionView: View {
 
     private var canUndoLastGrade: Bool {
         !gradeHistory.isEmpty && (currentIndex > 0 || hasGradedCurrentCard) && !isUpdatingGrade
+    }
+
+    private var setKey: String {
+        PracticeAnalyticsStore.setKey(for: set.dateCreated)
     }
 
     private var animatedFilter: Binding<PracticeFilter> {
@@ -950,9 +962,12 @@ private struct PracticeSessionView: View {
 
             HStack(alignment: .bottom, spacing: 32) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Card \(min(currentIndex + 1, sessionWordIDs.count)) of \(sessionWordIDs.count)")
+                    Text("Progress: \(gradeHistory.count) of \(sessionWordIDs.count) cards")
                         .font(.system(size: 13, weight: .semibold))
-                    ProgressView(value: Double(currentIndex + 1), total: Double(max(sessionWordIDs.count, 1)))
+                    ProgressView(
+                        value: Double(gradeHistory.count),
+                        total: Double(max(sessionWordIDs.count, 1))
+                    )
                         .tint(TingXiePalette.accent)
                         .frame(maxWidth: .infinity)
                 }
@@ -1063,6 +1078,10 @@ private struct PracticeSessionView: View {
             vocabularyKey: currentWord.chinese.tingXieTrimmed,
             previousMastery: PracticeAnalyticsStore.masteryState(
                 for: currentWord.chinese.tingXieTrimmed
+            ),
+            previousSetMastery: PracticeAnalyticsStore.masteryState(
+                for: currentWord.chinese.tingXieTrimmed,
+                setKey: setKey
             )
         )
         isUpdatingGrade = true
@@ -1074,7 +1093,8 @@ private struct PracticeSessionView: View {
                 missedOverrides[wordID] = asMissed
                 PracticeAnalyticsStore.recordResult(
                     isCorrect: !asMissed,
-                    vocabularyKey: action.vocabularyKey
+                    vocabularyKey: action.vocabularyKey,
+                    setKey: setKey
                 )
                 gradeHistory.append(action)
                 hasGradedCurrentCard = true
@@ -1108,7 +1128,9 @@ private struct PracticeSessionView: View {
                 PracticeAnalyticsStore.undoResult(
                     isCorrect: !action.markedMissed,
                     vocabularyKey: action.vocabularyKey,
-                    restoringMastery: action.previousMastery
+                    setKey: setKey,
+                    restoringMastery: action.previousMastery,
+                    restoringSetMastery: action.previousSetMastery
                 )
                 gradeHistory.removeLast()
                 cardTransitionEdge = .leading

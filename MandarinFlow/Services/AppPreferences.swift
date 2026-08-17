@@ -28,17 +28,23 @@ nonisolated struct PracticeAnalyticsSnapshot: Equatable, Sendable {
     let totalAttempts: Int
     let studyStreak: Int
     let masteredVocabulary: Set<String>
+    let masteredVocabularyBySet: [String: Set<String>]
 
     static let empty = PracticeAnalyticsSnapshot(
         correctAttempts: 0,
         totalAttempts: 0,
         studyStreak: 0,
-        masteredVocabulary: []
+        masteredVocabulary: [],
+        masteredVocabularyBySet: [:]
     )
 
     var accuracy: Double? {
         guard totalAttempts > 0 else { return nil }
         return Double(correctAttempts) / Double(totalAttempts)
+    }
+
+    func masteredVocabulary(forSetKey setKey: String) -> Set<String> {
+        masteredVocabularyBySet[setKey] ?? []
     }
 }
 
@@ -57,6 +63,8 @@ enum PracticeAnalyticsStore {
     private struct StoredAnalytics: Codable {
         var days: [String: DayRecord] = [:]
         var mastery: [String: Bool] = [:]
+        // Optional so analytics saved before per-set progress still decode normally.
+        var setMastery: [String: [String: Bool]]?
     }
 
     static func snapshot() -> PracticeAnalyticsSnapshot {
@@ -67,15 +75,27 @@ enum PracticeAnalyticsStore {
             studyStreak: streak(from: analytics.days),
             masteredVocabulary: Set(
                 analytics.mastery.compactMap { key, isMastered in isMastered ? key : nil }
-            )
+            ),
+            masteredVocabularyBySet: (analytics.setMastery ?? [:]).mapValues { mastery in
+                Set(mastery.compactMap { key, isMastered in isMastered ? key : nil })
+            }
         )
     }
 
-    static func masteryState(for vocabularyKey: String) -> Bool? {
-        load().mastery[vocabularyKey]
+    static func masteryState(
+        for vocabularyKey: String,
+        setKey: String? = nil
+    ) -> Bool? {
+        let analytics = load()
+        guard let setKey else { return analytics.mastery[vocabularyKey] }
+        return analytics.setMastery?[setKey]?[vocabularyKey]
     }
 
-    static func recordResult(isCorrect: Bool, vocabularyKey: String) {
+    static func recordResult(
+        isCorrect: Bool,
+        vocabularyKey: String,
+        setKey: String
+    ) {
         var analytics = load()
         let key = dayKey(for: Date())
         var day = analytics.days[key] ?? DayRecord(correctAttempts: 0, totalAttempts: 0)
@@ -83,13 +103,20 @@ enum PracticeAnalyticsStore {
         if isCorrect { day.correctAttempts += 1 }
         analytics.days[key] = day
         analytics.mastery[vocabularyKey] = isCorrect
+        var setMastery = analytics.setMastery ?? [:]
+        var currentSetMastery = setMastery[setKey] ?? [:]
+        currentSetMastery[vocabularyKey] = isCorrect
+        setMastery[setKey] = currentSetMastery
+        analytics.setMastery = setMastery
         save(analytics)
     }
 
     static func undoResult(
         isCorrect: Bool,
         vocabularyKey: String,
-        restoringMastery previousMastery: Bool?
+        setKey: String,
+        restoringMastery previousMastery: Bool?,
+        restoringSetMastery previousSetMastery: Bool?
     ) {
         var analytics = load()
         let key = dayKey(for: Date())
@@ -103,7 +130,20 @@ enum PracticeAnalyticsStore {
             }
         }
         analytics.mastery[vocabularyKey] = previousMastery
+        var setMastery = analytics.setMastery ?? [:]
+        var currentSetMastery = setMastery[setKey] ?? [:]
+        currentSetMastery[vocabularyKey] = previousSetMastery
+        if currentSetMastery.isEmpty {
+            setMastery.removeValue(forKey: setKey)
+        } else {
+            setMastery[setKey] = currentSetMastery
+        }
+        analytics.setMastery = setMastery.isEmpty ? nil : setMastery
         save(analytics)
+    }
+
+    nonisolated static func setKey(for dateCreated: Date) -> String {
+        String(dateCreated.timeIntervalSinceReferenceDate.bitPattern, radix: 16)
     }
 
     private static func load() -> StoredAnalytics {

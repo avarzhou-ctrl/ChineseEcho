@@ -177,10 +177,10 @@ struct VocabularyHubView: View {
             isSearchResultsPresented = !searchText.tingXieTrimmed.isEmpty
         }
         .sheet(item: $editingWord) { word in
-            WordEditorSheet(word: word) { request in
-                let store = DictationStore(modelContainer: modelContext.container)
-                try await store.updateWord(request)
-            }
+            WordEditorSheet(
+                word: word,
+                modelContainer: modelContext.container
+            )
         }
         .alert(
             "Remove “\(wordPendingDeletion?.chinese ?? "Word")”?",
@@ -940,7 +940,7 @@ private struct WordEditorSheet: View {
     let originalPinyin: String
     let originalTranslation: String
     let originalSetTitle: String?
-    let onSave: (VocabularyWordUpdateRequest) async throws -> Void
+    let modelContainer: ModelContainer
 
     @State private var chinese: String
     @State private var pinyin: String
@@ -952,14 +952,14 @@ private struct WordEditorSheet: View {
 
     init(
         word: VocabularyWord,
-        onSave: @escaping (VocabularyWordUpdateRequest) async throws -> Void
+        modelContainer: ModelContainer
     ) {
         wordRecordID = word.recordID
         originalChinese = word.chinese
         originalPinyin = word.pinyin
         originalTranslation = word.englishTranslation
         originalSetTitle = word.session?.title
-        self.onSave = onSave
+        self.modelContainer = modelContainer
         _chinese = State(initialValue: word.chinese)
         _pinyin = State(initialValue: word.pinyin)
         _translation = State(
@@ -1048,7 +1048,8 @@ private struct WordEditorSheet: View {
                     learnerHint: learnerHint.trimmingCharacters(in: .whitespacesAndNewlines),
                     isIdiom: isIdiom
                 )
-                try await onSave(request)
+                let store = DictationStore(modelContainer: modelContainer)
+                try await store.updateWord(request)
                 dismiss()
             } catch {
                 errorMessage = error.localizedDescription
