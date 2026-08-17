@@ -456,7 +456,7 @@ struct WorkspaceHeader: View {
                     onSubmit: onSearchSubmit,
                     onMoveSelection: onMoveSearchSelection
                 )
-                    .frame(width: 250)
+                    .frame(width: 310)
                     .zIndex(20)
             }
 
@@ -528,6 +528,7 @@ private struct WorkspaceInfoSheet: View {
                         .font(TingXieTypography.body)
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                         .lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Spacer()
@@ -544,24 +545,27 @@ private struct WorkspaceInfoSheet: View {
 
             Divider()
 
-            VStack(alignment: .leading, spacing: 14) {
-                ForEach(Array(info.tips.enumerated()), id: \.offset) { index, tip in
-                    HStack(alignment: .top, spacing: 12) {
-                        Text("\(index + 1)")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 24, height: 24)
-                            .background(TingXiePalette.accent, in: Circle())
-                        Text(tip)
-                            .font(TingXieTypography.body)
-                            .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                            .lineSpacing(3)
-                            .padding(.top, 2)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    ForEach(Array(info.tips.enumerated()), id: \.offset) { index, tip in
+                        HStack(alignment: .top, spacing: 12) {
+                            Text("\(index + 1)")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(.white)
+                                .frame(width: 24, height: 24)
+                                .background(TingXiePalette.accent, in: Circle())
+                            Text(tip)
+                                .font(TingXieTypography.body)
+                                .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                                .lineSpacing(3)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.top, 2)
+                        }
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-
-            Spacer(minLength: 0)
+            .scrollIndicators(.visible)
 
             HStack {
                 Spacer()
@@ -570,7 +574,7 @@ private struct WorkspaceInfoSheet: View {
             }
         }
         .padding(28)
-        .frame(width: 520, height: 390)
+        .frame(width: 520, height: 416)
         .foregroundStyle(TingXiePalette.onBackground)
         .background(TingXiePalette.background)
     }

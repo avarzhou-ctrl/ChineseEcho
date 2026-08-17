@@ -152,8 +152,14 @@ struct SettingsDashboard: View {
             summary: "Control listening sessions and review your local learning library.",
             minimumHeight: primaryCardMinimumHeight
         ) {
-            Stepper("Repeat each word \(repeatCount) time\(repeatCount == 1 ? "" : "s")", value: $repeatCount, in: 1...5)
-            Toggle("Begin each new card with the answer shown", isOn: $keepCardsRevealed)
+            Stepper(value: $repeatCount, in: 1...5) {
+                Text("Repeat each word \(repeatCount) time\(repeatCount == 1 ? "" : "s")")
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Toggle(isOn: $keepCardsRevealed) {
+                Text("Begin each new card with the answer shown")
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             Label(
                 keepCardsRevealed
@@ -163,6 +169,7 @@ struct SettingsDashboard: View {
             )
             .font(.system(size: 11))
             .foregroundStyle(TingXiePalette.onSurfaceVariant)
+            .fixedSize(horizontal: false, vertical: true)
 
             Divider()
 
@@ -184,9 +191,11 @@ struct SettingsDashboard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(modelDownloadCoordinator.modelName)
                         .font(.system(size: 15, weight: .bold))
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(modelDownloadCoordinator.statusTitle)
                         .font(.system(size: 12))
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Spacer()
@@ -203,6 +212,8 @@ struct SettingsDashboard: View {
                 VStack(alignment: .leading, spacing: 7) {
                     HStack {
                         Text(modelDownloadCoordinator.statusDetail)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .layoutPriority(1)
                         Spacer()
                         Text(modelDownloadCoordinator.percentageText)
                             .fontWeight(.bold)
@@ -220,6 +231,7 @@ struct SettingsDashboard: View {
                     Label(modelDownloadCoordinator.predictedTimeText, systemImage: "clock")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                        .fixedSize(horizontal: false, vertical: true)
                         .accessibilityLabel("Predicted Local AI download time")
                 }
             } else if modelDownloadCoordinator.phase == .checking
@@ -229,48 +241,57 @@ struct SettingsDashboard: View {
                     Text(modelDownloadCoordinator.statusDetail)
                         .font(.system(size: 11))
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             } else {
                 Text(modelDownloadCoordinator.statusDetail)
                     .font(.system(size: 11))
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Divider()
 
             LabeledContent("Stored model data") {
-                Text(modelDownloadCoordinator.cachedSizeText)
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                HStack(spacing: 10) {
+                    Text(modelDownloadCoordinator.cachedSizeText)
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+
+                    Button("Remove Model", systemImage: "trash", role: .destructive) {
+                        isConfirmingModelRemoval = true
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(modelDownloadCoordinator.cachedByteCount == 0)
+                }
             }
 
-            HStack(spacing: 10) {
-                if modelDownloadCoordinator.isPreparing {
+            if modelDownloadCoordinator.isPreparing {
+                HStack {
                     Button("Pause Download", systemImage: "pause.fill") {
                         Task { await modelDownloadCoordinator.cancelPreparation() }
                     }
                     .buttonStyle(.bordered)
-                } else if modelDownloadCoordinator.canRetry {
+
+                    Spacer()
+                }
+            } else if modelDownloadCoordinator.canRetry {
+                HStack {
                     Button("Download Model", systemImage: "arrow.down.circle.fill") {
                         modelRemovalError = nil
                         modelDownloadCoordinator.startPreparing()
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(TingXiePalette.accent)
-                }
 
-                Spacer()
-
-                Button("Remove Model", systemImage: "trash", role: .destructive) {
-                    isConfirmingModelRemoval = true
+                    Spacer()
                 }
-                .buttonStyle(.bordered)
-                .disabled(modelDownloadCoordinator.cachedByteCount == 0)
             }
 
             if let modelRemovalError {
                 Label(modelRemovalError, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption)
                     .foregroundStyle(TingXiePalette.missed)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Label(
@@ -279,6 +300,7 @@ struct SettingsDashboard: View {
             )
             .font(.system(size: 10))
             .foregroundStyle(TingXiePalette.onSurfaceVariant)
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -291,22 +313,27 @@ struct SettingsDashboard: View {
             LabeledContent("Version") {
                 Text(appVersion)
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             LabeledContent("Storage") {
                 Text("Local on this Mac")
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             LabeledContent("Speech") {
                 Text("Apple AVSpeechSynthesizer")
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             LabeledContent("Language Model") {
                 Text("\(LocalModelSpec.displayName) · MLX Swift")
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             LabeledContent("Dictionary") {
                 Text("CC-CEDICT · CC BY-SA 4.0")
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -391,10 +418,12 @@ private struct SettingsSectionCard<Content: View>: View {
                     Text(title)
                         .font(TingXieTypography.sectionTitle)
                         .foregroundStyle(TingXiePalette.accent)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(summary)
                         .font(TingXieTypography.metadata)
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                         .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
 

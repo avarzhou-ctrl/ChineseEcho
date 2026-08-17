@@ -31,6 +31,9 @@
   - Export sets, vocabulary, contextual sentences, hints, and learning progress to a portable file.
   - Validate imported data and preview what will be restored before changing the library.
 
+- [ ] **Add customizable icons for sets**
+  - Emoji, icons, colors, etc.
+
 ## Later considerations
 
 - [ ] **Evaluate a due-review queue**
@@ -38,6 +41,9 @@
   - Define a simple scheduling model before adding more progress metrics.
 
 ## Completed
+
+- [x] **Correct Local AI model naming**
+  - Replaced literal `(modelName)` placeholders with the displayed model name in every download status.
 
 - [x] **More intuitive vocabulary page**
   - Reduced text and simplified individual vocabulary navigation.

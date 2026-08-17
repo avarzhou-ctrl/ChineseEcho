@@ -117,32 +117,38 @@ struct VocabularyHubView: View {
                 )
             )
 
-            HSplitView {
-                vocabularyCatalog
-                    .frame(minWidth: 390, idealWidth: 440)
+            GeometryReader { geometry in
+                let availableWidth = geometry.size.width
+                let catalogMinimumWidth = min(390, availableWidth * 0.40)
+                let inspectorMinimumWidth = min(420, availableWidth * 0.48)
 
-                ZStack {
-                    VocabularyInspector(
-                        word: selectedWord,
-                        isMissed: selectedWord.map(isEffectivelyMissed) ?? false,
-                        onMarkAsLearned: markAsLearned
-                    )
-                    .id(selectedWord?.persistentModelID)
-                    .transition(
-                        TingXieMotion.directionalTransition(
-                            enteringFrom: inspectorTransitionEdge,
-                            reduceMotion: reduceMotion
+                HSplitView {
+                    vocabularyCatalog
+                        .frame(minWidth: catalogMinimumWidth, idealWidth: 440)
+
+                    ZStack {
+                        VocabularyInspector(
+                            word: selectedWord,
+                            isMissed: selectedWord.map(isEffectivelyMissed) ?? false,
+                            onMarkAsLearned: markAsLearned
                         )
+                        .id(selectedWord?.persistentModelID)
+                        .transition(
+                            TingXieMotion.directionalTransition(
+                                enteringFrom: inspectorTransitionEdge,
+                                reduceMotion: reduceMotion
+                            )
+                        )
+                    }
+                    .animation(
+                        TingXieMotion.contentChange(reduceMotion: reduceMotion),
+                        value: selectedWord?.persistentModelID
                     )
+                    .frame(minWidth: inspectorMinimumWidth, idealWidth: 560)
+                    .clipped()
                 }
-                .animation(
-                    TingXieMotion.contentChange(reduceMotion: reduceMotion),
-                    value: selectedWord?.persistentModelID
-                )
-                .frame(minWidth: 420, idealWidth: 560)
-                .clipped()
+                .onTapGesture { isSearchResultsPresented = false }
             }
-            .onTapGesture { isSearchResultsPresented = false }
         }
         .foregroundStyle(TingXiePalette.onBackground)
         .background(TingXiePalette.background)
@@ -476,7 +482,7 @@ private struct VocabularyRow: View {
         .overlay {
             if isSelected {
                 RoundedRectangle(cornerRadius: 13)
-                    .stroke(TingXiePalette.outlineVariant.opacity(0.65), lineWidth: 1)
+                    .strokeBorder(TingXiePalette.outlineVariant.opacity(0.65), lineWidth: 1)
             }
         }
         .animation(
@@ -777,7 +783,7 @@ private struct ContextualSentenceCard: View {
         .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 14))
         .overlay {
             RoundedRectangle(cornerRadius: 14)
-                .stroke(TingXiePalette.outlineVariant.opacity(0.65), lineWidth: 1)
+                .strokeBorder(TingXiePalette.outlineVariant.opacity(0.65), lineWidth: 1)
         }
     }
 

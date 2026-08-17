@@ -532,6 +532,15 @@ private struct DictationSetRow: View {
         return Double(masteredCount) / Double(vocabularyKeys.count)
     }
 
+    private var isCompleted: Bool {
+        !vocabularyKeys.isEmpty && progress >= 1
+    }
+
+    private var progressStatusText: String {
+        if isCompleted { return "Completed" }
+        return "Progress: \(progress.formatted(.percent.precision(.fractionLength(0))))"
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             Button(action: onOpen) {
@@ -551,27 +560,30 @@ private struct DictationSetRow: View {
                         }
                         .font(.system(size: 12))
                         .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.72))
-
-                        HStack(spacing: 9) {
-                            Text("Progress")
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.72))
-
-                            ProgressView(value: progress)
-                                .tint(TingXiePalette.accent)
-                                .frame(maxWidth: 240)
-
-                            Text(progress, format: .percent.precision(.fractionLength(0)))
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(TingXiePalette.secondary)
-                                .monospacedDigit()
-                        }
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("Learning progress")
-                        .accessibilityValue(progress.formatted(.percent.precision(.fractionLength(0))))
                     }
 
                     Spacer()
+
+                    VStack(alignment: .trailing, spacing: 6) {
+                        ProgressView(value: progress)
+                            .tint(TingXiePalette.accent)
+                            .frame(width: 132)
+
+                        Text(progressStatusText)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(
+                                isCompleted
+                                    ? TingXiePalette.secondary
+                                    : TingXiePalette.onSurfaceVariant.opacity(0.72)
+                            )
+                            .monospacedDigit()
+                    }
+                    .fixedSize()
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Learning progress")
+                    .accessibilityValue(progressStatusText)
+                    .padding(.trailing, 32)
+                    .offset(y: 9)
                 }
                 .padding(.leading, 18)
                 .frame(maxWidth: .infinity, minHeight: 96)
@@ -588,7 +600,7 @@ private struct DictationSetRow: View {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                    .frame(width: 60, height: 56)
+                    .frame(width: 60, height: 56, alignment: .leading)
                     .contentShape(Rectangle())
             }
             .menuStyle(.borderlessButton)
@@ -597,11 +609,6 @@ private struct DictationSetRow: View {
             .padding(.trailing, 20)
             .help("Edit \(set.title)")
             .accessibilityLabel("Edit \(set.title)")
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.45))
-                .padding(.trailing, 18)
         }
         .frame(maxWidth: .infinity, minHeight: 96)
         .tonalCard(fill: TingXiePalette.lightGreenSurface)

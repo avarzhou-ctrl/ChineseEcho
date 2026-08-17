@@ -60,7 +60,7 @@ final class ModelDownloadCoordinator {
         case .loading:
             "Loading Local AI"
         case .ready:
-            "Local AI is ready"
+            "\(modelName) is available"
         case .cancelled:
             "Local AI download paused"
         case .failed:
@@ -71,15 +71,15 @@ final class ModelDownloadCoordinator {
     var statusDetail: String {
         switch phase {
         case .idle:
-            "Download (modelName) to enable private on-device generation."
+            "Download \(modelName) to enable private on-device generation."
         case .checking:
-            "Looking for an existing (modelName) download…"
+            "Looking for an existing \(modelName) download…"
         case .downloading:
             downloadDetail
         case .loading:
             "Download complete · Preparing the model in memory…"
         case .ready:
-            "(modelName) is available for private on-device generation."
+            "\(modelName) is available for private on-device generation."
         case .cancelled:
             "Downloaded files were kept so you can resume later."
         case .failed(let message):
