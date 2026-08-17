@@ -58,6 +58,7 @@ Ask first:
 - Format: "**YYYY-MM-DD**: [Brief description of changes with which files were edited]"
 
 # Project Log
+- **2026-08-17**: Granted the sandboxed app read/write access to user-selected files in Debug and Release so the local-backup save panel can open and export JSON archives. Files edited: `MandarinFlow.xcodeproj/project.pbxproj`, `AGENTS.md`.
 - **2026-08-17**: Removed Review Last Card from completed session summaries and moved Return to Sets into its left-side outlined action position while retaining Continue Session for partial summaries. Files edited: `MandarinFlow/Views/SmartDictationView.swift`, `AGENTS.md`.
 - **2026-08-17**: Hid the session summary's Practice Missed Words action when the learner completed the session without missing any words. Files edited: `MandarinFlow/Views/SmartDictationView.swift`, `AGENTS.md`.
 - **2026-08-17**: Added a direction-aware animated transition between the dictation set list and immersive practice, including coordinated sidebar motion and a Reduced Motion fade. Files edited: `MandarinFlow/ContentView.swift`, `MandarinFlow/Views/SmartDictationView.swift`, `AGENTS.md`.
