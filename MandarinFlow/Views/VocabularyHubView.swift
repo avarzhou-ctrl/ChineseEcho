@@ -911,7 +911,7 @@ private struct TagLabel: View {
 private struct WordEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
 
-    let wordID: PersistentIdentifier
+    let wordRecordID: UUID
     let onSave: (VocabularyWordUpdateRequest) async throws -> Void
 
     @State private var chinese: String
@@ -926,7 +926,7 @@ private struct WordEditorSheet: View {
         word: VocabularyWord,
         onSave: @escaping (VocabularyWordUpdateRequest) async throws -> Void
     ) {
-        wordID = word.persistentModelID
+        wordRecordID = word.recordID
         self.onSave = onSave
         _chinese = State(initialValue: word.chinese)
         _pinyin = State(initialValue: word.pinyin)
@@ -1003,7 +1003,7 @@ private struct WordEditorSheet: View {
         Task {
             do {
                 let request = VocabularyWordUpdateRequest(
-                    wordID: wordID,
+                    wordRecordID: wordRecordID,
                     chinese: cleanChinese,
                     pinyin: pinyin.trimmingCharacters(in: .whitespacesAndNewlines),
                     translation: translation.trimmingCharacters(in: .whitespacesAndNewlines),

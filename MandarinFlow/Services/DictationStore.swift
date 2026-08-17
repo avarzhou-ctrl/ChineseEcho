@@ -46,7 +46,7 @@ nonisolated struct DictationSetSaveRequest: Sendable {
 
 // Keeps vocabulary edits intact while they cross from the editor to the model actor.
 nonisolated struct VocabularyWordUpdateRequest: Sendable {
-    let wordID: PersistentIdentifier
+    let wordRecordID: UUID
     let chinese: String
     let pinyin: String
     let translation: String
@@ -191,7 +191,16 @@ actor DictationStore {
     }
 
     func updateWord(_ request: VocabularyWordUpdateRequest) throws {
-        guard let word = self[request.wordID, as: VocabularyWord.self] else { return }
+        let recordID = request.wordRecordID
+        var descriptor = FetchDescriptor<VocabularyWord>(
+            predicate: #Predicate { word in
+                word.recordID == recordID
+            }
+        )
+        descriptor.fetchLimit = 1
+        guard let word = try modelContext.fetch(descriptor).first else {
+            throw DictationStoreError.wordNotFound
+        }
         word.chinese = request.chinese
         word.pinyin = request.pinyin
         word.englishTranslation = request.translation
@@ -216,8 +225,14 @@ actor DictationStore {
 // Converts missing-record failures into actionable editor messages.
 private enum DictationStoreError: LocalizedError {
     case setNotFound
+    case wordNotFound
 
     var errorDescription: String? {
-        "The dictation set could not be found. Close this editor and try again."
+        switch self {
+        case .setNotFound:
+            "The dictation set could not be found. Close this editor and try again."
+        case .wordNotFound:
+            "The vocabulary word could not be found. Close this editor and try again."
+        }
     }
 }

@@ -5,11 +5,14 @@
 //  Created by Ava Zhou on 2026/7/11.
 //
 
+import Foundation
 import SwiftData
 
 // Persists one vocabulary entry, its review state, enrichment, tags, and owning set.
 @Model
 nonisolated final class VocabularyWord {
+    // Provides a context-independent identity for background fetches and updates.
+    var recordID: UUID = UUID()
     var chinese: String
     var englishTranslation: String
     var pinyin: String
@@ -28,6 +31,7 @@ nonisolated final class VocabularyWord {
     var session: DictationSet?
     
     init(
+        recordID: UUID = UUID(),
         chinese: String,
         englishTranslation: String,
         pinyin: String,
@@ -36,6 +40,7 @@ nonisolated final class VocabularyWord {
         isIdiom: Bool = false,
         tags: [String] = []
     ) {
+        self.recordID = recordID
         self.chinese = chinese
         self.englishTranslation = englishTranslation
         self.pinyin = pinyin
