@@ -10,6 +10,7 @@ struct CCCEDICTEntry: Sendable {
     let chinese: String
     let pinyin: String
     let translation: String
+    let isIdiom: Bool
 }
 
 // Describes failures that prevent bundled dictionary lookup.
@@ -132,6 +133,9 @@ actor CCCEDICTDictionary {
         let pinyin = PinyinToneConverter.convert(numberedPinyin)
         let conciseTranslation = compact(translation)
         guard !pinyin.isEmpty, !conciseTranslation.isEmpty else { return nil }
+        let isIdiom = definitions.contains {
+            $0.range(of: "(idiom)", options: .caseInsensitive) != nil
+        }
 
         var score = definitionScore(translation)
         if numberedPinyin.first?.isLowercase == true {
@@ -142,7 +146,8 @@ actor CCCEDICTDictionary {
             entry: CCCEDICTEntry(
                 chinese: headwords.simplified,
                 pinyin: pinyin,
-                translation: conciseTranslation
+                translation: conciseTranslation,
+                isIdiom: isIdiom
             ),
             traditional: headwords.traditional,
             score: score
@@ -177,6 +182,7 @@ actor CCCEDICTDictionary {
             score -= 30
         }
         if value.hasPrefix("(") { score -= 2 }
+        if value.hasPrefix("lit.") || value.hasPrefix("(lit.)") { score -= 8 }
         if value.contains("surname ") { score -= 8 }
         if value.count > 100 { score -= 2 }
 
@@ -209,7 +215,7 @@ private struct ScoredEntry {
 }
 
 // Converts numbered CC-CEDICT pinyin syllables into user-facing Unicode tone marks.
-private enum PinyinToneConverter {
+nonisolated private enum PinyinToneConverter {
     private static let toneMarks = [
         "",
         "\u{0304}",

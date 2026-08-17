@@ -47,6 +47,10 @@ nonisolated struct DictationSetSaveRequest: Sendable {
 // Keeps vocabulary edits intact while they cross from the editor to the model actor.
 nonisolated struct VocabularyWordUpdateRequest: Sendable {
     let wordRecordID: UUID
+    let originalChinese: String
+    let originalPinyin: String
+    let originalTranslation: String
+    let originalSetTitle: String?
     let chinese: String
     let pinyin: String
     let translation: String
@@ -93,7 +97,7 @@ actor DictationStore {
         try modelContext.save()
         return newlyCreatedWords.map {
             ContextualSentenceGenerationTarget(
-                wordID: $0.persistentModelID,
+                wordRecordID: $0.recordID,
                 chinese: $0.chinese,
                 englishTranslation: $0.englishTranslation
             )
@@ -146,7 +150,7 @@ actor DictationStore {
         try modelContext.save()
         return newlyCreatedWords.map {
             ContextualSentenceGenerationTarget(
-                wordID: $0.persistentModelID,
+                wordRecordID: $0.recordID,
                 chinese: $0.chinese,
                 englishTranslation: $0.englishTranslation
             )
@@ -191,16 +195,7 @@ actor DictationStore {
     }
 
     func updateWord(_ request: VocabularyWordUpdateRequest) throws {
-        let recordID = request.wordRecordID
-        var descriptor = FetchDescriptor<VocabularyWord>(
-            predicate: #Predicate { word in
-                word.recordID == recordID
-            }
-        )
-        descriptor.fetchLimit = 1
-        guard let word = try modelContext.fetch(descriptor).first else {
-            throw DictationStoreError.wordNotFound
-        }
+        let word = try resolveWord(for: request)
         word.chinese = request.chinese
         word.pinyin = request.pinyin
         word.englishTranslation = request.translation
@@ -215,10 +210,50 @@ actor DictationStore {
         try modelContext.save()
     }
 
-    func setGeneratedSentence(_ sentence: String, wordID: PersistentIdentifier) throws {
-        guard let word = modelContext.model(for: wordID) as? VocabularyWord else { return }
+    func setGeneratedSentence(_ sentence: String, wordRecordID: UUID) throws {
+        guard let word = try word(recordID: wordRecordID) else {
+            throw DictationStoreError.wordNotFound
+        }
         word.generatedSentence = sentence
         try modelContext.save()
+    }
+
+    private func resolveWord(
+        for request: VocabularyWordUpdateRequest
+    ) throws -> VocabularyWord {
+        if let word = try word(recordID: request.wordRecordID) {
+            return word
+        }
+
+        let originalChinese = request.originalChinese
+        let originalPinyin = request.originalPinyin
+        let descriptor = FetchDescriptor<VocabularyWord>(
+            predicate: #Predicate { word in
+                word.chinese == originalChinese && word.pinyin == originalPinyin
+            }
+        )
+        let candidates = try modelContext.fetch(descriptor)
+        let exactMatch = candidates.first { word in
+            word.englishTranslation == request.originalTranslation
+                && word.session?.title == request.originalSetTitle
+        }
+        guard let word = exactMatch ?? (candidates.count == 1 ? candidates[0] : nil) else {
+            throw DictationStoreError.wordNotFound
+        }
+
+        // Persist the editor's UUID so legacy records use the direct lookup next time.
+        word.recordID = request.wordRecordID
+        return word
+    }
+
+    private func word(recordID: UUID) throws -> VocabularyWord? {
+        var descriptor = FetchDescriptor<VocabularyWord>(
+            predicate: #Predicate { word in
+                word.recordID == recordID
+            }
+        )
+        descriptor.fetchLimit = 1
+        return try modelContext.fetch(descriptor).first
     }
 }
 

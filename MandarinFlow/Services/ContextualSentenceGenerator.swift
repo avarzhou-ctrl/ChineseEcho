@@ -3,7 +3,7 @@ import SwiftData
 
 // Carries the minimum saved-word data needed for automatic contextual enrichment.
 nonisolated struct ContextualSentenceGenerationTarget: Sendable {
-    let wordID: PersistentIdentifier
+    let wordRecordID: UUID
     let chinese: String
     let englishTranslation: String
 }
@@ -54,7 +54,7 @@ enum ContextualSentenceGenerator {
                 )
                 try await store.setGeneratedSentence(
                     sentence,
-                    wordID: target.wordID
+                    wordRecordID: target.wordRecordID
                 )
             } catch {
                 // A failed background enrichment leaves the manual Generate action available.

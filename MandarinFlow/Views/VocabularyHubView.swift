@@ -10,6 +10,17 @@ private enum VocabularyFilter: String, CaseIterable, Identifiable {
     var id: Self { self }
 }
 
+// Hides dictionary notation that is useful in source data but noisy in the learning UI.
+private extension String {
+    var vocabularyDefinitionDisplayText: String {
+        let value = tingXieTrimmed
+        for prefix in ["(lit.)", "lit."] where value.lowercased().hasPrefix(prefix) {
+            return String(value.dropFirst(prefix.count)).tingXieTrimmed
+        }
+        return value
+    }
+}
+
 // Coordinates vocabulary filtering, search, selection, editing, review state, and deletion.
 struct VocabularyHubView: View {
     @Environment(\.modelContext) private var modelContext
@@ -507,7 +518,11 @@ private struct VocabularySearchResultRow: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(TingXiePalette.onBackground)
                         .lineLimit(1)
-                    Text(word.englishTranslation.isEmpty ? "No translation yet" : word.englishTranslation)
+                    Text(
+                        word.englishTranslation.isEmpty
+                            ? "No translation yet"
+                            : word.englishTranslation.vocabularyDefinitionDisplayText
+                    )
                         .font(.system(size: 12))
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                         .lineLimit(1)
@@ -543,7 +558,9 @@ private struct VocabularySearchResultRow: View {
         .onHover { hovering in
             if hovering { onHover() }
         }
-        .accessibilityLabel("Open \(word.chinese), \(word.pinyin), \(word.englishTranslation)")
+        .accessibilityLabel(
+            "Open \(word.chinese), \(word.pinyin), \(word.englishTranslation.vocabularyDefinitionDisplayText)"
+        )
     }
 }
 
@@ -621,7 +638,11 @@ private struct VocabularyInspector: View {
                             .padding(.vertical, 18)
 
                         InspectorSectionTitle("Meaning")
-                        Text(word.englishTranslation.isEmpty ? "No translation yet" : word.englishTranslation)
+                        Text(
+                            word.englishTranslation.isEmpty
+                                ? "No translation yet"
+                                : word.englishTranslation.vocabularyDefinitionDisplayText
+                        )
                             .font(TingXieTypography.sectionTitle)
                             .lineSpacing(3)
                             .padding(.top, 7)
@@ -681,7 +702,7 @@ private struct VocabularyInspector: View {
                                     ContextualSentenceCard(
                                         example: example,
                                         chineseVocabulary: word.chinese,
-                                        englishMeaning: word.englishTranslation
+                                        englishMeaning: word.englishTranslation.vocabularyDefinitionDisplayText
                                     )
                                 }
                             }
@@ -737,7 +758,7 @@ private struct VocabularyInspector: View {
 
     private func regenerateSentence() {
         guard let word else { return }
-        let wordID = word.persistentModelID
+        let wordRecordID = word.recordID
         isGenerating = true
         generationError = nil
 
@@ -745,10 +766,13 @@ private struct VocabularyInspector: View {
             do {
                 let sentence = try await ContextualSentenceGenerator.generateStoredSentence(
                     chinese: word.chinese,
-                    englishTranslation: word.englishTranslation
+                    englishTranslation: word.englishTranslation.vocabularyDefinitionDisplayText
                 )
                 let store = DictationStore(modelContainer: modelContext.container)
-                try await store.setGeneratedSentence(sentence, wordID: wordID)
+                try await store.setGeneratedSentence(
+                    sentence,
+                    wordRecordID: wordRecordID
+                )
             } catch {
                 generationError = error.localizedDescription
             }
@@ -912,6 +936,10 @@ private struct WordEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let wordRecordID: UUID
+    let originalChinese: String
+    let originalPinyin: String
+    let originalTranslation: String
+    let originalSetTitle: String?
     let onSave: (VocabularyWordUpdateRequest) async throws -> Void
 
     @State private var chinese: String
@@ -927,10 +955,16 @@ private struct WordEditorSheet: View {
         onSave: @escaping (VocabularyWordUpdateRequest) async throws -> Void
     ) {
         wordRecordID = word.recordID
+        originalChinese = word.chinese
+        originalPinyin = word.pinyin
+        originalTranslation = word.englishTranslation
+        originalSetTitle = word.session?.title
         self.onSave = onSave
         _chinese = State(initialValue: word.chinese)
         _pinyin = State(initialValue: word.pinyin)
-        _translation = State(initialValue: word.englishTranslation)
+        _translation = State(
+            initialValue: word.englishTranslation.vocabularyDefinitionDisplayText
+        )
         _learnerHint = State(initialValue: word.learnerHint ?? "")
         _isIdiom = State(initialValue: word.isIdiom)
     }
@@ -1004,6 +1038,10 @@ private struct WordEditorSheet: View {
             do {
                 let request = VocabularyWordUpdateRequest(
                     wordRecordID: wordRecordID,
+                    originalChinese: originalChinese,
+                    originalPinyin: originalPinyin,
+                    originalTranslation: originalTranslation,
+                    originalSetTitle: originalSetTitle,
                     chinese: cleanChinese,
                     pinyin: pinyin.trimmingCharacters(in: .whitespacesAndNewlines),
                     translation: translation.trimmingCharacters(in: .whitespacesAndNewlines),

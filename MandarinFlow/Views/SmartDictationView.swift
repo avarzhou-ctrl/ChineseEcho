@@ -1928,7 +1928,7 @@ struct NewDictationSetSheet: View {
                                 chinese: word,
                                 pinyin: entry.pinyin,
                                 translation: entry.translation,
-                                isIdiom: word.count == 4
+                                isIdiom: entry.isIdiom
                             )
                         )
                     }
@@ -2007,7 +2007,7 @@ struct NewDictationSetSheet: View {
                     chinese: chinese,
                     pinyin: pinyin,
                     translation: translation,
-                    isIdiom: chinese.count == 4
+                    isIdiom: false
                 )
             }
     }
