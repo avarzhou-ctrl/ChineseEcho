@@ -202,7 +202,7 @@ struct AppSidebar: View {
             VStack(spacing: 8) {
                 SidebarButton(
                     title: "Smart Dictation",
-                    symbol: "waveform",
+                    symbol: "headphones",
                     isSelected: selection == .dictation,
                     isCollapsed: isCollapsed,
                     selectionAnimation: selectionAnimation,
@@ -210,7 +210,7 @@ struct AppSidebar: View {
                 )
 
                 SidebarButton(
-                    title: "Your Vocabulary Hub",
+                    title: "Vocabulary",
                     symbol: "character.book.closed",
                     isSelected: selection == .vocabulary,
                     isCollapsed: isCollapsed,

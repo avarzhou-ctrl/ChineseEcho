@@ -58,6 +58,8 @@ Ask first:
 - Format: "**YYYY-MM-DD**: [Brief description of changes with which files were edited]"
 
 # Project Log
+- **2026-08-18**: Replaced the Smart Dictation sidebar waveform with headphones, shortened the sidebar vocabulary label, and reorganized Settings into a centered single-column sequence of compact grouped lists for Speech, Local AI, Practice, Local Backup, and About & Privacy while preserving existing controls and the MandarinFlow palette. Files edited: `MandarinFlow/Views/TingXieTheme.swift`, `MandarinFlow/Views/SettingsDashboard.swift`, `DESIGN.md`, `AGENTS.md`.
+- **2026-08-18**: Generated coordinated professional-interface audit mockups for the Smart Dictation library, immersive practice, Vocabulary catalog, and Settings. Files added: `Design/ProfessionalAudit/smart-dictation.png`, `Design/ProfessionalAudit/practice.png`, `Design/ProfessionalAudit/vocabulary.png`, `Design/ProfessionalAudit/settings.png`; file edited: `AGENTS.md`.
 - **2026-08-17**: Granted the sandboxed app read/write access to user-selected files in Debug and Release so the local-backup save panel can open and export JSON archives. Files edited: `MandarinFlow.xcodeproj/project.pbxproj`, `AGENTS.md`.
 - **2026-08-17**: Removed Review Last Card from completed session summaries and moved Return to Sets into its left-side outlined action position while retaining Continue Session for partial summaries. Files edited: `MandarinFlow/Views/SmartDictationView.swift`, `AGENTS.md`.
 - **2026-08-17**: Hid the session summary's Practice Missed Words action when the learner completed the session without missing any words. Files edited: `MandarinFlow/Views/SmartDictationView.swift`, `AGENTS.md`.

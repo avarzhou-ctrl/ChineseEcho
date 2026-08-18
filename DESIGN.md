@@ -23,7 +23,7 @@ The primary audience is Chinese learners, including foreign-language learners an
 ### Product hierarchy
 
 1. **Smart Dictation** is the lead experience.
-2. **Your Vocabulary Hub** supports review and enrichment after practice.
+2. **Vocabulary** supports review and enrichment after practice.
 3. **Settings** exposes speech and local-language-model diagnostics.
 
 Settings and technical model details must not compete visually with the practice loop.
@@ -75,7 +75,7 @@ The app uses a custom horizontal split shell with a branded sidebar and a single
 | Destination | Purpose | Primary content |
 | --- | --- | --- |
 | Smart Dictation | Create and practice vocabulary sets | Empty state, dated set list, active practice session |
-| Your Vocabulary Hub | Search and revisit saved words | Filtered vocabulary list and word inspector |
+| Vocabulary | Search and revisit saved words | Filtered vocabulary list and word inspector |
 | Settings | Test supporting engines | Speech & Pronunciation and Local Language Model cards |
 
 An active dictation set appears beneath **Smart Dictation** in the sidebar. The sidebar may be resized from 220 to 420 points, collapsed to 64 points, and remembers its expanded width.
@@ -101,7 +101,7 @@ The sidebar contains:
 1. Product name: **MandarinFlow**
 2. **Smart Dictation**
 3. Active set title when applicable
-4. **Your Vocabulary Hub**
+4. **Vocabulary**
 5. **Settings**
 6. Flexible space
 7. Word-of-the-day card, sourced from saved vocabulary
@@ -210,12 +210,15 @@ When no vocabulary exists, show **No Vocabulary Yet** and “Words from your dic
 
 ### Settings
 
-Settings uses large linked cards for:
+Settings uses a centered single-column sequence of compact grouped lists in this order:
 
-- **Speech & Pronunciation** — “Choose a Mandarin voice and adjust dictation speed and pitch.”
-- **Local Language Model** — “Test Qwen generation running privately on this Mac with MLX.”
+1. **Speech & Pronunciation**
+2. **Local AI**
+3. **Practice**
+4. **Local Backup**
+5. **About & Privacy**
 
-The destination screens are diagnostic playgrounds. Preserve native GroupBox, Picker, Slider, and Button behavior instead of turning them into branded marketing panels.
+Each group uses a simple icon-and-title header, separator, and the existing native Picker, Slider, Toggle, Stepper, and Button controls below it.
 
 ## Visual System
 

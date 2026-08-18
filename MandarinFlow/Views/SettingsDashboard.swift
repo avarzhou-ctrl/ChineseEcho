@@ -35,7 +35,6 @@ struct SettingsDashboard: View {
     @State private var backupError: String?
 
     private let sampleText = "今天我们练习听写。"
-    private let primaryCardMinimumHeight: CGFloat = 470
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,27 +46,23 @@ struct SettingsDashboard: View {
                     summary: "These preferences are stored locally on this Mac and apply to future MandarinFlow practice sessions.",
                     tips: [
                         "Speech choices change the voice, pace, pitch, and pause used during dictation.",
+                        "Local AI manages the private on-device model used for enrichment and contextual sentences.",
                         "Practice choices control audio repeats and whether new cards begin revealed.",
-                        "The Practice card also shows the number of sets and vocabulary words stored on this Mac."
+                        "Local Backup exports or restores the learning library stored on this Mac."
                     ]
                 )
             )
 
             ScrollView {
                 VStack(spacing: 18) {
-                    LazyVGrid(
-                        columns: [GridItem(.adaptive(minimum: 390), spacing: 18)],
-                        alignment: .leading,
-                        spacing: 18
-                    ) {
-                        speechSection
-                        practiceSection
-                    }
-
+                    speechSection
                     localAISection
+                    practiceSection
                     localDataSection
                     aboutSection
                 }
+                .frame(maxWidth: 820)
+                .frame(maxWidth: .infinity)
                 .padding(.horizontal, 40)
                 .padding(.bottom, 40)
             }
@@ -135,8 +130,7 @@ struct SettingsDashboard: View {
         SettingsSectionCard(
             title: "Speech & Pronunciation",
             symbol: "speaker.wave.2.fill",
-            summary: "Choose how native Apple speech reads every dictation word.",
-            minimumHeight: primaryCardMinimumHeight
+            summary: "Choose how native Apple speech reads every dictation word."
         ) {
             Picker("Pronunciation", selection: $pronunciationProfile) {
                 Text("Mainland Mandarin").tag("Mainland Mandarin")
@@ -193,8 +187,7 @@ struct SettingsDashboard: View {
         SettingsSectionCard(
             title: "Practice",
             symbol: "rectangle.on.rectangle.angled",
-            summary: "Control listening sessions and review your local learning library.",
-            minimumHeight: primaryCardMinimumHeight
+            summary: "Control listening sessions and review your local learning library."
         ) {
             Stepper(value: $repeatCount, in: 1...5) {
                 Text("Repeat each word \(repeatCount) time\(repeatCount == 1 ? "" : "s")")
@@ -454,9 +447,9 @@ struct SettingsDashboard: View {
 
     private var aboutSection: some View {
         SettingsSectionCard(
-            title: "About",
+            title: "About & Privacy",
             symbol: "info.circle.fill",
-            summary: "An audio-first Chinese learning workspace built for private, focused practice."
+            summary: "An audio-first Chinese learning workspace whose data and AI processing stay on this Mac."
         ) {
             LabeledContent("Version") {
                 Text(appVersion)
@@ -641,7 +634,7 @@ private struct RestoreCountComparison: View {
     }
 }
 
-// Gives each settings category a consistent titled card container.
+// Presents each settings category as a compact macOS-style grouped list.
 private struct SettingsSectionCard<Content: View>: View {
     let title: String
     let symbol: String
@@ -664,35 +657,36 @@ private struct SettingsSectionCard<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top, spacing: 13) {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 11) {
                 Image(systemName: symbol)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(TingXiePalette.accent)
-                    .frame(width: 42, height: 42)
-                    .background(TingXiePalette.surfaceContainerHighest, in: RoundedRectangle(cornerRadius: 12))
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .font(TingXieTypography.sectionTitle)
-                        .foregroundStyle(TingXiePalette.accent)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(summary)
-                        .font(TingXieTypography.metadata)
-                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                        .lineSpacing(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                    .frame(width: 22)
+
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(TingXiePalette.onBackground)
+
+                Spacer()
             }
+            .padding(.horizontal, 18)
+            .frame(minHeight: 48)
+            .help(summary)
 
             Divider()
 
             VStack(alignment: .leading, spacing: 14) {
                 content
             }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 16)
         }
-        .padding(22)
         .frame(maxWidth: .infinity, minHeight: minimumHeight, alignment: .topLeading)
-        .tonalCard(cornerRadius: 18, fill: TingXiePalette.lightGreenSurface)
+        .tonalCard(cornerRadius: 12, fill: TingXiePalette.lightGreenSurface)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(title)
+        .accessibilityHint(summary)
     }
 }
 
