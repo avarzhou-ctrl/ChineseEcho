@@ -41,6 +41,7 @@ nonisolated struct DictationSetSaveRequest: Sendable {
 
     let destination: Destination
     let title: String
+    let appearance: DictationSetAppearance
     let words: [NewVocabularyWord]
 }
 
@@ -56,6 +57,26 @@ nonisolated struct VocabularyWordUpdateRequest: Sendable {
     let translation: String
     let learnerHint: String
     let isIdiom: Bool
+}
+
+// Carries one practice result into the model actor using stable vocabulary identity.
+nonisolated struct PracticeResultRequest: Sendable {
+    let wordRecordID: UUID
+    let isMissed: Bool
+    let reviewedAt: Date
+}
+
+// Restores both missed and scheduling state when the learner uses Undo.
+nonisolated struct PracticeResultRestoreRequest: Sendable {
+    let wordRecordID: UUID
+    let wasMissed: Bool
+    let schedule: ReviewScheduleSnapshot
+}
+
+// Returns the authoritative actor-side state needed for an exact Undo.
+nonisolated struct PracticeResultPreviousState: Sendable {
+    let wasMissed: Bool
+    let schedule: ReviewScheduleSnapshot
 }
 
 // Performs all set and vocabulary mutations inside a dedicated SwiftData model actor.
@@ -75,7 +96,7 @@ actor DictationStore {
     private func createSet(
         _ request: DictationSetSaveRequest
     ) throws -> [ContextualSentenceGenerationTarget] {
-        let set = DictationSet(title: request.title)
+        let set = DictationSet(title: request.title, appearance: request.appearance)
         modelContext.insert(set)
         var newlyCreatedWords: [VocabularyWord] = []
 
@@ -112,6 +133,7 @@ actor DictationStore {
             throw DictationStoreError.setNotFound
         }
         set.title = request.title
+        set.appearance = request.appearance
         var unmatchedWords = set.vocabularyWords
         var updatedWords: [VocabularyWord] = []
         var newlyCreatedWords: [VocabularyWord] = []
@@ -160,7 +182,7 @@ actor DictationStore {
     func duplicateSet(setID: PersistentIdentifier) throws {
         guard let source = modelContext.model(for: setID) as? DictationSet else { return }
         let copyTitle = "\(source.title) Copy"
-        let copy = DictationSet(title: copyTitle)
+        let copy = DictationSet(title: copyTitle, appearance: source.appearance)
         modelContext.insert(copy)
 
         for sourceWord in source.vocabularyWords {
@@ -191,6 +213,38 @@ actor DictationStore {
     func setMissed(_ isMissed: Bool, wordID: PersistentIdentifier) throws {
         guard let word = modelContext.model(for: wordID) as? VocabularyWord else { return }
         word.isMissedWord = isMissed
+        try modelContext.save()
+    }
+
+    func applyPracticeResult(_ request: PracticeResultRequest) throws -> PracticeResultPreviousState {
+        guard let word = try word(recordID: request.wordRecordID) else {
+            throw DictationStoreError.wordNotFound
+        }
+        let previousState = PracticeResultPreviousState(
+            wasMissed: word.isMissedWord,
+            schedule: word.reviewScheduleSnapshot
+        )
+        let nextSchedule = ReviewScheduler.nextState(
+            previousBox: word.reviewBox,
+            isCorrect: !request.isMissed,
+            reviewedAt: request.reviewedAt
+        )
+        word.isMissedWord = request.isMissed
+        word.reviewBox = nextSchedule.reviewBox
+        word.lastReviewedAt = nextSchedule.lastReviewedAt
+        word.nextReviewAt = nextSchedule.nextReviewAt
+        try modelContext.save()
+        return previousState
+    }
+
+    func restorePracticeResult(_ request: PracticeResultRestoreRequest) throws {
+        guard let word = try word(recordID: request.wordRecordID) else {
+            throw DictationStoreError.wordNotFound
+        }
+        word.isMissedWord = request.wasMissed
+        word.reviewBox = request.schedule.reviewBox
+        word.lastReviewedAt = request.schedule.lastReviewedAt
+        word.nextReviewAt = request.schedule.nextReviewAt
         try modelContext.save()
     }
 

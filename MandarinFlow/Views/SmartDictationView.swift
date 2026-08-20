@@ -10,9 +10,11 @@ struct SmartDictationView: View {
 
     let sets: [DictationSet]
     let activeSet: DictationSet?
+    let isDueReviewActive: Bool
     let onCreateSet: () -> Void
     let onOpenVocabulary: () -> Void
     let onOpenSet: (DictationSet) -> Void
+    let onOpenDueReview: () -> Void
     let onCloseSet: () -> Void
 
     @State private var searchText = ""
@@ -21,6 +23,18 @@ struct SmartDictationView: View {
     @State private var editingSet: DictationSet?
     @State private var setPendingDeletion: DictationSet?
     @State private var operationError: String?
+
+    private var allWords: [VocabularyWord] {
+        sets.flatMap(\.vocabularyWords)
+    }
+
+    private var dueWords: [VocabularyWord] {
+        allWords
+            .filter { ReviewScheduler.isDue($0.nextReviewAt) }
+            .sorted {
+                ($0.nextReviewAt ?? .distantFuture) < ($1.nextReviewAt ?? .distantFuture)
+            }
+    }
 
     private var filteredSets: [DictationSet] {
         let query = searchText.tingXieTrimmed
@@ -63,9 +77,24 @@ struct SmartDictationView: View {
 
     var body: some View {
         Group {
-            if let activeSet {
+            if isDueReviewActive {
                 PracticeSessionView(
-                    set: activeSet,
+                    source: .dueReview(
+                        words: allWords,
+                        initialWordRecordIDs: dueWords.map(\.recordID)
+                    ),
+                    onClose: onCloseSet,
+                    onFinish: onCloseSet
+                )
+                .transition(
+                    TingXieMotion.directionalTransition(
+                        enteringFrom: .trailing,
+                        reduceMotion: reduceMotion
+                    )
+                )
+            } else if let activeSet {
+                PracticeSessionView(
+                    source: .set(activeSet),
                     onClose: onCloseSet,
                     onFinish: onCloseSet
                 )
@@ -102,6 +131,12 @@ struct SmartDictationView: View {
                         ScrollView {
                             VStack(alignment: .leading, spacing: 30) {
                                 DictationHero(onOpenVocabulary: onOpenVocabulary)
+
+                                DueReviewCard(
+                                    words: allWords,
+                                    dueWords: dueWords,
+                                    onStartReview: onOpenDueReview
+                                )
 
                                 DictationSetCollection(
                                     sets: sets,
@@ -154,6 +189,7 @@ struct SmartDictationView: View {
         .sheet(item: $editingSet) { set in
             let setID = set.persistentModelID
             let initialTitle = set.title
+            let initialAppearance = set.appearance
             let initialWords = set.vocabularyWords.map { NewVocabularyWord($0) }
 
             NewDictationSetSheet(
@@ -161,6 +197,7 @@ struct SmartDictationView: View {
                 modelContainer: modelContext.container,
                 setID: setID,
                 initialTitle: initialTitle,
+                initialAppearance: initialAppearance,
                 initialWords: initialWords
             )
         }
@@ -372,11 +409,11 @@ private struct DictationSearchResultRow: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 12) {
-                Image(systemName: "rectangle.stack.fill")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(TingXiePalette.accent)
-                    .frame(width: 32, height: 32)
-                    .background(TingXiePalette.surfaceContainerHigh, in: RoundedRectangle(cornerRadius: 9))
+                DictationSetIconBadge(
+                    appearance: set.appearance,
+                    size: 32,
+                    cornerRadius: 9
+                )
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(set.title)
@@ -461,7 +498,10 @@ private struct DictationHero: View {
         .frame(maxWidth: .infinity, minHeight: 210, alignment: .leading)
         .background(
             LinearGradient(
-                colors: [TingXiePalette.surface.opacity(0.88), TingXiePalette.surfaceContainer.opacity(0.58)],
+                colors: [
+                    TingXiePalette.lightGreenSurface.opacity(0.96),
+                    TingXiePalette.surfaceContainer.opacity(0.78)
+                ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             ),
@@ -471,6 +511,97 @@ private struct DictationHero: View {
             RoundedRectangle(cornerRadius: 24)
                 .stroke(.white.opacity(0.72), lineWidth: 1)
         }
+    }
+}
+
+// Surfaces scheduled work without displacing Word of the Day or normal set practice.
+private struct DueReviewCard: View {
+    let words: [VocabularyWord]
+    let dueWords: [VocabularyWord]
+    let onStartReview: () -> Void
+
+    private var nextReviewAt: Date? {
+        words.compactMap(\.nextReviewAt).filter { $0 > Date() }.min()
+    }
+
+    private var detailText: Text {
+        if !dueWords.isEmpty {
+            let countText = dueWords.count == 1 ? "1 word" : "\(dueWords.count) words"
+            let remainder = dueWords.count == 1
+                ? " is ready for a quick review."
+                : " are ready for a quick review."
+            return Text(countText).bold() + Text(remainder)
+        }
+        if let nextReviewAt {
+            let relativeTime = nextReviewAt.formatted(.relative(presentation: .named))
+            if relativeTime.hasPrefix("in ") {
+                let duration = String(relativeTime.dropFirst(3))
+                return Text("You’re caught up. Next review in ") + Text(duration).bold() + Text(".")
+            }
+            return Text("You’re caught up. Next review ") + Text(relativeTime).bold() + Text(".")
+        }
+        return Text("Complete a dictation card to begin scheduling reviews.")
+    }
+
+    var body: some View {
+        HStack(spacing: 18) {
+            Image(systemName: dueWords.isEmpty ? "checkmark.circle.fill" : "calendar.badge.clock")
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundStyle(dueWords.isEmpty ? TingXiePalette.secondary : .white)
+                .frame(width: 48, height: 48)
+                .background(
+                    dueWords.isEmpty
+                        ? TingXiePalette.surfaceContainerHigh
+                        : TingXiePalette.accent,
+                    in: RoundedRectangle(cornerRadius: 13)
+                )
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 9) {
+                    Text("Due Review")
+                        .font(TingXieTypography.sectionTitle)
+
+                    if !dueWords.isEmpty {
+                        Text("\(dueWords.count) due now")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(TingXiePalette.accent)
+                            .padding(.horizontal, 9)
+                            .frame(height: 24)
+                            .background(TingXiePalette.accent.opacity(0.1), in: Capsule())
+                    }
+                }
+                detailText
+                    .font(.system(size: 13))
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
+            }
+
+            Spacer()
+
+            if !dueWords.isEmpty {
+                Button("Start Review", systemImage: "play.fill", action: onStartReview)
+                    .buttonStyle(GreenCapsuleButtonStyle())
+            }
+        }
+        .padding(.horizontal, 22)
+        .frame(maxWidth: .infinity, minHeight: dueWords.isEmpty ? 76 : 100)
+        .background(
+            dueWords.isEmpty
+                ? TingXiePalette.lightGreenSurface.opacity(0.58)
+                : TingXiePalette.surfaceContainerHigh.opacity(0.92),
+            in: RoundedRectangle(cornerRadius: 16)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(
+                    dueWords.isEmpty ? .white.opacity(0.58) : TingXiePalette.accent.opacity(0.48),
+                    lineWidth: dueWords.isEmpty ? 1 : 1.5
+                )
+        }
+        .shadow(
+            color: dueWords.isEmpty ? .clear : TingXiePalette.accent.opacity(0.12),
+            radius: 10,
+            y: 4
+        )
     }
 }
 
@@ -570,11 +701,7 @@ private struct DictationSetRow: View {
         HStack(spacing: 0) {
             Button(action: onOpen) {
                 HStack(spacing: 18) {
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(TingXiePalette.accent)
-                        .frame(width: 52, height: 52)
-                        .background(TingXiePalette.surfaceContainerHigh, in: RoundedRectangle(cornerRadius: 14))
+                    DictationSetIconBadge(appearance: set.appearance)
 
                     VStack(alignment: .leading, spacing: 6) {
                         Text(set.title)
@@ -657,6 +784,53 @@ private enum PracticeFilter: String, CaseIterable, Identifiable {
     var id: Self { self }
 }
 
+// Lets one immersive practice flow serve a set or a scheduled cross-set queue.
+private enum PracticeSessionSource {
+    case set(DictationSet)
+    case dueReview(words: [VocabularyWord], initialWordRecordIDs: [UUID])
+
+    var words: [VocabularyWord] {
+        switch self {
+        case .set(let set): set.vocabularyWords
+        case .dueReview(let words, _): words
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .set(let set): set.title
+        case .dueReview: "Due Review"
+        }
+    }
+
+    var appearance: DictationSetAppearance? {
+        guard case .set(let set) = self else { return nil }
+        return set.appearance
+    }
+
+    var setRecordID: UUID? {
+        guard case .set(let set) = self else { return nil }
+        return set.recordID
+    }
+
+    var savedKind: SavedPracticeSourceKind {
+        switch self {
+        case .set: .set
+        case .dueReview: .dueReview
+        }
+    }
+
+    var supportsFilters: Bool {
+        if case .set = self { return true }
+        return false
+    }
+
+    var initialDueWordRecordIDs: [UUID] {
+        guard case .dueReview(_, let wordIDs) = self else { return [] }
+        return wordIDs
+    }
+}
+
 // Captures the persisted word state needed to reverse one grading decision.
 private struct PracticeGradeAction {
     let wordID: PersistentIdentifier
@@ -667,6 +841,8 @@ private struct PracticeGradeAction {
     let recordedAt: Date
     let previousMastery: Bool?
     let previousSetMastery: Bool?
+    let previousReviewSchedule: ReviewScheduleSnapshot
+    let setKey: String
 }
 
 // Freezes the current session results so the summary stays stable while it is visible.
@@ -697,7 +873,7 @@ private struct PracticeSessionView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    let set: DictationSet
+    let source: PracticeSessionSource
     let onClose: () -> Void
     let onFinish: () -> Void
 
@@ -726,19 +902,35 @@ private struct PracticeSessionView: View {
     @State private var isConfirmingStartOver = false
     @State private var suppressNextFilterReset = false
     @State private var shouldDiscardOnDisappear = false
+    @State private var dueQueueRecordIDs: [UUID]
+
+    init(
+        source: PracticeSessionSource,
+        onClose: @escaping () -> Void,
+        onFinish: @escaping () -> Void
+    ) {
+        self.source = source
+        self.onClose = onClose
+        self.onFinish = onFinish
+        _dueQueueRecordIDs = State(initialValue: source.initialDueWordRecordIDs)
+    }
 
     private var filteredWords: [VocabularyWord] {
-        switch filter {
-        case .all: set.vocabularyWords
-        case .missed: set.vocabularyWords.filter(isMissed)
-        case .idioms: set.vocabularyWords.filter(\.isIdiom)
+        if !source.supportsFilters {
+            let recordIDs = Set(dueQueueRecordIDs)
+            return source.words.filter { recordIDs.contains($0.recordID) }
+        }
+        return switch filter {
+        case .all: source.words
+        case .missed: source.words.filter(isMissed)
+        case .idioms: source.words.filter(\.isIdiom)
         }
     }
 
     private var currentWord: VocabularyWord? {
         guard sessionWordIDs.indices.contains(currentIndex) else { return nil }
         let wordID = sessionWordIDs[currentIndex]
-        return set.vocabularyWords.first { $0.persistentModelID == wordID }
+        return source.words.first { $0.persistentModelID == wordID }
     }
 
     private var canGradeCurrentCard: Bool {
@@ -747,10 +939,6 @@ private struct PracticeSessionView: View {
 
     private var canUndoLastGrade: Bool {
         !gradeHistory.isEmpty && (currentIndex > 0 || hasGradedCurrentCard) && !isUpdatingGrade
-    }
-
-    private var setKey: String {
-        PracticeAnalyticsStore.setKey(for: set.dateCreated)
     }
 
     private var animatedFilter: Binding<PracticeFilter> {
@@ -780,7 +968,8 @@ private struct PracticeSessionView: View {
 
             if let summary {
                 PracticeSessionSummaryView(
-                    setTitle: set.title,
+                    sessionTitle: source.title,
+                    isDueReview: !source.supportsFilters,
                     summary: summary,
                     onPracticeMissedWords: { startMissedWordsFollowUp(from: summary) },
                     onContinueSession: { self.summary = nil },
@@ -788,17 +977,35 @@ private struct PracticeSessionView: View {
                 )
             } else {
                 HStack(alignment: .bottom, spacing: 20) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Current Set")
-                            .font(TingXieTypography.eyebrow)
-                            .tracking(0.15)
-                            .foregroundStyle(TingXiePalette.secondary)
-                        Text(set.title)
-                            .font(.system(size: 24, weight: .medium))
+                    HStack(spacing: 12) {
+                        if let appearance = source.appearance {
+                            DictationSetIconBadge(
+                                appearance: appearance,
+                                size: 40,
+                                cornerRadius: 11
+                            )
+                        } else {
+                            Image(systemName: "calendar.badge.clock")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundStyle(TingXiePalette.accent)
+                                .frame(width: 40, height: 40)
+                                .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 11))
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(source.supportsFilters ? "Current Set" : "Scheduled Practice")
+                                .font(TingXieTypography.eyebrow)
+                                .tracking(0.15)
+                                .foregroundStyle(TingXiePalette.secondary)
+                            Text(source.title)
+                                .font(.system(size: 24, weight: .medium))
+                        }
                     }
                     Spacer()
-                    PracticeFilterBar(selection: animatedFilter)
-                        .frame(maxWidth: 430)
+                    if source.supportsFilters {
+                        PracticeFilterBar(selection: animatedFilter)
+                            .frame(maxWidth: 430)
+                    }
                 }
                 .padding(.horizontal, 40)
 
@@ -807,9 +1014,13 @@ private struct PracticeSessionView: View {
                         ProgressView()
                     } else if sessionWordIDs.isEmpty {
                         ContentUnavailableView(
-                            "No Words in This Filter",
-                            systemImage: "text.magnifyingglass",
-                            description: Text("Choose a different category to continue practicing.")
+                            source.supportsFilters ? "No Words in This Filter" : "No Reviews Due",
+                            systemImage: source.supportsFilters ? "text.magnifyingglass" : "checkmark.circle",
+                            description: Text(
+                                source.supportsFilters
+                                    ? "Choose a different category to continue practicing."
+                                    : "Complete normal dictation practice to schedule future reviews."
+                            )
                         )
                     } else {
                         practiceContent
@@ -1027,7 +1238,11 @@ private struct PracticeSessionView: View {
                     )
                     .help("Discard saved progress and restart this practice mode")
 
-                    Button("Finish Set", systemImage: "rectangle.portrait.and.arrow.right", action: presentSummary)
+                    Button(
+                        source.supportsFilters ? "Finish Set" : "Finish Review",
+                        systemImage: "rectangle.portrait.and.arrow.right",
+                        action: presentSummary
+                    )
                         .buttonStyle(
                             OutlineCapsuleButtonStyle(
                                 fontSize: 13,
@@ -1075,14 +1290,16 @@ private struct PracticeSessionView: View {
 
     private func restoreSessionOrStartNew() {
         guard let saved = PracticeSessionStore.load(),
-              saved.setRecordID == set.recordID,
-              let restoredFilter = PracticeFilter(rawValue: saved.filter)
+              saved.resolvedSourceKind == source.savedKind,
+              saved.resolvedSourceKind == .dueReview || saved.setRecordID == source.setRecordID
         else {
             resetSessionQueue()
             return
         }
 
-        let wordsByRecordID = Dictionary(uniqueKeysWithValues: set.vocabularyWords.map {
+        let restoredFilter = PracticeFilter(rawValue: saved.filter) ?? .all
+
+        let wordsByRecordID = Dictionary(uniqueKeysWithValues: source.words.map {
             ($0.recordID, $0)
         })
         let restoredWords = saved.queueWordRecordIDs.compactMap { wordsByRecordID[$0] }
@@ -1096,7 +1313,9 @@ private struct PracticeSessionView: View {
                 vocabularyKey: savedGrade.vocabularyKey,
                 recordedAt: savedGrade.recordedAt,
                 previousMastery: savedGrade.previousMastery,
-                previousSetMastery: savedGrade.previousSetMastery
+                previousSetMastery: savedGrade.previousSetMastery,
+                previousReviewSchedule: savedGrade.previousReviewSchedule ?? .unscheduled,
+                setKey: setKey(for: word)
             )
         }
         guard !restoredWords.isEmpty,
@@ -1116,6 +1335,9 @@ private struct PracticeSessionView: View {
             filter = restoredFilter
         }
         sessionWordIDs = restoredWords.map(\.persistentModelID)
+        if !source.supportsFilters {
+            dueQueueRecordIDs = saved.queueWordRecordIDs
+        }
         currentIndex = saved.currentIndex
         gradeHistory = restoredGrades
         missedOverrides = Dictionary(uniqueKeysWithValues: restoredGrades.map {
@@ -1137,7 +1359,7 @@ private struct PracticeSessionView: View {
 
     private func persistSession() {
         guard hasInitializedQueue, !sessionWordIDs.isEmpty, !shouldDiscardOnDisappear else { return }
-        let wordsByID = Dictionary(uniqueKeysWithValues: set.vocabularyWords.map {
+        let wordsByID = Dictionary(uniqueKeysWithValues: source.words.map {
             ($0.persistentModelID, $0)
         })
         let queueRecordIDs = sessionWordIDs.compactMap { wordsByID[$0]?.recordID }
@@ -1152,14 +1374,16 @@ private struct PracticeSessionView: View {
                 vocabularyKey: action.vocabularyKey,
                 recordedAt: action.recordedAt,
                 previousMastery: action.previousMastery,
-                previousSetMastery: action.previousSetMastery
+                previousSetMastery: action.previousSetMastery,
+                previousReviewSchedule: action.previousReviewSchedule
             )
         }
         guard savedGrades.count == gradeHistory.count else { return }
         PracticeSessionStore.save(
             SavedPracticeSession(
                 version: SavedPracticeSession.currentVersion,
-                setRecordID: set.recordID,
+                sourceKind: source.savedKind,
+                setRecordID: source.setRecordID,
                 filter: filter.rawValue,
                 queueWordRecordIDs: queueRecordIDs,
                 currentIndex: currentIndex,
@@ -1242,32 +1466,45 @@ private struct PracticeSessionView: View {
         guard canGradeCurrentCard, let currentWord else { return }
         let store = DictationStore(modelContainer: modelContext.container)
         let wordID = currentWord.persistentModelID
-        let action = PracticeGradeAction(
-            wordID: wordID,
-            queueIndex: currentIndex,
-            wasMissed: isMissed(currentWord),
-            markedMissed: asMissed,
-            vocabularyKey: currentWord.chinese.tingXieTrimmed,
-            recordedAt: Date(),
-            previousMastery: PracticeAnalyticsStore.masteryState(
-                for: currentWord.chinese.tingXieTrimmed
-            ),
-            previousSetMastery: PracticeAnalyticsStore.masteryState(
-                for: currentWord.chinese.tingXieTrimmed,
-                setKey: setKey
-            )
+        let wordRecordID = currentWord.recordID
+        let vocabularyKey = currentWord.chinese.tingXieTrimmed
+        let currentSetKey = setKey(for: currentWord)
+        let gradedQueueIndex = currentIndex
+        let recordedAt = Date()
+        let previousMastery = PracticeAnalyticsStore.masteryState(for: vocabularyKey)
+        let previousSetMastery = PracticeAnalyticsStore.masteryState(
+            for: vocabularyKey,
+            setKey: currentSetKey
         )
         isUpdatingGrade = true
         stopPlayback()
 
         Task {
             do {
-                try await store.setMissed(asMissed, wordID: wordID)
+                let previousState = try await store.applyPracticeResult(
+                    PracticeResultRequest(
+                        wordRecordID: wordRecordID,
+                        isMissed: asMissed,
+                        reviewedAt: recordedAt
+                    )
+                )
+                let action = PracticeGradeAction(
+                    wordID: wordID,
+                    queueIndex: gradedQueueIndex,
+                    wasMissed: previousState.wasMissed,
+                    markedMissed: asMissed,
+                    vocabularyKey: vocabularyKey,
+                    recordedAt: recordedAt,
+                    previousMastery: previousMastery,
+                    previousSetMastery: previousSetMastery,
+                    previousReviewSchedule: previousState.schedule,
+                    setKey: currentSetKey
+                )
                 missedOverrides[wordID] = asMissed
                 PracticeAnalyticsStore.recordResult(
                     isCorrect: !asMissed,
                     vocabularyKey: action.vocabularyKey,
-                    setKey: setKey
+                    setKey: currentSetKey
                 )
                 gradeHistory.append(action)
                 hasGradedCurrentCard = true
@@ -1298,12 +1535,21 @@ private struct PracticeSessionView: View {
 
         Task {
             do {
-                try await store.setMissed(action.wasMissed, wordID: action.wordID)
+                guard let word = source.words.first(where: {
+                    $0.persistentModelID == action.wordID
+                }) else { return }
+                try await store.restorePracticeResult(
+                    PracticeResultRestoreRequest(
+                        wordRecordID: word.recordID,
+                        wasMissed: action.wasMissed,
+                        schedule: action.previousReviewSchedule
+                    )
+                )
                 missedOverrides[action.wordID] = action.wasMissed
                 PracticeAnalyticsStore.undoResult(
                     isCorrect: !action.markedMissed,
                     vocabularyKey: action.vocabularyKey,
-                    setKey: setKey,
+                    setKey: action.setKey,
                     recordedAt: action.recordedAt,
                     restoringMastery: action.previousMastery,
                     restoringSetMastery: action.previousSetMastery
@@ -1329,7 +1575,7 @@ private struct PracticeSessionView: View {
     private func presentSummary() {
         stopPlayback()
         let resultWords = gradeHistory.compactMap { action -> (PracticeGradeAction, VocabularyWord)? in
-            guard let word = set.vocabularyWords.first(where: {
+            guard let word = source.words.first(where: {
                 $0.persistentModelID == action.wordID
             }) else { return nil }
             return (action, word)
@@ -1355,7 +1601,7 @@ private struct PracticeSessionView: View {
         guard !wordIDs.isEmpty else { return }
         queuedFollowUpWordIDs = wordIDs
         self.summary = nil
-        if filter == .missed {
+        if !source.supportsFilters || filter == .missed {
             queuedFollowUpWordIDs = nil
             resetSessionQueue(wordIDs: wordIDs)
         } else {
@@ -1363,6 +1609,11 @@ private struct PracticeSessionView: View {
             cardTransitionEdge = .trailing
             filter = .missed
         }
+    }
+
+    private func setKey(for word: VocabularyWord) -> String {
+        guard let set = word.session else { return "word-\(word.recordID.uuidString)" }
+        return PracticeAnalyticsStore.setKey(for: set.dateCreated)
     }
 }
 
@@ -1420,7 +1671,8 @@ private struct PracticeFilterBar: View {
 
 // Turns one completed or partial grading run into an actionable learning recap.
 private struct PracticeSessionSummaryView: View {
-    let setTitle: String
+    let sessionTitle: String
+    let isDueReview: Bool
     let summary: PracticeSessionSummaryData
     let onPracticeMissedWords: () -> Void
     let onContinueSession: () -> Void
@@ -1433,9 +1685,13 @@ private struct PracticeSessionSummaryView: View {
                     Image(systemName: summary.isComplete ? "checkmark.seal.fill" : "chart.bar.doc.horizontal.fill")
                         .font(.system(size: 42, weight: .medium))
                         .foregroundStyle(TingXiePalette.accent)
-                    Text(summary.isComplete ? "Set Complete" : "Session So Far")
+                    Text(
+                        summary.isComplete
+                            ? (isDueReview ? "Review Complete" : "Set Complete")
+                            : "Session So Far"
+                    )
                         .font(.system(size: 28, weight: .semibold))
-                    Text(setTitle)
+                    Text(sessionTitle)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                     Text("\(summary.gradedWordCount) of \(summary.availableWordCount) words graded")
@@ -1805,6 +2061,7 @@ struct NewDictationSetSheet: View {
     let setID: PersistentIdentifier?
 
     @State private var title: String
+    @State private var appearance: DictationSetAppearance
     @State private var chineseWordInput = ""
     @State private var manualText = ""
     @State private var draftWords: [DraftVocabularyWord]
@@ -1813,6 +2070,7 @@ struct NewDictationSetSheet: View {
     @State private var repairModelOutput = ""
     @State private var isSaving = false
     @State private var isGenerating = false
+    @State private var isAppearancePickerPresented = false
     @State private var modelDownloadCoordinator = ModelDownloadCoordinator.shared
 
     init(
@@ -1820,12 +2078,14 @@ struct NewDictationSetSheet: View {
         modelContainer: ModelContainer,
         setID: PersistentIdentifier? = nil,
         initialTitle: String = "",
+        initialAppearance: DictationSetAppearance = .defaultValue,
         initialWords: [NewVocabularyWord] = []
     ) {
         self.mode = mode
         self.modelContainer = modelContainer
         self.setID = setID
         _title = State(initialValue: initialTitle)
+        _appearance = State(initialValue: initialAppearance)
         _draftWords = State(initialValue: initialWords.map { DraftVocabularyWord($0) })
     }
 
@@ -1866,11 +2126,37 @@ struct NewDictationSetSheet: View {
                                         .help(errorMessage)
                                 }
                             }
-                            TextField("e.g., Travel essentials", text: $title)
-                                .textFieldStyle(.plain)
-                                .padding(.horizontal, 14)
-                                .frame(height: 44)
-                                .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 9))
+                            HStack(spacing: 10) {
+                                Button {
+                                    isAppearancePickerPresented.toggle()
+                                } label: {
+                                    DictationSetIconBadge(
+                                        appearance: appearance,
+                                        size: 44,
+                                        cornerRadius: 9
+                                    )
+                                    .overlay(alignment: .bottomTrailing) {
+                                        Image(systemName: "paintpalette.fill")
+                                            .font(.system(size: 8, weight: .bold))
+                                            .foregroundStyle(.white)
+                                            .frame(width: 16, height: 16)
+                                            .background(TingXiePalette.accent, in: Circle())
+                                            .offset(x: 3, y: 3)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                                .help("Customize set icon")
+                                .accessibilityLabel("Customize set icon")
+                                .popover(isPresented: $isAppearancePickerPresented, arrowEdge: .bottom) {
+                                    DictationSetAppearancePicker(selection: $appearance)
+                                }
+
+                                TextField("e.g., Travel essentials", text: $title)
+                                    .textFieldStyle(.plain)
+                                    .padding(.horizontal, 14)
+                                    .frame(height: 44)
+                                    .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 9))
+                            }
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
@@ -2324,6 +2610,7 @@ struct NewDictationSetSheet: View {
             destination: setID.map(DictationSetSaveRequest.Destination.existing)
                 ?? .new,
             title: cleanTitle,
+            appearance: appearance,
             words: validWords
         )
         isSaving = true
@@ -2419,8 +2706,9 @@ private struct DraftVocabularyRow: View {
 
 #Preview("Smart Dictation — Empty") {
     SmartDictationView(
-        sets: [], activeSet: nil, onCreateSet: {}, onOpenVocabulary: {},
-        onOpenSet: { _ in }, onCloseSet: {}
+        sets: [], activeSet: nil, isDueReviewActive: false,
+        onCreateSet: {}, onOpenVocabulary: {}, onOpenSet: { _ in },
+        onOpenDueReview: {}, onCloseSet: {}
     )
     .modelContainer(for: [DictationSet.self, VocabularyWord.self], inMemory: true)
 }
@@ -2429,8 +2717,30 @@ private struct DraftVocabularyRow: View {
     let hskSet = DictationSet(title: "HSK 5 full set", dateCreated: Date.now.addingTimeInterval(-86_400))
     let idiomSet = DictationSet(title: "Everyday idioms", dateCreated: Date.now.addingTimeInterval(-172_800))
     SmartDictationView(
-        sets: [hskSet, idiomSet], activeSet: nil, onCreateSet: {}, onOpenVocabulary: {},
-        onOpenSet: { _ in }, onCloseSet: {}
+        sets: [hskSet, idiomSet], activeSet: nil, isDueReviewActive: false,
+        onCreateSet: {}, onOpenVocabulary: {}, onOpenSet: { _ in },
+        onOpenDueReview: {}, onCloseSet: {}
+    )
+    .modelContainer(for: [DictationSet.self, VocabularyWord.self], inMemory: true)
+}
+
+#Preview("Smart Dictation — Due Review") {
+    let set = DictationSet(title: "Everyday vocabulary")
+    let word = VocabularyWord(
+        chinese: "把握",
+        englishTranslation: "to grasp",
+        pinyin: "bǎ wò",
+        reviewBox: 1,
+        lastReviewedAt: Date.now.addingTimeInterval(-172_800),
+        nextReviewAt: Date.now.addingTimeInterval(-86_400),
+        tags: [set.title]
+    )
+    word.session = set
+    set.vocabularyWords.append(word)
+    return SmartDictationView(
+        sets: [set], activeSet: nil, isDueReviewActive: false,
+        onCreateSet: {}, onOpenVocabulary: {}, onOpenSet: { _ in },
+        onOpenDueReview: {}, onCloseSet: {}
     )
     .modelContainer(for: [DictationSet.self, VocabularyWord.self], inMemory: true)
 }
@@ -2447,8 +2757,9 @@ private func smartDictationPracticePreview() -> some View {
     ]
     words.forEach { word in word.session = set; set.vocabularyWords.append(word) }
     return SmartDictationView(
-        sets: [set], activeSet: set, onCreateSet: {}, onOpenVocabulary: {},
-        onOpenSet: { _ in }, onCloseSet: {}
+        sets: [set], activeSet: set, isDueReviewActive: false,
+        onCreateSet: {}, onOpenVocabulary: {}, onOpenSet: { _ in },
+        onOpenDueReview: {}, onCloseSet: {}
     )
     .modelContainer(for: [DictationSet.self, VocabularyWord.self], inMemory: true)
 }

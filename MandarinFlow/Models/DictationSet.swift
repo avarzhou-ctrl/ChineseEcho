@@ -15,14 +15,43 @@ nonisolated final class DictationSet {
     var recordID: UUID = UUID()
     var title: String
     var dateCreated: Date
+    var iconKindRawValue: String?
+    var iconValue: String?
+    var iconColorRawValue: String?
     
     // Deleting a set also removes its saved words.
     @Relationship(deleteRule: .cascade)
     var vocabularyWords: [VocabularyWord] = []
     
-    init(recordID: UUID = UUID(), title: String, dateCreated: Date = Date()) {
+    init(
+        recordID: UUID = UUID(),
+        title: String,
+        dateCreated: Date = Date(),
+        appearance: DictationSetAppearance = .defaultValue
+    ) {
         self.recordID = recordID
         self.title = title
-        self.dateCreated = dateCreated 
+        self.dateCreated = dateCreated
+        iconKindRawValue = appearance.kind.rawValue
+        iconValue = appearance.iconValue
+        iconColorRawValue = appearance.color.rawValue
+    }
+}
+
+extension DictationSet {
+    // Converts optional legacy fields into a complete appearance for every rendering call.
+    var appearance: DictationSetAppearance {
+        get {
+            DictationSetAppearance(
+                kindRawValue: iconKindRawValue,
+                iconValue: iconValue,
+                colorRawValue: iconColorRawValue
+            )
+        }
+        set {
+            iconKindRawValue = newValue.kind.rawValue
+            iconValue = newValue.iconValue
+            iconColorRawValue = newValue.color.rawValue
+        }
     }
 }

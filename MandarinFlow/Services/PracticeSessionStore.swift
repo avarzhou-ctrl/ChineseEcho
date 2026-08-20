@@ -10,14 +10,22 @@ nonisolated struct SavedPracticeGrade: Codable, Equatable, Sendable {
     let recordedAt: Date
     let previousMastery: Bool?
     let previousSetMastery: Bool?
+    let previousReviewSchedule: ReviewScheduleSnapshot?
+}
+
+nonisolated enum SavedPracticeSourceKind: String, Codable, Equatable, Sendable {
+    case set
+    case dueReview
 }
 
 // Persists the minimum state needed to resume the exact open practice queue.
 nonisolated struct SavedPracticeSession: Codable, Equatable, Sendable {
-    static let currentVersion = 1
+    static let currentVersion = 2
+    static let supportedVersions = 1...currentVersion
 
     let version: Int
-    let setRecordID: UUID
+    let sourceKind: SavedPracticeSourceKind?
+    let setRecordID: UUID?
     let filter: String
     let queueWordRecordIDs: [UUID]
     let currentIndex: Int
@@ -25,6 +33,10 @@ nonisolated struct SavedPracticeSession: Codable, Equatable, Sendable {
     let isQueueShuffled: Bool
     let isCardFlipped: Bool
     let savedAt: Date
+
+    var resolvedSourceKind: SavedPracticeSourceKind {
+        sourceKind ?? .set
+    }
 }
 
 extension Notification.Name {
@@ -37,7 +49,7 @@ enum PracticeSessionStore {
     static func load() -> SavedPracticeSession? {
         guard let data = UserDefaults.standard.data(forKey: AppPreferenceKey.activePracticeSession),
               let session = try? JSONDecoder().decode(SavedPracticeSession.self, from: data),
-              session.version == SavedPracticeSession.currentVersion
+              SavedPracticeSession.supportedVersions.contains(session.version)
         else { return nil }
         return session
     }

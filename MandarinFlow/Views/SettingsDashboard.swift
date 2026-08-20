@@ -59,7 +59,6 @@ struct SettingsDashboard: View {
                     localAISection
                     practiceSection
                     localDataSection
-                    aboutSection
                 }
                 .frame(maxWidth: 820)
                 .frame(maxWidth: .infinity)
@@ -442,50 +441,6 @@ struct SettingsDashboard: View {
                 backupError = error.localizedDescription
             }
             isRestoringBackup = false
-        }
-    }
-
-    private var aboutSection: some View {
-        SettingsSectionCard(
-            title: "About & Privacy",
-            symbol: "info.circle.fill",
-            summary: "An audio-first Chinese learning workspace whose data and AI processing stay on this Mac."
-        ) {
-            LabeledContent("Version") {
-                Text(appVersion)
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            LabeledContent("Storage") {
-                Text("Local on this Mac")
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            LabeledContent("Speech") {
-                Text("Apple AVSpeechSynthesizer")
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            LabeledContent("Language Model") {
-                Text("\(LocalModelSpec.displayName) · MLX Swift")
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            LabeledContent("Dictionary") {
-                Text("CC-CEDICT · CC BY-SA 4.0")
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-
-    private var appVersion: String {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
-        return switch (version, build) {
-        case let (version?, build?): "\(version) (\(build))"
-        case let (version?, nil): version
-        default: "Development"
         }
     }
 

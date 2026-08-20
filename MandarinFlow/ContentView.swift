@@ -8,6 +8,7 @@
 import AppKit
 import SwiftData
 import SwiftUI
+import UserNotifications
 
 // Coordinates app navigation, selected records, sidebar sizing, and set creation.
 struct ContentView: View {
@@ -19,6 +20,7 @@ struct ContentView: View {
     @State private var selection: AppSection = .dictation
     @State private var sectionTransitionEdge: Edge = .trailing
     @State private var activeSetRecordID: UUID?
+    @State private var isDueReviewActive = false
     @State private var selectedVocabularyWordID: PersistentIdentifier?
     @State private var isCreatingSet = false
     @State private var isSidebarCollapsed = false
@@ -26,12 +28,18 @@ struct ContentView: View {
     @State private var sidebarWidth =
         UserDefaults.standard.object(forKey: "sidebarWidth") as? Double ?? 266.0
     @AppStorage("sidebarWidth") private var persistedSidebarWidth = 266.0
+    @AppStorage(AppPreferenceKey.reviewNotificationsEnabled)
+    private var reviewNotificationsEnabled = AppPreferenceDefault.reviewNotificationsEnabled
 
     private let sidebarWidthRange = 220.0...420.0
 
     private var activeSet: DictationSet? {
         guard let activeSetRecordID else { return nil }
         return dictationSets.first { $0.recordID == activeSetRecordID }
+    }
+
+    private var scheduledReviewDates: [Date] {
+        vocabularyWords.compactMap(\.nextReviewAt).sorted()
     }
 
     private var animatedSelection: Binding<AppSection> {
@@ -85,9 +93,11 @@ struct ContentView: View {
                         SmartDictationView(
                             sets: dictationSets,
                             activeSet: activeSet,
+                            isDueReviewActive: isDueReviewActive,
                             onCreateSet: { isCreatingSet = true },
                             onOpenVocabulary: { updateSelection(.vocabulary) },
                             onOpenSet: openPractice,
+                            onOpenDueReview: openDueReview,
                             onCloseSet: closePractice
                         )
                     case .vocabulary:
@@ -113,7 +123,7 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
         }
-        .frame(minWidth: 900, idealWidth: 1024, minHeight: 650, idealHeight: 768)
+        .frame(minWidth: 900, idealWidth: 1180, minHeight: 650, idealHeight: 720)
         .background(TingXiePalette.workspace)
         .overlay(alignment: .bottomTrailing) {
             if modelDownloadCoordinator.isStatusVisible {
@@ -132,10 +142,18 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .activePracticeSessionDidChange)) { _ in
             // A restore can replace the saved session while Settings is visible.
             guard selection != .dictation else { return }
-            activeSetRecordID = PracticeSessionStore.load()?.setRecordID
+            restoreInterruptedPracticeIfAvailable()
+        }
+        .onChange(of: scheduledReviewDates) { _, _ in
+            Task { await synchronizeReviewNotification() }
+        }
+        .onChange(of: reviewNotificationsEnabled) { _, _ in
+            Task { await synchronizeReviewNotification() }
         }
         .task {
             restoreInterruptedPracticeIfAvailable()
+            await configureReviewNotifications()
+            await synchronizeReviewNotification()
             await modelDownloadCoordinator.refreshCachedByteCount()
             modelDownloadCoordinator.startPreparing()
         }
@@ -146,7 +164,7 @@ struct ContentView: View {
     }
 
     private var isPracticePresented: Bool {
-        selection == .dictation && activeSet != nil
+        selection == .dictation && (activeSet != nil || isDueReviewActive)
     }
 
     private var modelStatusBottomPadding: CGFloat {
@@ -166,23 +184,59 @@ struct ContentView: View {
 
     private func openPractice(_ set: DictationSet) {
         withAnimation(TingXieMotion.contentChange(reduceMotion: reduceMotion)) {
+            isDueReviewActive = false
             activeSetRecordID = set.recordID
+        }
+    }
+
+    private func openDueReview() {
+        withAnimation(TingXieMotion.contentChange(reduceMotion: reduceMotion)) {
+            activeSetRecordID = nil
+            isDueReviewActive = true
         }
     }
 
     private func closePractice() {
         withAnimation(TingXieMotion.contentChange(reduceMotion: reduceMotion)) {
             activeSetRecordID = nil
+            isDueReviewActive = false
         }
     }
 
     private func restoreInterruptedPracticeIfAvailable() {
-        guard activeSetRecordID == nil, let savedSession = PracticeSessionStore.load() else { return }
-        if dictationSets.contains(where: { $0.recordID == savedSession.setRecordID }) {
-            activeSetRecordID = savedSession.setRecordID
-            selection = .dictation
+        guard activeSetRecordID == nil,
+              !isDueReviewActive,
+              let savedSession = PracticeSessionStore.load()
+        else { return }
+        if savedSession.resolvedSourceKind == .dueReview {
+            isDueReviewActive = true
+        } else if let setRecordID = savedSession.setRecordID,
+                  dictationSets.contains(where: { $0.recordID == setRecordID }) {
+            activeSetRecordID = setRecordID
         } else {
             PracticeSessionStore.clear()
+        }
+    }
+
+    private func synchronizeReviewNotification() async {
+        guard reviewNotificationsEnabled else {
+            ReviewNotificationScheduler.cancel()
+            return
+        }
+        await ReviewNotificationScheduler.scheduleNextReview(from: scheduledReviewDates)
+    }
+
+    private func configureReviewNotifications() async {
+        let status = await ReviewNotificationScheduler.authorizationStatus()
+        switch status {
+        case .denied:
+            reviewNotificationsEnabled = false
+        case .authorized, .provisional, .ephemeral:
+            reviewNotificationsEnabled = true
+        case .notDetermined:
+            reviewNotificationsEnabled = await ReviewNotificationScheduler.requestAuthorization()
+        @unknown default:
+            reviewNotificationsEnabled = false
         }
     }
 }

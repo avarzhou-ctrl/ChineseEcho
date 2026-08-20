@@ -36,6 +36,7 @@ The shipped design may represent:
 - Continuous or word-selected audio playback
 - Pinyin-first practice and character reveal
 - All-word, missed-word, and idiom filters
+- A scheduled cross-set due-review queue
 - Search by Chinese, pinyin, or set tag
 - English translations
 - Locally generated contextual sentences
@@ -66,7 +67,7 @@ Playback progress should be legible without creating urgency. Marking a word mis
 
 ### Private by default
 
-Vocabulary and practice state remain in SwiftData. The active practice queue is checkpointed locally after meaningful changes so the exact set, card order, current card, and completed grading can resume after relaunch. Versioned JSON backups include the full learning library, enrichment, hints, missed-word state, analytics, and any interrupted session; imports are validated and previewed before replacing local data. Sentence generation runs in-process with Qwen through MLX after the model is downloaded and cached. Product copy should say “local” or “on this Mac” where technical context is useful, but should not turn privacy architecture into the main learning experience.
+Vocabulary, review scheduling, and practice state remain in SwiftData. The active practice queue is checkpointed locally after meaningful changes so the exact set or cross-set due-review source, card order, current card, and completed grading can resume after relaunch. Versioned JSON backups include the full learning library, enrichment, hints, missed-word state, review dates, analytics, and any interrupted session; imports are validated and previewed before replacing local data. On first launch, MandarinFlow requests notification permission through the native macOS dialog without showing a separate in-app banner; accepted reminders keep one notification scheduled for the earliest due review. Due reminders request the native macOS banner and sound presentation even while MandarinFlow is active, while the learner's System Settings retain final control over notification visibility and style. Sentence generation runs in-process with Qwen through MLX after the model is downloaded and cached. Product copy should say “local” or “on this Mac” where technical context is useful, but should not turn privacy architecture into the main learning experience.
 
 ## Information Architecture
 
@@ -74,7 +75,7 @@ The app uses a custom horizontal split shell with a branded sidebar and a single
 
 | Destination | Purpose | Primary content |
 | --- | --- | --- |
-| Smart Dictation | Create and practice vocabulary sets | Empty state, dated set list, active practice session |
+| Smart Dictation | Create, practice, and revisit vocabulary sets | Due-review card, dated set list, active practice session |
 | Vocabulary | Search and revisit saved words | Filtered vocabulary list and word inspector |
 | Settings | Test supporting engines | Speech & Pronunciation and Local Language Model cards |
 
@@ -84,7 +85,7 @@ An active dictation set appears beneath **Smart Dictation** in the sidebar. The 
 
 ### App shell
 
-- Default window: 1024 × 768 points
+- Default window: 1180 × 720 points
 - Minimum window: 900 × 650 points
 - Sidebar: 220–420 points, with a 266-point ideal width
 - Workspace fills all remaining space
@@ -123,14 +124,17 @@ When no sets exist, center the microphone symbol and show:
 - “Create your first custom practice round to start testing your vocabulary.”
 - **Create New Set**
 
-When sets exist, replace the empty state with a vertically divided list. Each row shows a green play symbol, the set title, and its creation date. Keep the newest set first.
+When sets exist, replace the empty state with a vertically divided list. Each row shows the set's chosen SF Symbol or emoji on its selected accent-color treatment, the set title, and its creation date. Keep the newest set first. Reuse the same appearance in search results and beside the active practice-set title.
+
+Keep Word of the Day in the sidebar. Above **Recent Dictation Practice**, show a compact **Due Review** card. When words are due, elevate the card with an accent outline, filled icon, due-now badge, and **Start Review** action. Bold the dynamic word count or relative next-review time within its supporting sentence. When the learner is caught up, collapse it into a quieter status row showing the next scheduled review; before any word has been graded, explain that normal dictation practice starts the schedule. Use an explicitly pale-green gradient for the introductory listening-drills hero rather than a neutral gray surface.
 
 ### Create New Set sheet
 
 Use the split create-set editor with:
 
 - **Create New Set** title
-- **Set name** field
+- **Set name** field with a customizable set icon control
+- A compact picker offering curated SF Symbols, emoji, and accessible accent colors; reuse it when editing a set
 - **Fill with Local AI** field accepting Chinese words separated by commas, spaces, or new lines
 - **Fill Details** action that preserves the supplied words and fills in pinyin and concise English translations
 - Selectable **Model Output** panel showing the initial response and any repair response, with a Copy action
@@ -180,6 +184,12 @@ Playback proceeds through the filtered list and stops after its final item. Sele
 
 If a filter has no matches, use **No Words in This Filter** with “Choose a different category to continue practicing.”
 
+### Due review
+
+Every Known or Missed grading decision schedules that saved vocabulary record independently. A first Known result enters box 2; a Missed result enters or returns to box 1. Known answers advance through five boxes with 3, 7, 14, and 30-day intervals, while box 1 returns after 1 day. Untouched words remain unscheduled.
+
+Starting **Due Review** opens the same immersive listening and grading interface with a snapshot of all currently due words across sets, ordered most overdue first. The set filter is hidden, the footer reads **Finish Review**, and completion reads **Review Complete**. Grading from any practice mode updates the schedule, Undo restores the previous schedule, and an interrupted due-review queue resumes exactly after relaunch.
+
 ### Your Vocabulary Hub
 
 Use a two-pane `HSplitView` because the product data naturally forms a catalog and inspector:
@@ -216,9 +226,10 @@ Settings uses a centered single-column sequence of compact grouped lists in this
 2. **Local AI**
 3. **Practice**
 4. **Local Backup**
-5. **About & Privacy**
 
 Each group uses a simple icon-and-title header, separator, and the existing native Picker, Slider, Toggle, Stepper, and Button controls below it.
+
+Review notification consent does not appear in Settings or in a custom in-app banner. On first launch, use only the native macOS notification-permission dialog; after the learner responds, macOS retains that choice in System Settings.
 
 ## Visual System
 
@@ -362,6 +373,8 @@ Keep visual tokens in `TingXiePalette`. A new shared size or spacing value belon
 | Local-model diagnostic UI | `MandarinFlow/Views/LLMTestView.swift` |
 | Set and word models | `MandarinFlow/Models/DictationSet.swift`, `MandarinFlow/Models/VocabularyWord.swift` |
 | Background persistence | `MandarinFlow/Services/DictationStore.swift` |
+| Review scheduling | `MandarinFlow/Services/ReviewScheduler.swift` |
+| Review notifications | `MandarinFlow/Services/ReviewNotificationScheduler.swift` |
 | Native speech | `MandarinFlow/Services/SpeechAudioEngine.swift` |
 | Local generation | `MandarinFlow/Services/LLM.swift` |
 | Dependencies and build configuration | `MandarinFlow.xcodeproj/project.pbxproj` |

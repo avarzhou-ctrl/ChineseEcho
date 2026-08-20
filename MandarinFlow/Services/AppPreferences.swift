@@ -9,6 +9,7 @@ enum AppPreferenceKey {
     static let interWordPause = "interWordPause"
     static let repeatCount = "practiceRepeatCount"
     static let keepCardsRevealed = "practiceKeepCardsRevealed"
+    static let reviewNotificationsEnabled = "reviewNotificationsEnabled"
     static let practiceAnalytics = "practiceAnalytics"
     static let activePracticeSession = "activePracticeSession"
 
@@ -19,7 +20,8 @@ enum AppPreferenceKey {
         speechPitch,
         interWordPause,
         repeatCount,
-        keepCardsRevealed
+        keepCardsRevealed,
+        reviewNotificationsEnabled
     ]
 }
 
@@ -229,6 +231,7 @@ enum AppPreferenceDefault {
     static let interWordPause = 1.25
     static let repeatCount = 1
     static let keepCardsRevealed = false
+    static let reviewNotificationsEnabled = false
 }
 
 // Provides one reset operation for every MandarinFlow-specific preference.

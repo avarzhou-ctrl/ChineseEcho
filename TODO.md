@@ -31,14 +31,19 @@
   - Export sets, vocabulary, contextual sentences, hints, and learning progress to a portable file.
   - Validate imported data and preview what will be restored before changing the library.
 
-- [ ] **Add customizable icons for sets**
-  - Emoji, icons, colors, etc.
+- [x] **Add customizable icons for sets**
+  - Choose a curated SF Symbol or emoji and an accent color while creating or editing a set.
+  - Preserve the appearance through duplication, local backup, and restore.
+
+- [ ] **Add skeleton loaders**
+  - All pages
 
 ## Later considerations
 
-- [ ] **Evaluate a due-review queue**
-  - Use practice history to surface vocabulary that needs review without replacing normal set practice.
-  - Define a simple scheduling model before adding more progress metrics.
+- [x] **Add a due-review queue**
+  - Surface scheduled vocabulary above recent dictation practice without replacing normal set practice or Word of the Day.
+  - Use a five-box Known/Missed schedule with cross-set practice, Undo, resume, and backup support.
+  - Request macOS notification permission natively and follow the earliest due review.
 
 ## Completed
 

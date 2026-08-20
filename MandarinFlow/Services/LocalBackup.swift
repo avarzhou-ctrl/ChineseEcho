@@ -6,9 +6,30 @@ import UniformTypeIdentifiers
 // Defines the versioned, portable representation of the local learning library.
 nonisolated struct MandarinFlowBackup: Codable, Sendable {
     nonisolated struct SetRecord: Codable, Sendable {
+        nonisolated struct AppearanceRecord: Codable, Sendable {
+            let kind: String
+            let iconValue: String
+            let color: String
+
+            init(_ appearance: DictationSetAppearance) {
+                kind = appearance.kind.rawValue
+                iconValue = appearance.iconValue
+                color = appearance.color.rawValue
+            }
+
+            var value: DictationSetAppearance {
+                DictationSetAppearance(
+                    kindRawValue: kind,
+                    iconValue: iconValue,
+                    colorRawValue: color
+                )
+            }
+        }
+
         let recordID: UUID
         let title: String
         let dateCreated: Date
+        let appearance: AppearanceRecord?
         let words: [WordRecord]
     }
 
@@ -20,12 +41,16 @@ nonisolated struct MandarinFlowBackup: Codable, Sendable {
         let learnerHint: String?
         let isMissedWord: Bool
         let isIdiom: Bool
+        let reviewBox: Int?
+        let lastReviewedAt: Date?
+        let nextReviewAt: Date?
         let generatedSentence: String?
         let generatedBreakdown: String?
         let tags: [String]
     }
 
-    static let currentSchemaVersion = 1
+    static let currentSchemaVersion = 2
+    static let supportedSchemaVersions = 1...currentSchemaVersion
 
     let schemaVersion: Int
     let createdAt: Date
@@ -36,7 +61,7 @@ nonisolated struct MandarinFlowBackup: Codable, Sendable {
     var wordCount: Int { sets.reduce(0) { $0 + $1.words.count } }
 
     func validated() throws -> MandarinFlowBackup {
-        guard schemaVersion == Self.currentSchemaVersion else {
+        guard Self.supportedSchemaVersions.contains(schemaVersion) else {
             throw LocalBackupError.unsupportedVersion(schemaVersion)
         }
 
@@ -56,12 +81,21 @@ nonisolated struct MandarinFlowBackup: Codable, Sendable {
         }) else { throw LocalBackupError.incompleteWord }
 
         if let activeSession {
-            let sessionWordIDs = sets.first(where: {
-                $0.recordID == activeSession.setRecordID
-            }).map { Set($0.words.map(\.recordID)) } ?? []
+            let allWordIDs = Set(words.map(\.recordID))
+            let sessionWordIDs: Set<UUID>
+            switch activeSession.resolvedSourceKind {
+            case .set:
+                guard let setRecordID = activeSession.setRecordID,
+                      setIDs.contains(setRecordID)
+                else { throw LocalBackupError.invalidPracticeSession }
+                sessionWordIDs = sets.first(where: {
+                    $0.recordID == setRecordID
+                }).map { Set($0.words.map(\.recordID)) } ?? []
+            case .dueReview:
+                sessionWordIDs = allWordIDs
+            }
             let queueWordIDs = Set(activeSession.queueWordRecordIDs)
-            guard activeSession.version == SavedPracticeSession.currentVersion,
-                  setIDs.contains(activeSession.setRecordID),
+            guard SavedPracticeSession.supportedVersions.contains(activeSession.version),
                   activeSession.currentIndex >= 0,
                   activeSession.currentIndex < activeSession.queueWordRecordIDs.count,
                   queueWordIDs.count == activeSession.queueWordRecordIDs.count,
@@ -78,6 +112,12 @@ nonisolated struct MandarinFlowBackup: Codable, Sendable {
             guard day.correctAttempts >= 0,
                   day.totalAttempts >= 0,
                   day.correctAttempts <= day.totalAttempts
+            else { throw LocalBackupError.invalidLearningProgress }
+        }
+        for word in words {
+            guard word.reviewBox.map({ (1...ReviewScheduler.maximumBox).contains($0) }) ?? true,
+                  (word.reviewBox == nil) == (word.nextReviewAt == nil),
+                  (word.reviewBox == nil) == (word.lastReviewedAt == nil)
             else { throw LocalBackupError.invalidLearningProgress }
         }
         return self
@@ -139,6 +179,7 @@ actor LocalBackupStore {
                     recordID: set.recordID,
                     title: set.title,
                     dateCreated: set.dateCreated,
+                    appearance: MandarinFlowBackup.SetRecord.AppearanceRecord(set.appearance),
                     words: set.vocabularyWords.map { word in
                         MandarinFlowBackup.WordRecord(
                             recordID: word.recordID,
@@ -148,6 +189,9 @@ actor LocalBackupStore {
                             learnerHint: word.learnerHint,
                             isMissedWord: word.isMissedWord,
                             isIdiom: word.isIdiom,
+                            reviewBox: word.reviewBox,
+                            lastReviewedAt: word.lastReviewedAt,
+                            nextReviewAt: word.nextReviewAt,
                             generatedSentence: word.generatedSentence,
                             generatedBreakdown: word.generatedBreakdown,
                             tags: word.tags
@@ -179,7 +223,8 @@ actor LocalBackupStore {
                 let set = DictationSet(
                     recordID: savedSet.recordID,
                     title: savedSet.title,
-                    dateCreated: savedSet.dateCreated
+                    dateCreated: savedSet.dateCreated,
+                    appearance: savedSet.appearance?.value ?? .defaultValue
                 )
                 modelContext.insert(set)
                 for savedWord in savedSet.words {
@@ -191,6 +236,9 @@ actor LocalBackupStore {
                         learnerHint: savedWord.learnerHint,
                         isMissedWord: savedWord.isMissedWord,
                         isIdiom: savedWord.isIdiom,
+                        reviewBox: savedWord.reviewBox,
+                        lastReviewedAt: savedWord.lastReviewedAt,
+                        nextReviewAt: savedWord.nextReviewAt,
                         tags: savedWord.tags
                     )
                     word.generatedSentence = savedWord.generatedSentence
