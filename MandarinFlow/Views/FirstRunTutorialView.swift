@@ -25,7 +25,7 @@ struct FirstRunTutorialView: View {
         self.initialDownloadChoice = initialDownloadChoice
         self.onComplete = onComplete
         _downloadChoice = State(
-            initialValue: initialDownloadChoice == .undecided ? .notNow : initialDownloadChoice
+            initialValue: initialDownloadChoice == .undecided ? .download : initialDownloadChoice
         )
     }
 
@@ -94,7 +94,7 @@ struct FirstRunTutorialView: View {
 
                 if page != .welcome {
                     Button("Back", action: moveBackward)
-                        .buttonStyle(.bordered)
+                        .buttonStyle(OutlineCapsuleButtonStyle())
                 }
 
                 if page == .localAI {
