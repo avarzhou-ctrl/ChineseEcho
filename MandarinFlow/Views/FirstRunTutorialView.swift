@@ -93,8 +93,12 @@ struct FirstRunTutorialView: View {
                 Spacer()
 
                 if page != .welcome {
-                    Button("Back", action: moveBackward)
-                        .buttonStyle(OutlineCapsuleButtonStyle())
+                    Button(action: moveBackward) {
+                        Image(systemName: "chevron.left")
+                    }
+                    .buttonStyle(OutlineCapsuleButtonStyle())
+                    .accessibilityLabel("Back")
+                    .help("Previous step")
                 }
 
                 if page == .localAI {
@@ -103,8 +107,12 @@ struct FirstRunTutorialView: View {
                     }
                     .buttonStyle(GreenCapsuleButtonStyle())
                 } else {
-                    Button("Continue", action: moveForward)
-                        .buttonStyle(GreenCapsuleButtonStyle())
+                    Button(action: moveForward) {
+                        Image(systemName: "chevron.right")
+                    }
+                    .buttonStyle(GreenCapsuleButtonStyle())
+                    .accessibilityLabel("Continue")
+                    .help("Next step")
                 }
             }
             .padding(.horizontal, 30)

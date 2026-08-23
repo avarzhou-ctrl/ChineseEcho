@@ -87,7 +87,7 @@ An active dictation set appears beneath **Smart Dictation** in the sidebar. The 
 
 Fresh windows open on Smart Dictation home even when an interrupted practice checkpoint exists. The checkpoint remains available and resumes only after the learner manually reopens its set or Due Review source.
 
-On a true first run, a four-step, versioned **Getting Started** sheet introduces the listening workflow, Smart Dictation sets, Vocabulary Hub, and optional Local AI. The final step defaults to **Download Local AI** while requiring the learner to finish setup before download begins; **Not Now** keeps speech, manual set creation, practice, grading, and review fully usable. Back uses the shared outlined capsule style while Continue and Done use the filled primary style. The tutorial can be replayed from Settings.
+On a true first run, a four-step, versioned **Getting Started** sheet introduces the listening workflow, Smart Dictation sets, Vocabulary Hub, and optional Local AI. The final step defaults to **Download Local AI** while requiring the learner to finish setup before download begins; **Not Now** keeps speech, manual set creation, practice, grading, and review fully usable. Step navigation uses an outlined left chevron and a filled right chevron, while the final Done action retains its text label. The tutorial can be replayed from Settings.
 
 - Default window: 1180 × 720 points
 - Minimum window: 900 × 650 points
