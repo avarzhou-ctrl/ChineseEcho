@@ -85,7 +85,11 @@ struct WorkspaceSkeletonView: View {
             SkeletonBlock(width: section == .vocabulary ? 330 : 230, height: 38, cornerRadius: 10)
             Spacer()
             if section != .settings {
-                SkeletonBlock(width: 310, height: 40, cornerRadius: 12)
+                SkeletonBlock(
+                    width: 310,
+                    height: TingXieControlMetrics.regularHeight,
+                    cornerRadius: TingXieControlMetrics.controlCornerRadius
+                )
             }
             SkeletonBlock(width: 40, height: 40, cornerRadius: 20)
         }
@@ -97,10 +101,16 @@ struct WorkspaceSkeletonView: View {
         ScrollView {
             VStack(spacing: 18) {
                 SkeletonBlock(height: 210, cornerRadius: 24)
-                SkeletonBlock(height: 92, cornerRadius: 16)
+                SkeletonBlock(
+                    height: 92,
+                    cornerRadius: TingXieControlMetrics.prominentCardCornerRadius
+                )
                 HStack(spacing: 14) {
                     ForEach(0..<3, id: \.self) { _ in
-                        SkeletonBlock(height: 96, cornerRadius: 16)
+                        SkeletonBlock(
+                            height: 96,
+                            cornerRadius: TingXieControlMetrics.prominentCardCornerRadius
+                        )
                     }
                 }
                 VStack(alignment: .leading, spacing: 12) {
@@ -118,10 +128,17 @@ struct WorkspaceSkeletonView: View {
     private var vocabularySkeleton: some View {
         HStack(spacing: 0) {
             VStack(spacing: 12) {
-                SkeletonBlock(height: 44, cornerRadius: 12)
+                SkeletonBlock(
+                    height: TingXieControlMetrics.fieldHeight,
+                    cornerRadius: TingXieControlMetrics.controlCornerRadius
+                )
                 ForEach(0..<6, id: \.self) { _ in
                     HStack(spacing: 14) {
-                        SkeletonBlock(width: 56, height: 56, cornerRadius: 12)
+                        SkeletonBlock(
+                            width: 56,
+                            height: 56,
+                            cornerRadius: TingXieControlMetrics.controlCornerRadius
+                        )
                         VStack(alignment: .leading, spacing: 8) {
                             SkeletonBlock(width: 118, height: 18, cornerRadius: 5)
                             SkeletonBlock(width: 170, height: 12, cornerRadius: 4)
@@ -129,7 +146,10 @@ struct WorkspaceSkeletonView: View {
                         Spacer()
                     }
                     .padding(14)
-                    .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 14))
+                    .background(
+                        TingXiePalette.lightGreenSurface,
+                        in: RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
+                    )
                 }
                 Spacer()
             }
@@ -174,7 +194,10 @@ struct WorkspaceSkeletonView: View {
                         SkeletonBlock(height: 40, cornerRadius: 10)
                     }
                     .padding(18)
-                    .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 12))
+                    .background(
+                        TingXiePalette.lightGreenSurface,
+                        in: RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
+                    )
                 }
             }
             .frame(maxWidth: 820)
@@ -202,7 +225,10 @@ private struct SkeletonSetRow: View {
         }
         .padding(.horizontal, 18)
         .frame(height: 96)
-        .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 14))
+        .background(
+            TingXiePalette.lightGreenSurface,
+            in: RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
+        )
     }
 }
 
@@ -232,7 +258,10 @@ struct SentenceCardSkeleton: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, minHeight: 112, alignment: .leading)
-        .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 14))
+        .background(
+            TingXiePalette.lightGreenSurface,
+            in: RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
+        )
         .accessibilityHidden(true)
     }
 }
@@ -250,7 +279,10 @@ struct VocabularyDraftSkeleton: View {
                     }
                 }
                 .padding(14)
-                .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 12))
+                .background(
+                    TingXiePalette.lightGreenSurface,
+                    in: RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
+                )
             }
         }
         .accessibilityElement(children: .ignore)

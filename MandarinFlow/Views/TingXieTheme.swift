@@ -48,6 +48,57 @@ enum TingXieTypography {
     }
 }
 
+// Keeps control geometry consistent across full workspaces, compact toolbars, and sheets.
+enum TingXieControlMetrics {
+    static let compactHeight: CGFloat = 32
+    static let regularHeight: CGFloat = 40
+    static let fieldHeight: CGFloat = 44
+    static let iconHitTarget: CGFloat = 40
+    static let sheetHeaderHeight: CGFloat = 70
+    static let sheetFooterHeight: CGFloat = 76
+    static let compactCornerRadius: CGFloat = 9
+    static let controlCornerRadius: CGFloat = 12
+    static let cardCornerRadius: CGFloat = 14
+    static let prominentCardCornerRadius: CGFloat = 16
+}
+
+enum TingXieButtonVariant {
+    case primary
+    case secondary
+    case quiet
+    case destructive
+}
+
+enum TingXieButtonSize {
+    case compact
+    case regular
+    case prominent
+
+    var height: CGFloat {
+        switch self {
+        case .compact: TingXieControlMetrics.compactHeight
+        case .regular: TingXieControlMetrics.regularHeight
+        case .prominent: 56
+        }
+    }
+
+    var font: Font {
+        switch self {
+        case .compact: .system(size: 12, weight: .semibold)
+        case .regular: .system(size: 15, weight: .semibold)
+        case .prominent: .system(size: 21, weight: .bold)
+        }
+    }
+
+    var horizontalPadding: CGFloat {
+        switch self {
+        case .compact: 14
+        case .regular: 22
+        case .prominent: 26
+        }
+    }
+}
+
 // Centralizes short, restrained animations used when filters and collection content change.
 enum TingXieMotion {
     static func filterSelection(reduceMotion: Bool) -> Animation {
@@ -448,13 +499,10 @@ struct WorkspaceHeader: View {
             if showsAddButton {
                 Button(action: { addAction?() }) {
                     Image(systemName: "plus")
-                        .font(.system(size: 18, weight: .semibold))
-                        .frame(width: 40, height: 40)
-                        .background(TingXiePalette.accent, in: Circle())
-                        .foregroundStyle(.white)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(TingXieButtonStyle(isIconOnly: true))
                 .accessibilityLabel("Create New Set")
+                .help("Create New Set")
             }
 
             if let info {
@@ -494,8 +542,12 @@ struct WorkspaceInfoButton: View {
                 .frame(width: 40, height: 40)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+        .buttonStyle(
+            TingXieButtonStyle(
+                variant: .quiet,
+                isIconOnly: true
+            )
+        )
         .help(accessibilityLabel)
         .accessibilityLabel(accessibilityLabel)
         .sheet(isPresented: $isShowingInfo) {
@@ -537,7 +589,13 @@ private struct WorkspaceInfoSheet: View {
                     Image(systemName: "xmark")
                         .frame(width: 32, height: 32)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(
+                    TingXieButtonStyle(
+                        variant: .quiet,
+                        size: .compact,
+                        isIconOnly: true
+                    )
+                )
                 .accessibilityLabel("Close")
             }
 
@@ -568,7 +626,7 @@ private struct WorkspaceInfoSheet: View {
             HStack {
                 Spacer()
                 Button("Done") { dismiss() }
-                    .buttonStyle(GreenCapsuleButtonStyle())
+                    .buttonStyle(TingXieButtonStyle())
             }
         }
         .padding(28)
@@ -629,7 +687,13 @@ struct SearchField: View {
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.6))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(
+                    TingXieButtonStyle(
+                        variant: .quiet,
+                        size: .compact,
+                        isIconOnly: true
+                    )
+                )
                 .help("Clear search")
                 .accessibilityLabel("Clear search")
             }
@@ -703,9 +767,7 @@ struct SearchResultsPanel<Content: View>: View {
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
                 Spacer()
                 Button("Clear", action: onClear)
-                    .buttonStyle(.plain)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(TingXiePalette.accent)
+                    .buttonStyle(TingXieButtonStyle(variant: .quiet, size: .compact))
                     .accessibilityLabel("Clear search")
             }
             .padding(.horizontal, 14)
@@ -771,42 +833,120 @@ extension String {
     }
 }
 
-// Styles primary actions with the app's accent-filled capsule treatment.
-struct GreenCapsuleButtonStyle: ButtonStyle {
+// Styles actions by semantic role while preserving one shared size and state system.
+struct TingXieButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    var variant: TingXieButtonVariant = .primary
+    var size: TingXieButtonSize = .regular
+    var isIconOnly = false
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 22)
-            .frame(height: 40)
-            .background(TingXiePalette.accent.opacity(configuration.isPressed ? 0.78 : 1))
+            .font(size.font)
+            .foregroundStyle(foregroundColor)
+            .padding(.horizontal, isIconOnly ? 0 : size.horizontalPadding)
+            .frame(
+                width: isIconOnly ? size.height : nil,
+                height: size.height
+            )
+            .background(backgroundColor(isPressed: configuration.isPressed))
             .clipShape(Capsule())
-            .shadow(color: TingXiePalette.accent.opacity(0.16), radius: 8, y: 4)
+            .overlay {
+                Capsule()
+                    .stroke(borderColor, lineWidth: borderWidth)
+            }
+            .shadow(
+                color: variant == .primary && isEnabled
+                    ? TingXiePalette.accent.opacity(0.16)
+                    : .clear,
+                radius: 8,
+                y: 4
+            )
+            .opacity(isEnabled ? 1 : 0.46)
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .contentShape(Capsule())
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+
+    private var foregroundColor: Color {
+        switch variant {
+        case .primary: .white
+        case .secondary, .quiet: TingXiePalette.accent
+        case .destructive: TingXiePalette.missed
+        }
+    }
+
+    private var borderColor: Color {
+        switch variant {
+        case .secondary: TingXiePalette.accent.opacity(0.34)
+        case .destructive: TingXiePalette.missed.opacity(0.34)
+        case .primary, .quiet: .clear
+        }
+    }
+
+    private var borderWidth: CGFloat {
+        switch variant {
+        case .secondary, .destructive: 1
+        case .primary, .quiet: 0
+        }
+    }
+
+    private func backgroundColor(isPressed: Bool) -> Color {
+        switch variant {
+        case .primary:
+            TingXiePalette.accent.opacity(isPressed ? 0.78 : 1)
+        case .secondary:
+            TingXiePalette.accent.opacity(isPressed ? 0.10 : 0.015)
+        case .quiet:
+            TingXiePalette.accent.opacity(isPressed ? 0.10 : 0)
+        case .destructive:
+            TingXiePalette.missed.opacity(isPressed ? 0.10 : 0.015)
+        }
     }
 }
 
-// Styles configurable secondary actions with a compact accent outline.
-struct OutlineCapsuleButtonStyle: ButtonStyle {
-    var fontSize: CGFloat = 15
-    var horizontalPadding: CGFloat = 22
-    var height: CGFloat = 40
+// Gives custom text fields and editors one shared inset surface.
+private struct TingXieInputSurfaceModifier: ViewModifier {
+    var minimumHeight: CGFloat
+    var cornerRadius: CGFloat
 
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: fontSize, weight: .semibold))
-            .foregroundStyle(TingXiePalette.accent)
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, 12)
+            .frame(minHeight: minimumHeight)
+            .background(
+                TingXiePalette.lightGreenSurface,
+                in: RoundedRectangle(cornerRadius: cornerRadius)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .stroke(TingXiePalette.outlineVariant.opacity(0.62), lineWidth: 1)
+            }
+    }
+}
+
+// Aligns modal title rows and action bars across editors and setup flows.
+private struct TingXieSheetBarModifier: ViewModifier {
+    let height: CGFloat
+    let horizontalPadding: CGFloat
+    let fill: Color?
+
+    func body(content: Content) -> some View {
+        content
             .padding(.horizontal, horizontalPadding)
             .frame(height: height)
-            .background(TingXiePalette.accent.opacity(configuration.isPressed ? 0.08 : 0.01))
-            .clipShape(Capsule())
-            .overlay { Capsule().stroke(TingXiePalette.accent.opacity(0.25), lineWidth: 1) }
+            .background {
+                if let fill {
+                    fill
+                }
+            }
     }
 }
 
 // Applies the shared translucent card surface and subtle outline.
 struct TonalCardModifier: ViewModifier {
-    var cornerRadius: CGFloat = 16
+    var cornerRadius: CGFloat = TingXieControlMetrics.cardCornerRadius
     var fill = TingXiePalette.surface
 
     func body(content: Content) -> some View {
@@ -819,9 +959,96 @@ struct TonalCardModifier: ViewModifier {
     }
 }
 
+// Keeps the shared control states reviewable together as the design system evolves.
+private struct TingXieComponentCatalogPreview: View {
+    @State private var fieldText = "Mandarin practice"
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            Text("MandarinFlow Controls")
+                .font(.system(size: 30, weight: .semibold))
+
+            HStack(spacing: 12) {
+                Button("Primary", action: {})
+                    .buttonStyle(TingXieButtonStyle())
+                Button("Secondary", action: {})
+                    .buttonStyle(TingXieButtonStyle(variant: .secondary))
+                Button("Quiet", action: {})
+                    .buttonStyle(TingXieButtonStyle(variant: .quiet))
+                Button("Destructive", action: {})
+                    .buttonStyle(TingXieButtonStyle(variant: .destructive))
+            }
+
+            HStack(spacing: 12) {
+                Button("Compact", action: {})
+                    .buttonStyle(TingXieButtonStyle(size: .compact))
+                Button(action: {}) {
+                    Image(systemName: "plus")
+                }
+                .buttonStyle(TingXieButtonStyle(isIconOnly: true))
+                .accessibilityLabel("Add")
+                Button("Disabled", action: {})
+                    .buttonStyle(TingXieButtonStyle())
+                    .disabled(true)
+            }
+
+            TextField("Field", text: $fieldText)
+                .textFieldStyle(.plain)
+                .tingXieInputSurface()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Tonal Card")
+                    .font(TingXieTypography.controlLabel)
+                Text("Shared surfaces use the same outline and corner-radius tiers.")
+                    .font(TingXieTypography.body)
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .tonalCard()
+        }
+        .padding(32)
+        .frame(width: 720)
+        .foregroundStyle(TingXiePalette.onBackground)
+        .background(TingXiePalette.background)
+    }
+}
+
 extension View {
+    func tingXieInputSurface(
+        minimumHeight: CGFloat = TingXieControlMetrics.fieldHeight,
+        cornerRadius: CGFloat = TingXieControlMetrics.controlCornerRadius
+    ) -> some View {
+        modifier(
+            TingXieInputSurfaceModifier(
+                minimumHeight: minimumHeight,
+                cornerRadius: cornerRadius
+            )
+        )
+    }
+
+    func tingXieSheetHeader() -> some View {
+        modifier(
+            TingXieSheetBarModifier(
+                height: TingXieControlMetrics.sheetHeaderHeight,
+                horizontalPadding: 28,
+                fill: nil
+            )
+        )
+    }
+
+    func tingXieSheetFooter() -> some View {
+        modifier(
+            TingXieSheetBarModifier(
+                height: TingXieControlMetrics.sheetFooterHeight,
+                horizontalPadding: 28,
+                fill: TingXiePalette.surfaceContainer.opacity(0.62)
+            )
+        )
+    }
+
     func tonalCard(
-        cornerRadius: CGFloat = 16,
+        cornerRadius: CGFloat = TingXieControlMetrics.cardCornerRadius,
         fill: Color = TingXiePalette.surface
     ) -> some View {
         modifier(TonalCardModifier(cornerRadius: cornerRadius, fill: fill))
@@ -906,4 +1133,8 @@ private struct TingXieColorPalettePreview: View {
 
 #Preview("MandarinFlow Color Palette") {
     TingXieColorPalettePreview()
+}
+
+#Preview("MandarinFlow Controls") {
+    TingXieComponentCatalogPreview()
 }

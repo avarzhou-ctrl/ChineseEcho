@@ -39,8 +39,7 @@ struct FirstRunTutorialView: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
             }
-            .padding(.horizontal, 30)
-            .frame(height: 64)
+            .tingXieSheetHeader()
 
             Divider()
 
@@ -96,7 +95,12 @@ struct FirstRunTutorialView: View {
                     Button(action: moveBackward) {
                         Image(systemName: "chevron.left")
                     }
-                    .buttonStyle(OutlineCapsuleButtonStyle())
+                    .buttonStyle(
+                        TingXieButtonStyle(
+                            variant: .secondary,
+                            isIconOnly: true
+                        )
+                    )
                     .accessibilityLabel("Back")
                     .help("Previous step")
                 }
@@ -105,18 +109,17 @@ struct FirstRunTutorialView: View {
                     Button(isFirstRun ? "Finish Setup" : "Done") {
                         onComplete(downloadChoice)
                     }
-                    .buttonStyle(GreenCapsuleButtonStyle())
+                    .buttonStyle(TingXieButtonStyle())
                 } else {
                     Button(action: moveForward) {
                         Image(systemName: "chevron.right")
                     }
-                    .buttonStyle(GreenCapsuleButtonStyle())
+                    .buttonStyle(TingXieButtonStyle(isIconOnly: true))
                     .accessibilityLabel("Continue")
                     .help("Next step")
                 }
             }
-            .padding(.horizontal, 30)
-            .frame(height: 76)
+            .tingXieSheetFooter()
         }
         .frame(width: 720, height: 570)
         .foregroundStyle(TingXiePalette.onBackground)
@@ -216,7 +219,7 @@ struct FirstRunTutorialView: View {
                     .frame(width: 44, height: 44)
                     .background(
                         downloadChoice == choice ? TingXiePalette.accent : TingXiePalette.surfaceContainerHigh,
-                        in: RoundedRectangle(cornerRadius: 12)
+                        in: RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
                     )
 
                 VStack(alignment: .leading, spacing: 3) {
@@ -236,15 +239,18 @@ struct FirstRunTutorialView: View {
             }
             .padding(14)
             .frame(maxWidth: .infinity, minHeight: 74, alignment: .leading)
-            .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 14))
+            .background(
+                TingXiePalette.lightGreenSurface,
+                in: RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
+            )
             .overlay {
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
                     .stroke(
                         downloadChoice == choice ? TingXiePalette.accent : TingXiePalette.outlineVariant,
                         lineWidth: downloadChoice == choice ? 2 : 1
                     )
             }
-            .contentShape(RoundedRectangle(cornerRadius: 14))
+            .contentShape(RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius))
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(downloadChoice == choice ? .isSelected : [])
@@ -301,7 +307,10 @@ private struct TutorialPointCard: View {
         }
         .padding(15)
         .frame(maxWidth: .infinity, minHeight: 132, alignment: .topLeading)
-        .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 14))
+        .background(
+            TingXiePalette.lightGreenSurface,
+            in: RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
+        )
     }
 }
 

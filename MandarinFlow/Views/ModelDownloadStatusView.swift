@@ -53,9 +53,12 @@ struct ModelDownloadStatusView: View {
         }
         .padding(15)
         .frame(width: 360)
-        .background(TingXiePalette.surfaceContainerHigh, in: RoundedRectangle(cornerRadius: 16))
+        .background(
+            TingXiePalette.surfaceContainerHigh,
+            in: RoundedRectangle(cornerRadius: TingXieControlMetrics.prominentCardCornerRadius)
+        )
         .overlay {
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: TingXieControlMetrics.prominentCardCornerRadius)
                 .stroke(TingXiePalette.outlineVariant.opacity(0.7), lineWidth: 1)
         }
         .shadow(color: Color.black.opacity(0.12), radius: 18, y: 8)
@@ -75,7 +78,13 @@ struct ModelDownloadStatusView: View {
                 Image(systemName: "xmark")
                     .frame(width: 24, height: 24)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(
+                TingXieButtonStyle(
+                    variant: .quiet,
+                    size: .compact,
+                    isIconOnly: true
+                )
+            )
             .help("Pause Download")
             .accessibilityLabel("Pause Local AI download")
         } else if coordinator.canRetry {
@@ -83,7 +92,13 @@ struct ModelDownloadStatusView: View {
                 Image(systemName: "arrow.clockwise")
                     .frame(width: 24, height: 24)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(
+                TingXieButtonStyle(
+                    variant: .quiet,
+                    size: .compact,
+                    isIconOnly: true
+                )
+            )
             .help("Resume Download")
             .accessibilityLabel("Resume Local AI download")
         } else {
@@ -91,7 +106,13 @@ struct ModelDownloadStatusView: View {
                 Image(systemName: "xmark")
                     .frame(width: 24, height: 24)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(
+                TingXieButtonStyle(
+                    variant: .quiet,
+                    size: .compact,
+                    isIconOnly: true
+                )
+            )
             .help("Dismiss")
             .accessibilityLabel("Dismiss Local AI status")
         }

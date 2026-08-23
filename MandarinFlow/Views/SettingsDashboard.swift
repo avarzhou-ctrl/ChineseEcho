@@ -57,7 +57,6 @@ struct SettingsDashboard: View {
 
             ScrollView {
                 VStack(spacing: 18) {
-                    gettingStartedSection
                     speechSection
                     localAISection
                     practiceSection
@@ -131,30 +130,6 @@ struct SettingsDashboard: View {
         }
     }
 
-    private var gettingStartedSection: some View {
-        SettingsSectionCard(
-            title: "Getting Started",
-            symbol: "sparkles.rectangle.stack.fill",
-            summary: "Replay the introduction to Smart Dictation, Vocabulary Hub, and optional Local AI."
-        ) {
-            HStack(spacing: 14) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("MandarinFlow Tutorial")
-                        .font(.system(size: 14, weight: .semibold))
-                    Text("Review the learning workflow or change your Local AI download choice.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer()
-
-                Button("Replay Tutorial", systemImage: "play.circle.fill", action: onShowTutorial)
-                    .buttonStyle(.bordered)
-            }
-        }
-    }
-
     private var speechSection: some View {
         SettingsSectionCard(
             title: "Speech & Pronunciation",
@@ -201,13 +176,12 @@ struct SettingsDashboard: View {
                 } label: {
                     Label("Preview Voice", systemImage: "play.fill")
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(TingXiePalette.accent)
+                .buttonStyle(TingXieButtonStyle(size: .compact))
 
                 Button("Stop", systemImage: "stop.fill") {
                     audioEngine.stop()
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(TingXieButtonStyle(variant: .secondary, size: .compact))
             }
         }
     }
@@ -331,7 +305,7 @@ struct SettingsDashboard: View {
                     Button("Remove Model", systemImage: "trash", role: .destructive) {
                         isConfirmingModelRemoval = true
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(TingXieButtonStyle(variant: .destructive, size: .compact))
                     .disabled(isModelStorageLoading || modelDownloadCoordinator.cachedByteCount == 0)
                 }
             }
@@ -341,7 +315,7 @@ struct SettingsDashboard: View {
                     Button("Pause Download", systemImage: "pause.fill") {
                         Task { await modelDownloadCoordinator.cancelPreparation() }
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(TingXieButtonStyle(variant: .secondary, size: .compact))
 
                     Spacer()
                 }
@@ -351,8 +325,7 @@ struct SettingsDashboard: View {
                         modelRemovalError = nil
                         modelDownloadCoordinator.startPreparing()
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(TingXiePalette.accent)
+                    .buttonStyle(TingXieButtonStyle(size: .compact))
 
                     Spacer()
                 }
@@ -364,14 +337,6 @@ struct SettingsDashboard: View {
                     .foregroundStyle(TingXiePalette.missed)
                     .fixedSize(horizontal: false, vertical: true)
             }
-
-            Label(
-                "Automatic preparation follows the choice saved in Getting Started. Pausing keeps downloaded files so the next attempt can resume.",
-                systemImage: "info.circle"
-            )
-            .font(.system(size: 10))
-            .foregroundStyle(TingXiePalette.onSurfaceVariant)
-            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -388,8 +353,7 @@ struct SettingsDashboard: View {
 
             HStack(spacing: 10) {
                 Button("Export Backup", systemImage: "square.and.arrow.up", action: exportBackup)
-                    .buttonStyle(.borderedProminent)
-                    .tint(TingXiePalette.accent)
+                    .buttonStyle(TingXieButtonStyle(size: .compact))
                     .disabled(isRestoringBackup)
 
                 Button("Restore Backup", systemImage: "square.and.arrow.down") {
@@ -397,7 +361,7 @@ struct SettingsDashboard: View {
                     backupMessage = nil
                     isImportingBackup = true
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(TingXieButtonStyle(variant: .secondary, size: .compact))
                 .disabled(isRestoringBackup)
             }
 
@@ -532,7 +496,10 @@ private struct BackupRestorePreview: View {
                     .font(.system(size: 24, weight: .semibold))
                     .foregroundStyle(TingXiePalette.accent)
                     .frame(width: 48, height: 48)
-                    .background(TingXiePalette.surfaceContainerHighest, in: RoundedRectangle(cornerRadius: 14))
+                    .background(
+                        TingXiePalette.surfaceContainerHighest,
+                        in: RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
+                    )
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Preview Local Restore")
                         .font(TingXieTypography.sectionTitle)
@@ -572,7 +539,10 @@ private struct BackupRestorePreview: View {
             .font(.system(size: 12, weight: .medium))
             .foregroundStyle(TingXiePalette.missed)
             .padding(12)
-            .background(TingXiePalette.missed.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+            .background(
+                TingXiePalette.missed.opacity(0.08),
+                in: RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
+            )
 
             if let errorMessage {
                 Text(errorMessage)
@@ -582,12 +552,12 @@ private struct BackupRestorePreview: View {
 
             HStack {
                 Button("Cancel", action: onCancel)
+                    .buttonStyle(TingXieButtonStyle(variant: .quiet))
                     .keyboardShortcut(.cancelAction)
                     .disabled(isRestoring)
                 Spacer()
                 Button("Replace and Restore", systemImage: "arrow.clockwise", action: onRestore)
-                    .buttonStyle(.borderedProminent)
-                    .tint(TingXiePalette.accent)
+                    .buttonStyle(TingXieButtonStyle())
                     .disabled(isRestoring)
             }
         }
@@ -620,7 +590,10 @@ private struct RestoreCountComparison: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 12))
+        .background(
+            TingXiePalette.lightGreenSurface,
+            in: RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
+        )
     }
 }
 
@@ -673,7 +646,10 @@ private struct SettingsSectionCard<Content: View>: View {
             .padding(.vertical, 16)
         }
         .frame(maxWidth: .infinity, minHeight: minimumHeight, alignment: .topLeading)
-        .tonalCard(cornerRadius: 12, fill: TingXiePalette.lightGreenSurface)
+        .tonalCard(
+            cornerRadius: TingXieControlMetrics.controlCornerRadius,
+            fill: TingXiePalette.lightGreenSurface
+        )
         .accessibilityElement(children: .contain)
         .accessibilityLabel(title)
         .accessibilityHint(summary)
@@ -732,7 +708,10 @@ private struct DataCountBadge: View {
         }
         .padding(.horizontal, 14)
         .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
-        .background(TingXiePalette.surfaceContainer.opacity(0.6), in: RoundedRectangle(cornerRadius: 12))
+        .background(
+            TingXiePalette.surfaceContainer.opacity(0.6),
+            in: RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
+        )
     }
 }
 

@@ -136,6 +136,8 @@ struct ContentView: View {
             .clipped()
         }
         .frame(minWidth: 900, idealWidth: 1180, minHeight: 650, idealHeight: 720)
+        .controlSize(.regular)
+        .tint(TingXiePalette.accent)
         .background(TingXiePalette.workspace)
         .overlay(alignment: .bottomTrailing) {
             if modelDownloadCoordinator.isStatusVisible {

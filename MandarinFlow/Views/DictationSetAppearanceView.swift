@@ -18,7 +18,7 @@ extension DictationSetIconColor {
 struct DictationSetIconBadge: View {
     let appearance: DictationSetAppearance
     var size: CGFloat = 52
-    var cornerRadius: CGFloat = 14
+    var cornerRadius: CGFloat = TingXieControlMetrics.cardCornerRadius
 
     var body: some View {
         Group {
@@ -125,10 +125,10 @@ struct DictationSetAppearancePicker: View {
             .frame(width: 38, height: 38)
             .background(
                 isSelected ? selection.color.tint.opacity(0.16) : Color.clear,
-                in: RoundedRectangle(cornerRadius: 9)
+                in: RoundedRectangle(cornerRadius: TingXieControlMetrics.compactCornerRadius)
             )
             .overlay {
-                RoundedRectangle(cornerRadius: 9)
+                RoundedRectangle(cornerRadius: TingXieControlMetrics.compactCornerRadius)
                     .stroke(
                         isSelected ? selection.color.tint : TingXiePalette.outlineVariant.opacity(0.65),
                         lineWidth: isSelected ? 1.5 : 1

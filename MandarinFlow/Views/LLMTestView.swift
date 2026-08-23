@@ -27,6 +27,9 @@ struct LLMTestView: View {
         }
         .padding(28)
         .frame(minWidth: 560, minHeight: 520)
+        .foregroundStyle(TingXiePalette.onBackground)
+        .tint(TingXiePalette.accent)
+        .background(TingXiePalette.background)
         .navigationTitle("LLM Test")
         .onDisappear {
             generationTask?.cancel()
@@ -36,10 +39,12 @@ struct LLMTestView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Local LLM Playground", systemImage: "sparkles")
-                .font(.largeTitle.bold())
+                .font(.system(size: 30, weight: .semibold))
+                .foregroundStyle(TingXiePalette.accent)
 
             Text("Run a prompt locally with \(modelName). The model downloads once on first use.")
-                .foregroundStyle(.secondary)
+                .font(TingXieTypography.body)
+                .foregroundStyle(TingXiePalette.onSurfaceVariant)
         }
     }
 
@@ -48,9 +53,8 @@ struct LLMTestView: View {
             TextEditor(text: $prompt)
                 .font(.body)
                 .scrollContentBackground(.hidden)
-                .padding(8)
-                .frame(minHeight: 120)
-                .background(.background, in: RoundedRectangle(cornerRadius: 8))
+                .padding(.vertical, 8)
+                .tingXieInputSurface(minimumHeight: 120)
         } label: {
             Label("Prompt", systemImage: "text.cursor")
         }
@@ -70,7 +74,7 @@ struct LLMTestView: View {
                     Label(isGenerating ? "Generating…" : "Generate", systemImage: "paperplane.fill")
                 }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(TingXieButtonStyle())
             .keyboardShortcut(.return, modifiers: .command)
             .disabled(trimmedPrompt.isEmpty || isGenerating || modelDownloadCoordinator.isPreparing)
 

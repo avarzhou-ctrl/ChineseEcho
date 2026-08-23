@@ -233,7 +233,7 @@ Settings uses a centered single-column sequence of compact grouped lists in this
 4. **Practice**
 5. **Local Backup**
 
-Each group uses a simple icon-and-title header, separator, and the existing native Picker, Slider, Toggle, Stepper, and Button controls below it.
+Each group uses a simple icon-and-title header and separator. Pickers, sliders, toggles, and steppers retain native macOS interaction, while actions use the shared MandarinFlow semantic button styles.
 
 Review notification consent does not appear in Settings or in a custom in-app banner. On first launch, present Getting Started first, then use only the native macOS notification-permission dialog; after the learner responds, macOS retains that choice in System Settings.
 
@@ -247,9 +247,9 @@ Colors are defined in `MandarinFlow/Views/TingXieTheme.swift`.
 | --- | --- | --- |
 | `sidebar` | `#296124` | Persistent navigation background |
 | `sidebarSelection` | `#72AE6C` at 40% | Selected navigation and word-of-day card |
-| `workspace` | `#BAD9B7` | Main workspace background |
+| `workspace` | `#EBFFE6` | Main workspace background |
 | `surface` | `#ECF7EB` | Cards, search, tables, and practice field |
-| `accent` | `#276525` | Titles, controls, progress, and primary actions |
+| `accent` | `#0E490E` | Titles, controls, progress, and primary actions |
 | `wordOfDay` | `#FDFBA7` | Word-of-day eyebrow text |
 | `missed` | `#C41F23` | Missed state, destructive emphasis, and errors |
 | `tableStripe` | `#A5C6A2` at 40% | Alternating vocabulary rows |
@@ -285,9 +285,10 @@ Chinese characters, pinyin tone marks, and English translations must remain sele
 - Standard compact spacing: 8 points
 - Settings-card spacing: 16 points
 - Practice flow spacing: 18 points
-- Common corner radius: 8 points
-- Settings-card corner radius: 12 points
-- Primary capsule height: 40 points
+- Compact, control, card, and prominent-card radii: 9, 12, 14, and 16 points
+- Compact, regular, and prominent action heights: 32, 40, and 56 points
+- Standard field height: 44 points
+- Standard sheet header and footer heights: 70 and 76 points
 - Sidebar navigation row: 44 points high
 
 Prefer these established values before adding new spacing or radius tokens.
@@ -300,16 +301,34 @@ Use `Image(systemName:)` exclusively for interface icons. Match the existing fil
 
 New work should compose or extend these existing elements before creating parallel variants:
 
+- `TingXieControlMetrics`
+- `TingXieButtonStyle`
+- `TingXieInputSurfaceModifier`
+- `TingXieSheetBarModifier`
+- `TonalCardModifier`
 - `AppSidebar`
 - `SidebarButton`
 - `WorkspaceHeader`
-- `GreenCapsuleButtonStyle`
+- `SearchField`
+- `SlidingFilterBar`
 - `WordTags`
 - `TagLabel`
 - `SettingsCard`
 - `FlowLayout`
 
 Keep visual tokens in `TingXiePalette`. A new shared size or spacing value belongs beside the theme only when it is repeated across multiple features.
+
+### Controls
+
+Use semantic roles rather than choosing a style page by page:
+
+- **Primary**: solid accent capsule for the single clearest next action in a group.
+- **Secondary**: accent outline for alternate actions with equal control geometry.
+- **Quiet**: borderless accent treatment for dismissals, toolbar utilities, and low-emphasis actions.
+- **Destructive**: red outline and label for irreversible or removal actions.
+- **Icon-only**: use the same semantic variants with a square hit target that resolves to a circular capsule; always include an accessibility label and help text.
+
+Disabled controls retain their semantic color at reduced opacity, and pressed controls use a restrained tonal response. Use compact sizing in dense cards and toolbars, regular sizing in sheets and primary workflows, and prominent sizing only for floating creation actions. Text fields and text editors outside native grouped forms use the shared inset input surface. Modal editors use the shared header and footer geometry.
 
 ## Interaction and State
 

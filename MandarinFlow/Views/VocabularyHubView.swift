@@ -409,8 +409,12 @@ private struct VocabularyFilterBar: View {
         SlidingFilterBar(
             items: VocabularyFilter.allCases,
             selection: $selection,
-            selectionShape: AnyShape(RoundedRectangle(cornerRadius: 9)),
-            containerShape: AnyShape(RoundedRectangle(cornerRadius: 12)),
+            selectionShape: AnyShape(
+                RoundedRectangle(cornerRadius: TingXieControlMetrics.compactCornerRadius)
+            ),
+            containerShape: AnyShape(
+                RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
+            ),
             title: \.rawValue
         )
     }
@@ -617,13 +621,13 @@ private struct VocabularyInspector: View {
                                 audioEngine.speak(word.chinese)
                             } label: {
                                 Image(systemName: "speaker.wave.2.fill")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .frame(width: 34, height: 34)
-                                    .background(TingXiePalette.surfaceContainerHigh, in: Circle())
-                                    .contentShape(Circle())
                             }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(TingXiePalette.accent)
+                            .buttonStyle(
+                                TingXieButtonStyle(
+                                    variant: .secondary,
+                                    isIconOnly: true
+                                )
+                            )
                             .help("Play \(word.chinese)")
                             .accessibilityLabel("Play \(word.chinese)")
 
@@ -677,11 +681,7 @@ private struct VocabularyInspector: View {
                                     )
                                 }
                             }
-                            .buttonStyle(.plain)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(TingXiePalette.accent)
-                            .frame(minHeight: 32)
-                            .contentShape(Rectangle())
+                            .buttonStyle(TingXieButtonStyle(variant: .quiet, size: .compact))
                             .disabled(isGenerating || modelDownloadCoordinator.isPreparing)
                             .help(
                                 contextualSentences.isEmpty
@@ -739,7 +739,7 @@ private struct VocabularyInspector: View {
                                 ) {
                                     onMarkAsLearned(word)
                                 }
-                                .buttonStyle(GreenCapsuleButtonStyle())
+                                .buttonStyle(TingXieButtonStyle())
                                 .frame(maxWidth: .infinity)
                             }
                             .padding(.top, 26)
@@ -815,9 +815,12 @@ private struct ContextualSentenceCard: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 14))
+        .background(
+            TingXiePalette.lightGreenSurface,
+            in: RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
+        )
         .overlay {
-            RoundedRectangle(cornerRadius: 14)
+            RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
                 .strokeBorder(TingXiePalette.outlineVariant.opacity(0.65), lineWidth: 1)
         }
     }
@@ -990,11 +993,17 @@ private struct WordEditorSheet: View {
                     Image(systemName: "xmark")
                         .frame(width: 32, height: 32)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(
+                    TingXieButtonStyle(
+                        variant: .quiet,
+                        size: .compact,
+                        isIconOnly: true
+                    )
+                )
                 .accessibilityLabel("Close")
+                .help("Close")
             }
-            .padding(.horizontal, 24)
-            .frame(height: 68)
+            .tingXieSheetHeader()
 
             Divider()
 
@@ -1020,15 +1029,12 @@ private struct WordEditorSheet: View {
             HStack(spacing: 12) {
                 Spacer()
                 Button("Cancel") { dismiss() }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(TingXiePalette.accent)
+                    .buttonStyle(TingXieButtonStyle(variant: .quiet))
                 Button(isSaving ? "Saving…" : "Save", action: save)
-                    .buttonStyle(GreenCapsuleButtonStyle())
+                    .buttonStyle(TingXieButtonStyle())
                     .disabled(cleanChinese.isEmpty || isSaving)
             }
-            .padding(.horizontal, 24)
-            .frame(height: 70)
-            .background(TingXiePalette.surfaceContainer.opacity(0.55))
+            .tingXieSheetFooter()
         }
         .frame(width: 480, height: 400)
         .foregroundStyle(TingXiePalette.onBackground)

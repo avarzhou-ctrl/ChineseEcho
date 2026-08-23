@@ -158,14 +158,8 @@ struct SmartDictationView: View {
 
                     Button(action: onCreateSet) {
                         Image(systemName: "plus")
-                            .font(.system(size: 21, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 56, height: 56)
-                            .background(TingXiePalette.accent, in: Circle())
-                            .shadow(color: TingXiePalette.accent.opacity(0.28), radius: 16, y: 8)
-                            .contentShape(Circle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(TingXieButtonStyle(size: .prominent, isIconOnly: true))
                     .help("Create New Set")
                     .accessibilityLabel("Create New Set")
                     .padding(.trailing, 32)
@@ -412,7 +406,7 @@ private struct DictationSearchResultRow: View {
                 DictationSetIconBadge(
                     appearance: set.appearance,
                     size: 32,
-                    cornerRadius: 9
+                    cornerRadius: TingXieControlMetrics.compactCornerRadius
                 )
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -479,7 +473,7 @@ private struct DictationHero: View {
                     Button(action: onOpenVocabulary) {
                         Label("View Vocabulary", systemImage: "character.book.closed")
                     }
-                    .buttonStyle(OutlineCapsuleButtonStyle())
+                    .buttonStyle(TingXieButtonStyle(variant: .secondary))
                 }
                 .padding(.top, 22)
             }
@@ -579,7 +573,7 @@ private struct DueReviewCard: View {
 
             if !dueWords.isEmpty {
                 Button("Start Review", systemImage: "play.fill", action: onStartReview)
-                    .buttonStyle(GreenCapsuleButtonStyle())
+                    .buttonStyle(TingXieButtonStyle())
             }
         }
         .padding(.horizontal, 22)
@@ -588,10 +582,10 @@ private struct DueReviewCard: View {
             dueWords.isEmpty
                 ? TingXiePalette.lightGreenSurface.opacity(0.58)
                 : TingXiePalette.surfaceContainerHigh.opacity(0.92),
-            in: RoundedRectangle(cornerRadius: 16)
+            in: RoundedRectangle(cornerRadius: TingXieControlMetrics.prominentCardCornerRadius)
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: TingXieControlMetrics.prominentCardCornerRadius)
                 .stroke(
                     dueWords.isEmpty ? .white.opacity(0.58) : TingXiePalette.accent.opacity(0.48),
                     lineWidth: dueWords.isEmpty ? 1 : 1.5
@@ -633,7 +627,7 @@ private struct DictationSetCollection: View {
                         .multilineTextAlignment(.center)
                     if !isSearching {
                         Button("Create New Set", systemImage: "plus", action: onCreateSet)
-                            .buttonStyle(GreenCapsuleButtonStyle())
+                            .buttonStyle(TingXieButtonStyle())
                     }
                 }
                 .padding(.horizontal, 32)
@@ -1112,7 +1106,7 @@ private struct PracticeSessionView: View {
                         )
                         .disabled(!canUndoLastGrade)
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(TingXieButtonStyle(variant: .quiet, size: .compact))
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(TingXiePalette.onSurfaceVariant)
                 .frame(maxWidth: 650)
@@ -1133,13 +1127,13 @@ private struct PracticeSessionView: View {
 
                     Button(action: replayCurrentWord) {
                         Image(systemName: "speaker.wave.2.fill")
-                            .font(.system(size: 14, weight: .semibold))
-                            .frame(width: 38, height: 38)
-                            .background(TingXiePalette.surfaceContainerHigh, in: Circle())
-                            .overlay { Circle().stroke(TingXiePalette.outlineVariant, lineWidth: 1) }
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(TingXiePalette.accent)
+                    .buttonStyle(
+                        TingXieButtonStyle(
+                            variant: .secondary,
+                            isIconOnly: true
+                        )
+                    )
                     .help("Play once more")
                     .accessibilityLabel("Play \(currentWord.chinese) once more")
                     .padding(20)
@@ -1229,13 +1223,7 @@ private struct PracticeSessionView: View {
                     Button("Start Over", systemImage: "arrow.counterclockwise") {
                         isConfirmingStartOver = true
                     }
-                    .buttonStyle(
-                        OutlineCapsuleButtonStyle(
-                            fontSize: 13,
-                            horizontalPadding: 16,
-                            height: 34
-                        )
-                    )
+                    .buttonStyle(TingXieButtonStyle(variant: .secondary, size: .compact))
                     .help("Discard saved progress and restart this practice mode")
 
                     Button(
@@ -1243,13 +1231,7 @@ private struct PracticeSessionView: View {
                         systemImage: "rectangle.portrait.and.arrow.right",
                         action: presentSummary
                     )
-                        .buttonStyle(
-                            OutlineCapsuleButtonStyle(
-                                fontSize: 13,
-                                horizontalPadding: 16,
-                                height: 34
-                            )
-                        )
+                        .buttonStyle(TingXieButtonStyle(variant: .secondary, size: .compact))
                 }
             }
             .padding(.horizontal, 40)
@@ -1634,12 +1616,13 @@ private struct PracticeImmersiveHeader: View {
             HStack {
                 Button(action: onClose) {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(width: 40, height: 40)
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                .buttonStyle(
+                    TingXieButtonStyle(
+                        variant: .quiet,
+                        isIconOnly: true
+                    )
+                )
                 .help("Return to dictation sets")
                 .accessibilityLabel("Return to dictation sets")
 
@@ -1738,23 +1721,22 @@ private struct PracticeSessionSummaryView: View {
                 HStack(spacing: 14) {
                     if summary.isComplete {
                         Button("Return to Sets", systemImage: "rectangle.grid.1x2", action: onFinish)
-                            .buttonStyle(OutlineCapsuleButtonStyle())
+                            .buttonStyle(TingXieButtonStyle(variant: .secondary))
                     } else {
                         Button("Continue Session", systemImage: "arrow.backward", action: onContinueSession)
-                            .buttonStyle(OutlineCapsuleButtonStyle())
+                            .buttonStyle(TingXieButtonStyle(variant: .secondary))
                     }
 
                     Spacer()
 
                     if !summary.isComplete {
                         Button("Return to Sets", systemImage: "rectangle.grid.1x2", action: onFinish)
-                            .buttonStyle(.borderless)
-                            .foregroundStyle(TingXiePalette.accent)
+                            .buttonStyle(TingXieButtonStyle(variant: .quiet))
                     }
 
                     if !summary.missedWords.isEmpty {
                         Button("Practice Missed Words", systemImage: "arrow.clockwise", action: onPracticeMissedWords)
-                            .buttonStyle(GreenCapsuleButtonStyle())
+                            .buttonStyle(TingXieButtonStyle())
                     }
                 }
             }
@@ -1791,9 +1773,12 @@ private struct SessionSummaryMetric: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 14))
+        .background(
+            TingXiePalette.lightGreenSurface,
+            in: RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
+        )
         .overlay {
-            RoundedRectangle(cornerRadius: 14)
+            RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
                 .strokeBorder(TingXiePalette.outlineVariant.opacity(0.65), lineWidth: 1)
         }
     }
@@ -1833,9 +1818,12 @@ private struct SessionSummaryWordList: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(TingXiePalette.lightGreenSurface.opacity(0.72), in: RoundedRectangle(cornerRadius: 14))
+        .background(
+            TingXiePalette.lightGreenSurface.opacity(0.72),
+            in: RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
+        )
         .overlay {
-            RoundedRectangle(cornerRadius: 14)
+            RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
                 .strokeBorder(TingXiePalette.outlineVariant.opacity(0.65), lineWidth: 1)
         }
     }
@@ -1897,13 +1885,7 @@ private struct PracticeFlipCard: View {
                             .transition(.opacity)
                     } else {
                         Button("Show Hint", systemImage: "lightbulb", action: onRevealHint)
-                            .buttonStyle(
-                                OutlineCapsuleButtonStyle(
-                                    fontSize: 12,
-                                    horizontalPadding: 13,
-                                    height: 32
-                                )
-                            )
+                            .buttonStyle(TingXieButtonStyle(variant: .secondary, size: .compact))
                             .help("Reveal the saved learner hint")
                     }
                 }
@@ -2100,14 +2082,17 @@ struct NewDictationSetSheet: View {
                 Spacer()
                 Button { dismiss() } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(width: 34, height: 34)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(
+                    TingXieButtonStyle(
+                        variant: .quiet,
+                        isIconOnly: true
+                    )
+                )
                 .accessibilityLabel("Close")
+                .help("Close")
             }
-            .padding(.horizontal, 28)
-            .frame(height: 70)
+            .tingXieSheetHeader()
 
             Divider().overlay(TingXiePalette.outlineVariant.opacity(0.5))
 
@@ -2133,7 +2118,7 @@ struct NewDictationSetSheet: View {
                                     DictationSetIconBadge(
                                         appearance: appearance,
                                         size: 44,
-                                        cornerRadius: 9
+                                        cornerRadius: TingXieControlMetrics.compactCornerRadius
                                     )
                                     .overlay(alignment: .bottomTrailing) {
                                         Image(systemName: "paintpalette.fill")
@@ -2153,9 +2138,7 @@ struct NewDictationSetSheet: View {
 
                                 TextField("e.g., Travel essentials", text: $title)
                                     .textFieldStyle(.plain)
-                                    .padding(.horizontal, 14)
-                                    .frame(height: 44)
-                                    .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 9))
+                                    .tingXieInputSurface()
                             }
                         }
 
@@ -2172,9 +2155,8 @@ struct NewDictationSetSheet: View {
                             TextEditor(text: $chineseWordInput)
                                 .font(.system(size: 13))
                                 .scrollContentBackground(.hidden)
-                                .padding(9)
-                                .frame(minHeight: 110)
-                                .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 9))
+                                .padding(.vertical, 8)
+                                .tingXieInputSurface(minimumHeight: 110)
                                 .accessibilityLabel("Chinese words to enrich")
 
                             HStack {
@@ -2198,13 +2180,7 @@ struct NewDictationSetSheet: View {
                                             .fixedSize(horizontal: true, vertical: false)
                                     }
                                 }
-                                .buttonStyle(
-                                    OutlineCapsuleButtonStyle(
-                                        fontSize: 12,
-                                        horizontalPadding: 12,
-                                        height: 32
-                                    )
-                                )
+                                .buttonStyle(TingXieButtonStyle(variant: .secondary, size: .compact))
                                 .disabled(
                                     inputChineseWords.isEmpty
                                         || isGenerating
@@ -2213,7 +2189,10 @@ struct NewDictationSetSheet: View {
                             }
                         }
                         .padding(16)
-                        .background(TingXiePalette.surfaceContainer.opacity(0.62), in: RoundedRectangle(cornerRadius: 14))
+                        .background(
+                            TingXiePalette.surfaceContainer.opacity(0.62),
+                            in: RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
+                        )
 
                         modelOutputPanel
 
@@ -2223,18 +2202,15 @@ struct NewDictationSetSheet: View {
                             TextEditor(text: $manualText)
                                 .font(.system(size: 12, design: .monospaced))
                                 .scrollContentBackground(.hidden)
-                                .padding(8)
-                                .frame(minHeight: 90)
-                                .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 9))
+                                .padding(.vertical, 8)
+                                .tingXieInputSurface(minimumHeight: 90)
                             HStack {
                                 Text("One per line: Chinese | pinyin | translation")
                                     .font(.system(size: 10))
                                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
                                 Spacer()
                                 Button("Import Lines", systemImage: "square.and.arrow.down", action: importManualLines)
-                                    .buttonStyle(.plain)
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundStyle(TingXiePalette.accent)
+                                    .buttonStyle(TingXieButtonStyle(variant: .quiet, size: .compact))
                                     .disabled(manualText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                             }
                         }
@@ -2255,9 +2231,7 @@ struct NewDictationSetSheet: View {
                         }
                         Spacer()
                         Button("Add Word", systemImage: "plus", action: addBlankWord)
-                            .buttonStyle(.plain)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(TingXiePalette.accent)
+                            .buttonStyle(TingXieButtonStyle(variant: .quiet, size: .compact))
                     }
 
                     Divider()
@@ -2302,18 +2276,15 @@ struct NewDictationSetSheet: View {
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
                 Spacer()
                 Button("Cancel") { dismiss() }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(TingXiePalette.accent)
+                    .buttonStyle(TingXieButtonStyle(variant: .quiet))
                 Button(action: save) {
                     Label(isSaving ? "Saving…" : mode.actionTitle, systemImage: "arrow.right")
                         .labelStyle(.titleAndIcon)
                 }
-                .buttonStyle(GreenCapsuleButtonStyle())
+                .buttonStyle(TingXieButtonStyle())
                 .disabled(isSaving)
             }
-            .padding(.horizontal, 28)
-            .frame(height: 76)
-            .background(TingXiePalette.surfaceContainer.opacity(0.65))
+            .tingXieSheetFooter()
         }
         .foregroundStyle(TingXiePalette.onBackground)
         .background(.ultraThinMaterial)
@@ -2366,9 +2337,7 @@ struct NewDictationSetSheet: View {
                         .foregroundStyle(TingXiePalette.accent)
                     Spacer()
                     Button("Copy", systemImage: "doc.on.doc", action: copyModelOutput)
-                        .buttonStyle(.plain)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(TingXiePalette.accent)
+                        .buttonStyle(TingXieButtonStyle(variant: .quiet, size: .compact))
                 }
 
                 modelOutputSection(title: "Initial response", text: initialModelOutput)
@@ -2379,9 +2348,12 @@ struct NewDictationSetSheet: View {
                 }
             }
             .padding(14)
-            .background(TingXiePalette.surfaceContainer.opacity(0.62), in: RoundedRectangle(cornerRadius: 12))
+            .background(
+                TingXiePalette.surfaceContainer.opacity(0.62),
+                in: RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
+            )
             .overlay {
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
                     .stroke(TingXiePalette.outlineVariant.opacity(0.65), lineWidth: 1)
             }
         }
@@ -2674,16 +2646,44 @@ private struct DraftVocabularyRow: View {
                 Button(action: onMoveUp) {
                     Image(systemName: "chevron.up")
                 }
+                .buttonStyle(
+                    TingXieButtonStyle(
+                        variant: .quiet,
+                        size: .compact,
+                        isIconOnly: true
+                    )
+                )
                 .disabled(!canMoveUp)
+                .help("Move word up")
+                .accessibilityLabel("Move word up")
+
                 Button(action: onMoveDown) {
                     Image(systemName: "chevron.down")
                 }
+                .buttonStyle(
+                    TingXieButtonStyle(
+                        variant: .quiet,
+                        size: .compact,
+                        isIconOnly: true
+                    )
+                )
                 .disabled(!canMoveDown)
+                .help("Move word down")
+                .accessibilityLabel("Move word down")
+
                 Button(role: .destructive, action: onDelete) {
                     Image(systemName: "trash")
                 }
+                .buttonStyle(
+                    TingXieButtonStyle(
+                        variant: .destructive,
+                        size: .compact,
+                        isIconOnly: true
+                    )
+                )
+                .help("Delete word")
+                .accessibilityLabel("Delete word")
             }
-            .buttonStyle(.plain)
 
             TextField("Pinyin", text: $word.pinyin)
                 .textFieldStyle(.plain)
@@ -2700,9 +2700,12 @@ private struct DraftVocabularyRow: View {
                 .foregroundStyle(TingXiePalette.onSurfaceVariant)
         }
         .padding(14)
-        .background(TingXiePalette.lightGreenSurface.opacity(0.78), in: RoundedRectangle(cornerRadius: 12))
+        .background(
+            TingXiePalette.lightGreenSurface.opacity(0.78),
+            in: RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
+        )
         .overlay {
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
                 .stroke(TingXiePalette.outlineVariant.opacity(0.6), lineWidth: 1)
         }
     }

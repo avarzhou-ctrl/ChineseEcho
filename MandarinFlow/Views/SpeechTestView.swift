@@ -43,6 +43,9 @@ struct SpeechTestView: View {
         }
         .padding(28)
         .frame(minWidth: 520, minHeight: 420)
+        .foregroundStyle(TingXiePalette.onBackground)
+        .tint(TingXiePalette.accent)
+        .background(TingXiePalette.background)
         .navigationTitle("Speech Test")
         .onAppear(perform: selectDefaultVoice)
         .onChange(of: selectedVoiceIdentifier) { _, newIdentifier in
@@ -53,10 +56,12 @@ struct SpeechTestView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Native Audio Engine", systemImage: "speaker.wave.2")
-                .font(.largeTitle.bold())
+                .font(.system(size: 30, weight: .semibold))
+                .foregroundStyle(TingXiePalette.accent)
 
             Text("Test natural Chinese voices, speed, and pitch before connecting audio controls to Smart 听写.")
-                .foregroundStyle(.secondary)
+                .font(TingXieTypography.body)
+                .foregroundStyle(TingXiePalette.onSurfaceVariant)
         }
     }
 
@@ -106,7 +111,7 @@ struct SpeechTestView: View {
             } label: {
                 Label("Speak", systemImage: "play.fill")
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(TingXieButtonStyle())
             .disabled(availableVoices.isEmpty)
 
             Button {
@@ -114,7 +119,7 @@ struct SpeechTestView: View {
             } label: {
                 Label("Stop", systemImage: "stop.fill")
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(TingXieButtonStyle(variant: .secondary))
         }
     }
 
