@@ -6,7 +6,7 @@
   - Prepare the existing logo for every required macOS icon size.
   - Check that the mark remains clear at the smallest Finder and Dock sizes.
 
-- [ ] **Add a first-run tutorial and Local AI download choice**
+- [x] **Add a first-run tutorial and Local AI download choice**
   - Introduce Smart Dictation, the Vocabulary Hub, and Settings.
   - Explain that Local AI requires a separate on-device model download before it begins.
   - Show the expected download and storage size, with **Download** and **Not Now** actions.
@@ -35,7 +35,7 @@
   - Choose a curated SF Symbol or emoji and an accent color while creating or editing a set.
   - Preserve the appearance through duplication, local backup, and restore.
 
-- [ ] **Add skeleton loaders**
+- [x] **Add skeleton loaders**
   - All pages
 
 ## Later considerations

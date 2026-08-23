@@ -105,7 +105,25 @@ final class ModelDownloadCoordinator {
 
     func startPreparing() {
         guard phase != .ready, preparationTask == nil else { return }
+        UserDefaults.standard.set(
+            LocalAIDownloadChoice.download.rawValue,
+            forKey: AppPreferenceKey.localAIDownloadChoice
+        )
         Task {
+            try? await prepare()
+        }
+    }
+
+    func prepareInstalledModelIfAvailable() {
+        guard phase != .ready, preparationTask == nil else { return }
+        Task {
+            let isFullyCached = await Task.detached(priority: .utility) {
+                ModelCacheStore.hasCompleteSelectedModel()
+            }.value
+            guard isFullyCached else {
+                await refreshCachedByteCount()
+                return
+            }
             try? await prepare()
         }
     }
@@ -179,6 +197,10 @@ final class ModelDownloadCoordinator {
         estimatedSecondsRemaining = nil
         phase = .cancelled
         isStatusVisible = true
+        UserDefaults.standard.set(
+            LocalAIDownloadChoice.notNow.rawValue,
+            forKey: AppPreferenceKey.localAIDownloadChoice
+        )
         await refreshCachedByteCount()
     }
 
@@ -193,6 +215,10 @@ final class ModelDownloadCoordinator {
         phase = .idle
         isStatusVisible = false
         suppressesCachedPreparationStatus = false
+        UserDefaults.standard.set(
+            LocalAIDownloadChoice.notNow.rawValue,
+            forKey: AppPreferenceKey.localAIDownloadChoice
+        )
     }
 
     func refreshCachedByteCount() async {

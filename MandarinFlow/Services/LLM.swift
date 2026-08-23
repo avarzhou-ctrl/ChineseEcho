@@ -16,6 +16,14 @@ nonisolated enum LocalModelSpec {
     static let displayName = "Qwen 3 4B"
     static let repositoryID = "mlx-community/Qwen3-4B-4bit"
     static let cacheFolderName = "models--mlx-community--Qwen3-4B-4bit"
+    static let estimatedDownloadByteCount: Int64 = 2_500_000_000
+
+    static var estimatedDownloadSizeText: String {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useGB]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: estimatedDownloadByteCount)
+    }
 }
 
 // Converts malformed model repository identifiers into readable download errors.
@@ -195,6 +203,11 @@ nonisolated private extension String {
 // Exposes a small feature-facing API over the shared local language-model actor.
 @MainActor
 func generateText(prompt: String) async throws -> String {
+    // Selecting an AI generation action is explicit consent to download or resume the optional model.
+    UserDefaults.standard.set(
+        LocalAIDownloadChoice.download.rawValue,
+        forKey: AppPreferenceKey.localAIDownloadChoice
+    )
     try await ModelDownloadCoordinator.shared.prepare()
     return try await LocalLanguageModel.shared.generate(prompt: prompt)
 }

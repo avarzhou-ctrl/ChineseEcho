@@ -8,6 +8,7 @@ struct SettingsDashboard: View {
 
     let setCount: Int
     let wordCount: Int
+    var onShowTutorial: () -> Void = {}
 
     @AppStorage(AppPreferenceKey.voiceIdentifier) private var voiceIdentifier = ""
     @AppStorage(AppPreferenceKey.pronunciationProfile)
@@ -24,6 +25,7 @@ struct SettingsDashboard: View {
     private var keepCardsRevealed = AppPreferenceDefault.keepCardsRevealed
     @State private var audioEngine = SpeechAudioEngine()
     @State private var modelDownloadCoordinator = ModelDownloadCoordinator.shared
+    @State private var isModelStorageLoading = true
     @State private var isConfirmingModelRemoval = false
     @State private var modelRemovalError: String?
     @State private var backupDocument: MandarinFlowBackupDocument?
@@ -55,6 +57,7 @@ struct SettingsDashboard: View {
 
             ScrollView {
                 VStack(spacing: 18) {
+                    gettingStartedSection
                     speechSection
                     localAISection
                     practiceSection
@@ -75,7 +78,10 @@ struct SettingsDashboard: View {
         .onChange(of: speechPitch) { _, _ in synchronizeAudioEngine() }
         .onChange(of: interWordPause) { _, _ in synchronizeAudioEngine() }
         .onDisappear { audioEngine.stop() }
-        .task { await modelDownloadCoordinator.refreshCachedByteCount() }
+        .task {
+            await modelDownloadCoordinator.refreshCachedByteCount()
+            isModelStorageLoading = false
+        }
         .alert("Remove Local AI Model?", isPresented: $isConfirmingModelRemoval) {
             Button("Cancel", role: .cancel) {}
             Button("Remove Model", role: .destructive) {
@@ -121,6 +127,30 @@ struct SettingsDashboard: View {
                     onCancel: { self.importedBackup = nil },
                     onRestore: { restore(importedBackup) }
                 )
+            }
+        }
+    }
+
+    private var gettingStartedSection: some View {
+        SettingsSectionCard(
+            title: "Getting Started",
+            symbol: "sparkles.rectangle.stack.fill",
+            summary: "Replay the introduction to Smart Dictation, Vocabulary Hub, and optional Local AI."
+        ) {
+            HStack(spacing: 14) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("MandarinFlow Tutorial")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("Review the learning workflow or change your Local AI download choice.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                Button("Replay Tutorial", systemImage: "play.circle.fill", action: onShowTutorial)
+                    .buttonStyle(.bordered)
             }
         }
     }
@@ -290,14 +320,19 @@ struct SettingsDashboard: View {
 
             LabeledContent("Stored model data") {
                 HStack(spacing: 10) {
-                    Text(modelDownloadCoordinator.cachedSizeText)
-                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                    if isModelStorageLoading {
+                        SkeletonBlock(width: 72, height: 14, cornerRadius: 4)
+                            .accessibilityLabel("Checking stored model data")
+                    } else {
+                        Text(modelDownloadCoordinator.cachedSizeText)
+                            .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                    }
 
                     Button("Remove Model", systemImage: "trash", role: .destructive) {
                         isConfirmingModelRemoval = true
                     }
                     .buttonStyle(.bordered)
-                    .disabled(modelDownloadCoordinator.cachedByteCount == 0)
+                    .disabled(isModelStorageLoading || modelDownloadCoordinator.cachedByteCount == 0)
                 }
             }
 
@@ -331,7 +366,7 @@ struct SettingsDashboard: View {
             }
 
             Label(
-                "Preparation starts in the background at app launch. Pausing keeps downloaded files so the next attempt can resume.",
+                "Automatic preparation follows the choice saved in Getting Started. Pausing keeps downloaded files so the next attempt can resume.",
                 systemImage: "info.circle"
             )
             .font(.system(size: 10))

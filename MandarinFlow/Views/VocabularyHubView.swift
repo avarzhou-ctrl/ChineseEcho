@@ -691,7 +691,15 @@ private struct VocabularyInspector: View {
                         }
                         .padding(.top, 26)
 
-                        if contextualSentences.isEmpty {
+                        if isGenerating {
+                            VStack(spacing: 12) {
+                                SentenceCardSkeleton()
+                                SentenceCardSkeleton()
+                            }
+                            .padding(.top, 12)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("Generating contextual sentences")
+                        } else if contextualSentences.isEmpty {
                             Text("No sentences generated yet")
                                 .font(TingXieTypography.body)
                                 .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.7))

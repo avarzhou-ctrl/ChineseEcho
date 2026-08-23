@@ -67,7 +67,7 @@ Playback progress should be legible without creating urgency. Marking a word mis
 
 ### Private by default
 
-Vocabulary, review scheduling, and practice state remain in SwiftData. The active practice queue is checkpointed locally after meaningful changes so the exact set or cross-set due-review source, card order, current card, and completed grading can resume after relaunch. Versioned JSON backups include the full learning library, enrichment, hints, missed-word state, review dates, analytics, and any interrupted session; imports are validated and previewed before replacing local data. On first launch, MandarinFlow requests notification permission through the native macOS dialog without showing a separate in-app banner; accepted reminders keep one notification scheduled for the earliest due review. Due reminders request the native macOS banner and sound presentation even while MandarinFlow is active, while the learner's System Settings retain final control over notification visibility and style. Sentence generation runs in-process with Qwen through MLX after the model is downloaded and cached. Product copy should say “local” or “on this Mac” where technical context is useful, but should not turn privacy architecture into the main learning experience.
+Vocabulary, review scheduling, and practice state remain in SwiftData. The active practice queue is checkpointed locally after meaningful changes so the exact set or cross-set due-review source, card order, current card, and completed grading can resume when that practice source is reopened, while every fresh launch remains anchored on Smart Dictation home. Versioned JSON backups include the full learning library, enrichment, hints, missed-word state, review dates, analytics, and any interrupted session; imports are validated and previewed before replacing local data. On first launch, MandarinFlow presents Getting Started before requesting notification permission through the native macOS dialog; accepted reminders keep one notification scheduled for the earliest due review. Due reminders request the native macOS banner and sound presentation even while MandarinFlow is active, while the learner's System Settings retain final control over notification visibility and style. Sentence generation runs in-process with Qwen through MLX after the learner explicitly chooses the optional download or selects an AI generation action. Product copy should say “local” or “on this Mac” where technical context is useful, but should not turn privacy architecture into the main learning experience.
 
 ## Information Architecture
 
@@ -84,6 +84,10 @@ An active dictation set appears beneath **Smart Dictation** in the sidebar. The 
 ## Screen Specifications
 
 ### App shell
+
+Fresh windows open on Smart Dictation home even when an interrupted practice checkpoint exists. The checkpoint remains available and resumes only after the learner manually reopens its set or Due Review source.
+
+On a true first run, a four-step, versioned **Getting Started** sheet introduces the listening workflow, Smart Dictation sets, Vocabulary Hub, and optional Local AI. The final step requires an explicit **Download Local AI** or **Not Now** choice. The latter keeps speech, manual set creation, practice, grading, and review fully usable. The tutorial can be replayed from Settings.
 
 - Default window: 1180 × 720 points
 - Minimum window: 900 × 650 points
@@ -222,14 +226,16 @@ When no vocabulary exists, show **No Vocabulary Yet** and “Words from your dic
 
 Settings uses a centered single-column sequence of compact grouped lists in this order:
 
-1. **Speech & Pronunciation**
-2. **Local AI**
-3. **Practice**
-4. **Local Backup**
+1. **Getting Started**
+   - Replay Tutorial
+2. **Speech & Pronunciation**
+3. **Local AI**
+4. **Practice**
+5. **Local Backup**
 
 Each group uses a simple icon-and-title header, separator, and the existing native Picker, Slider, Toggle, Stepper, and Button controls below it.
 
-Review notification consent does not appear in Settings or in a custom in-app banner. On first launch, use only the native macOS notification-permission dialog; after the learner responds, macOS retains that choice in System Settings.
+Review notification consent does not appear in Settings or in a custom in-app banner. On first launch, present Getting Started first, then use only the native macOS notification-permission dialog; after the learner responds, macOS retains that choice in System Settings.
 
 ## Visual System
 
@@ -324,8 +330,10 @@ Keep visual tokens in `TingXiePalette`. A new shared size or spacing value belon
 
 ### Loading and errors
 
-- Disable sentence regeneration while generation is active.
-- Show a compact progress indicator in place of the regeneration icon.
+- Use motion-aware jade skeletons while SwiftData readiness, practice queues, vocabulary enrichment, contextual sentences, or model-storage metadata are genuinely pending.
+- Mirror the final page geometry so loading does not cause large layout jumps, and never treat a genuinely empty library as loading.
+- Hide decorative skeleton fragments from assistive technologies, expose one meaningful loading label per region, and replace shimmer with a static placeholder under Reduce Motion.
+- Disable sentence regeneration while generation is active and show two sentence-card skeletons below its compact progress action.
 - Keep generation errors near **Contextual Sentences** and use the missed/error red.
 - The first model use may require a download. The diagnostic screen should retain its explicit connection error language.
 
@@ -367,6 +375,8 @@ Keep visual tokens in `TingXiePalette`. A new shared size or spacing value belon
 | App lifecycle and schema | `MandarinFlow/MandarinFlowApp.swift` |
 | Root navigation shell | `MandarinFlow/ContentView.swift` |
 | Theme and shared shell UI | `MandarinFlow/Views/TingXieTheme.swift` |
+| First-run guidance | `MandarinFlow/Views/FirstRunTutorialView.swift` |
+| Skeleton loading system | `MandarinFlow/Views/SkeletonLoadingView.swift` |
 | Dictation workflow | `MandarinFlow/Views/SmartDictationView.swift` |
 | Vocabulary review and Settings | `MandarinFlow/Views/VocabularyHubView.swift` |
 | Speech diagnostic UI | `MandarinFlow/Views/SpeechTestView.swift` |

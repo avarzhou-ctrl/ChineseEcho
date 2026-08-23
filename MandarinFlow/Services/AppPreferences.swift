@@ -12,6 +12,8 @@ enum AppPreferenceKey {
     static let reviewNotificationsEnabled = "reviewNotificationsEnabled"
     static let practiceAnalytics = "practiceAnalytics"
     static let activePracticeSession = "activePracticeSession"
+    static let completedTutorialVersion = "completedTutorialVersion"
+    static let localAIDownloadChoice = "localAIDownloadChoice"
 
     static let all = [
         voiceIdentifier,
@@ -23,6 +25,20 @@ enum AppPreferenceKey {
         keepCardsRevealed,
         reviewNotificationsEnabled
     ]
+}
+
+// Keeps onboarding replayable while allowing future tutorial revisions to be introduced safely.
+nonisolated enum FirstRunTutorialPreference {
+    static let currentVersion = 1
+}
+
+// Records whether launch may download the optional Local AI model.
+nonisolated enum LocalAIDownloadChoice: String, CaseIterable, Identifiable {
+    case undecided
+    case download
+    case notNow
+
+    var id: Self { self }
 }
 
 // Provides the persisted learning metrics shown on the Smart Dictation dashboard.

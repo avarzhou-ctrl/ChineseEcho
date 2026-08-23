@@ -23,6 +23,9 @@ struct ContentView: View {
     @State private var isDueReviewActive = false
     @State private var selectedVocabularyWordID: PersistentIdentifier?
     @State private var isCreatingSet = false
+    @State private var isLibraryLoading = true
+    @State private var isTutorialPresented = false
+    @State private var tutorialIsFirstRun = false
     @State private var isSidebarCollapsed = false
     @State private var modelDownloadCoordinator = ModelDownloadCoordinator.shared
     @State private var sidebarWidth =
@@ -30,6 +33,10 @@ struct ContentView: View {
     @AppStorage("sidebarWidth") private var persistedSidebarWidth = 266.0
     @AppStorage(AppPreferenceKey.reviewNotificationsEnabled)
     private var reviewNotificationsEnabled = AppPreferenceDefault.reviewNotificationsEnabled
+    @AppStorage(AppPreferenceKey.completedTutorialVersion)
+    private var completedTutorialVersion = 0
+    @AppStorage(AppPreferenceKey.localAIDownloadChoice)
+    private var localAIDownloadChoice = LocalAIDownloadChoice.undecided
 
     private let sidebarWidthRange = 220.0...420.0
 
@@ -88,28 +95,33 @@ struct ContentView: View {
 
             ZStack {
                 Group {
-                    switch selection {
-                    case .dictation:
-                        SmartDictationView(
-                            sets: dictationSets,
-                            activeSet: activeSet,
-                            isDueReviewActive: isDueReviewActive,
-                            onCreateSet: { isCreatingSet = true },
-                            onOpenVocabulary: { updateSelection(.vocabulary) },
-                            onOpenSet: openPractice,
-                            onOpenDueReview: openDueReview,
-                            onCloseSet: closePractice
-                        )
-                    case .vocabulary:
-                        VocabularyHubView(
-                            words: vocabularyWords,
-                            selectedWordID: $selectedVocabularyWordID
-                        )
-                    case .settings:
-                        SettingsDashboard(
-                            setCount: dictationSets.count,
-                            wordCount: vocabularyWords.count
-                        )
+                    if isLibraryLoading {
+                        WorkspaceSkeletonView(section: selection)
+                    } else {
+                        switch selection {
+                        case .dictation:
+                            SmartDictationView(
+                                sets: dictationSets,
+                                activeSet: activeSet,
+                                isDueReviewActive: isDueReviewActive,
+                                onCreateSet: { isCreatingSet = true },
+                                onOpenVocabulary: { updateSelection(.vocabulary) },
+                                onOpenSet: openPractice,
+                                onOpenDueReview: openDueReview,
+                                onCloseSet: closePractice
+                            )
+                        case .vocabulary:
+                            VocabularyHubView(
+                                words: vocabularyWords,
+                                selectedWordID: $selectedVocabularyWordID
+                            )
+                        case .settings:
+                            SettingsDashboard(
+                                setCount: dictationSets.count,
+                                wordCount: vocabularyWords.count,
+                                onShowTutorial: showTutorialReplay
+                            )
+                        }
                     }
                 }
                 .id(selection)
@@ -139,6 +151,13 @@ struct ContentView: View {
         .sheet(isPresented: $isCreatingSet) {
             NewDictationSetSheet(modelContainer: modelContext.container)
         }
+        .sheet(isPresented: $isTutorialPresented) {
+            FirstRunTutorialView(
+                isFirstRun: tutorialIsFirstRun,
+                initialDownloadChoice: localAIDownloadChoice,
+                onComplete: completeTutorial
+            )
+        }
         .onReceive(NotificationCenter.default.publisher(for: .activePracticeSessionDidChange)) { _ in
             // A restore can replace the saved session while Settings is visible.
             guard selection != .dictation else { return }
@@ -151,11 +170,10 @@ struct ContentView: View {
             Task { await synchronizeReviewNotification() }
         }
         .task {
-            restoreInterruptedPracticeIfAvailable()
-            await configureReviewNotifications()
-            await synchronizeReviewNotification()
+            // Keep every fresh launch anchored on the Smart Dictation dashboard.
+            await verifyLibraryReadiness()
             await modelDownloadCoordinator.refreshCachedByteCount()
-            modelDownloadCoordinator.startPreparing()
+            await configureInitialExperience()
         }
     }
 
@@ -200,6 +218,55 @@ struct ContentView: View {
         withAnimation(TingXieMotion.contentChange(reduceMotion: reduceMotion)) {
             activeSetRecordID = nil
             isDueReviewActive = false
+        }
+    }
+
+    private func verifyLibraryReadiness() async {
+        let probe = LibraryReadinessProbe(modelContainer: modelContext.container)
+        try? await probe.verifyReadable()
+        isLibraryLoading = false
+    }
+
+    private func configureInitialExperience() async {
+        let needsTutorial = completedTutorialVersion < FirstRunTutorialPreference.currentVersion
+        if needsTutorial {
+            modelDownloadCoordinator.prepareInstalledModelIfAvailable()
+            tutorialIsFirstRun = true
+            isTutorialPresented = true
+            return
+        }
+
+        prepareLocalAIForStoredChoice()
+        await configureReviewNotifications()
+        await synchronizeReviewNotification()
+    }
+
+    private func prepareLocalAIForStoredChoice() {
+        if localAIDownloadChoice == .download {
+            modelDownloadCoordinator.startPreparing()
+        } else {
+            Task {
+                if modelDownloadCoordinator.isPreparing {
+                    await modelDownloadCoordinator.cancelPreparation()
+                }
+                modelDownloadCoordinator.prepareInstalledModelIfAvailable()
+            }
+        }
+    }
+
+    private func showTutorialReplay() {
+        tutorialIsFirstRun = false
+        isTutorialPresented = true
+    }
+
+    private func completeTutorial(_ choice: LocalAIDownloadChoice) {
+        localAIDownloadChoice = choice
+        completedTutorialVersion = FirstRunTutorialPreference.currentVersion
+        isTutorialPresented = false
+        prepareLocalAIForStoredChoice()
+        Task {
+            await configureReviewNotifications()
+            await synchronizeReviewNotification()
         }
     }
 

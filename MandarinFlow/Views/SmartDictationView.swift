@@ -1011,7 +1011,7 @@ private struct PracticeSessionView: View {
 
                 Group {
                     if !hasInitializedQueue {
-                        ProgressView()
+                        PracticeCardSkeleton()
                     } else if sessionWordIDs.isEmpty {
                         ContentUnavailableView(
                             source.supportsFilters ? "No Words in This Filter" : "No Reviews Due",
@@ -2262,7 +2262,11 @@ struct NewDictationSetSheet: View {
 
                     Divider()
 
-                    if draftWords.isEmpty {
+                    if isGenerating && draftWords.isEmpty {
+                        ScrollView {
+                            VocabularyDraftSkeleton()
+                        }
+                    } else if draftWords.isEmpty {
                         ContentUnavailableView(
                             "No Words Yet",
                             systemImage: "text.badge.plus",
