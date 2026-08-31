@@ -29,7 +29,7 @@ enum AppPreferenceKey {
 
 // Keeps onboarding replayable while allowing future tutorial revisions to be introduced safely.
 nonisolated enum FirstRunTutorialPreference {
-    static let currentVersion = 1
+    static let currentVersion = 2
 }
 
 // Records whether launch may download the optional Local AI model.

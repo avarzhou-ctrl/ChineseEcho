@@ -177,6 +177,7 @@ struct SettingsDashboard: View {
                     Label("Preview Voice", systemImage: "play.fill")
                 }
                 .buttonStyle(TingXieButtonStyle(size: .compact))
+                .tutorialTarget(.voicePreviewButton)
 
                 Button("Stop", systemImage: "stop.fill") {
                     audioEngine.stop()

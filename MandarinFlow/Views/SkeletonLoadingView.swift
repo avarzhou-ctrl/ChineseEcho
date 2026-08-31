@@ -280,7 +280,7 @@ struct VocabularyDraftSkeleton: View {
                 }
                 .padding(14)
                 .background(
-                    TingXiePalette.lightGreenSurface,
+                    TingXiePalette.surfaceContainer.opacity(0.62),
                     in: RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
                 )
             }

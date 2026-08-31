@@ -210,6 +210,7 @@ struct VocabularyHubView: View {
     private var vocabularyCatalog: some View {
         VStack(spacing: 20) {
             VocabularyFilterBar(selection: animatedFilter)
+                .tutorialTarget(.vocabularyFilters)
 
             ZStack {
                 Group {

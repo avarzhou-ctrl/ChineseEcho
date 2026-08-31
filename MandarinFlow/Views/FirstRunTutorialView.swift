@@ -1,28 +1,144 @@
 import SwiftUI
 
-// Introduces the core learning loop and collects explicit consent for the optional Local AI download.
+// Identifies real controls that the guided tour can reveal without duplicating the app UI.
+enum TutorialTarget: Hashable {
+    case dictationSidebar
+    case vocabularySidebar
+    case settingsSidebar
+    case createSetButton
+    case vocabularyFilters
+    case voicePreviewButton
+}
+
+// Collects target geometry from whichever workspace is currently visible.
+struct TutorialTargetPreferenceKey: PreferenceKey {
+    static var defaultValue: [TutorialTarget: Anchor<CGRect>] = [:]
+
+    static func reduce(
+        value: inout [TutorialTarget: Anchor<CGRect>],
+        nextValue: () -> [TutorialTarget: Anchor<CGRect>]
+    ) {
+        value.merge(nextValue(), uniquingKeysWith: { _, newest in newest })
+    }
+}
+
+extension View {
+    // Registers a control as a spotlight target in the coordinate space of the app window.
+    func tutorialTarget(_ target: TutorialTarget?) -> some View {
+        anchorPreference(key: TutorialTargetPreferenceKey.self, value: .bounds) { anchor in
+            guard let target else { return [:] }
+            return [target: anchor]
+        }
+    }
+}
+
+// Guides the learner through the actual app while collecting the optional Local AI choice.
 struct FirstRunTutorialView: View {
-    private enum Page: Int, CaseIterable {
+    private enum Step: Int, CaseIterable {
         case welcome
-        case dictation
-        case vocabulary
+        case dictationNavigation
+        case createSet
+        case vocabularyNavigation
+        case vocabularyFilters
+        case settingsNavigation
+        case voicePreview
         case localAI
+
+        var section: AppSection {
+            switch self {
+            case .welcome, .dictationNavigation, .createSet:
+                .dictation
+            case .vocabularyNavigation, .vocabularyFilters:
+                .vocabulary
+            case .settingsNavigation, .voicePreview, .localAI:
+                .settings
+            }
+        }
+
+        var target: TutorialTarget? {
+            switch self {
+            case .welcome, .localAI: nil
+            case .dictationNavigation: .dictationSidebar
+            case .createSet: .createSetButton
+            case .vocabularyNavigation: .vocabularySidebar
+            case .vocabularyFilters: .vocabularyFilters
+            case .settingsNavigation: .settingsSidebar
+            case .voicePreview: .voicePreviewButton
+            }
+        }
+
+        var symbol: String {
+            switch self {
+            case .welcome: "waveform.and.person.filled"
+            case .dictationNavigation: "headphones"
+            case .createSet: "plus"
+            case .vocabularyNavigation: "character.book.closed.fill"
+            case .vocabularyFilters: "line.3.horizontal.decrease.circle.fill"
+            case .settingsNavigation: "gearshape.fill"
+            case .voicePreview: "play.fill"
+            case .localAI: "cpu.fill"
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .welcome: "Welcome to MandarinFlow"
+            case .dictationNavigation: "Start in Smart Dictation"
+            case .createSet: "Create your first set"
+            case .vocabularyNavigation: "Keep every word together"
+            case .vocabularyFilters: "Focus your review"
+            case .settingsNavigation: "Make practice yours"
+            case .voicePreview: "Tune the listening experience"
+            case .localAI: "Optional private Local AI"
+            }
+        }
+
+        var detail: String {
+            switch self {
+            case .welcome:
+                "Let’s take a quick tour of the real app. You’ll see where to build listening sets, review vocabulary, and adjust speech."
+            case .dictationNavigation:
+                "Use Smart Dictation for audio-first practice, due reviews, and learning progress."
+            case .createSet:
+                "Select this plus button whenever you want to add Chinese words or import a prepared vocabulary list."
+            case .vocabularyNavigation:
+                "The Vocabulary Hub gathers words from every set, including anything you mark as missed during practice."
+            case .vocabularyFilters:
+                "Switch between All Words, Missed Words, and Idioms to find exactly what you want to revisit."
+            case .settingsNavigation:
+                "Settings contains speech, Local AI, practice, and local backup controls."
+            case .voicePreview:
+                "Choose a Mainland or Taiwanese profile, adjust speed and pitch, then use Preview Voice to hear the result."
+            case .localAI:
+                "The local model can fill vocabulary details and create bilingual contextual sentences entirely on this Mac."
+            }
+        }
     }
 
     let isFirstRun: Bool
     let initialDownloadChoice: LocalAIDownloadChoice
+    let targetFrames: [TutorialTarget: CGRect]
+    let containerSize: CGSize
+    let onNavigate: (AppSection) -> Void
     let onComplete: (LocalAIDownloadChoice) -> Void
 
-    @State private var page: Page = .welcome
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var step: Step = .welcome
     @State private var downloadChoice: LocalAIDownloadChoice
 
     init(
         isFirstRun: Bool,
         initialDownloadChoice: LocalAIDownloadChoice,
+        targetFrames: [TutorialTarget: CGRect],
+        containerSize: CGSize,
+        onNavigate: @escaping (AppSection) -> Void,
         onComplete: @escaping (LocalAIDownloadChoice) -> Void
     ) {
         self.isFirstRun = isFirstRun
         self.initialDownloadChoice = initialDownloadChoice
+        self.targetFrames = targetFrames
+        self.containerSize = containerSize
+        self.onNavigate = onNavigate
         self.onComplete = onComplete
         _downloadChoice = State(
             initialValue: initialDownloadChoice == .undecided ? .download : initialDownloadChoice
@@ -30,82 +146,155 @@ struct FirstRunTutorialView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text(isFirstRun ? "Welcome to MandarinFlow" : "Getting Started")
-                    .font(.system(size: 17, weight: .semibold))
-                Spacer()
-                Text("Step \(page.rawValue + 1) of \(Page.allCases.count)")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
+        ZStack {
+            spotlightMask
+
+            callout
+                .frame(width: panelWidth)
+                .position(calloutPosition)
+                .transition(.opacity.combined(with: .scale(scale: 0.97)))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .foregroundStyle(TingXiePalette.onBackground)
+        .accessibilityAddTraits(.isModal)
+        .onAppear { onNavigate(step.section) }
+        .onChange(of: step) { _, newStep in
+            onNavigate(newStep.section)
+        }
+        .onExitCommand {
+            guard !isFirstRun else { return }
+            onComplete(downloadChoice)
+        }
+    }
+
+    private var highlightedFrame: CGRect? {
+        guard let target = step.target else { return nil }
+        return targetFrames[target]?.insetBy(dx: -8, dy: -8)
+    }
+
+    private var spotlightMask: some View {
+        Path { path in
+            path.addRect(CGRect(origin: .zero, size: containerSize))
+            if let highlightedFrame {
+                path.addRoundedRect(
+                    in: highlightedFrame,
+                    cornerSize: CGSize(width: 15, height: 15)
+                )
             }
-            .tingXieSheetHeader()
+        }
+        .fill(.black.opacity(0.52), style: FillStyle(eoFill: highlightedFrame != nil))
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.24), value: highlightedFrame)
+    }
 
-            Divider()
+    private var panelWidth: CGFloat {
+        min(step == .localAI ? 430 : 360, max(300, containerSize.width - 48))
+    }
 
-            Group {
-                switch page {
-                case .welcome:
-                    tutorialPage(
-                        symbol: "waveform.and.person.filled",
-                        title: "Listen. Learn. Remember.",
-                        summary: "MandarinFlow turns your own vocabulary into focused Mandarin listening practice.",
-                        points: [
-                            TutorialPoint(symbol: "speaker.wave.2.fill", title: "Hear native speech", detail: "Practice with Apple’s built-in Mandarin voices."),
-                            TutorialPoint(symbol: "rectangle.on.rectangle", title: "Reveal when ready", detail: "Listen first, then flip the card to check yourself."),
-                            TutorialPoint(symbol: "calendar.badge.clock", title: "Remember over time", detail: "Known and missed answers shape your future reviews.")
-                        ]
+    private var estimatedPanelHeight: CGFloat {
+        switch step {
+        case .localAI: 430
+        case .welcome: 270
+        default: 270
+        }
+    }
+
+    private var calloutPosition: CGPoint {
+        guard let frame = highlightedFrame else {
+            return CGPoint(x: containerSize.width / 2, y: containerSize.height / 2)
+        }
+
+        let margin: CGFloat = 24
+        let gap: CGFloat = 20
+        let halfWidth = panelWidth / 2
+        let halfHeight = estimatedPanelHeight / 2
+        let clampedY = min(
+            max(frame.midY, margin + halfHeight),
+            containerSize.height - margin - halfHeight
+        )
+
+        if containerSize.width - frame.maxX >= panelWidth + gap + margin {
+            return CGPoint(x: frame.maxX + gap + halfWidth, y: clampedY)
+        }
+        if frame.minX >= panelWidth + gap + margin {
+            return CGPoint(x: frame.minX - gap - halfWidth, y: clampedY)
+        }
+
+        let clampedX = min(
+            max(frame.midX, margin + halfWidth),
+            containerSize.width - margin - halfWidth
+        )
+        if containerSize.height - frame.maxY >= estimatedPanelHeight + gap + margin {
+            return CGPoint(x: clampedX, y: frame.maxY + gap + halfHeight)
+        }
+        return CGPoint(x: clampedX, y: frame.minY - gap - halfHeight)
+    }
+
+    private var callout: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 13) {
+                Image(systemName: step.symbol)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(TingXiePalette.accent)
+                    .frame(width: 42, height: 42)
+                    .background(
+                        TingXiePalette.lightGreenSurface,
+                        in: RoundedRectangle(cornerRadius: 12)
                     )
-                case .dictation:
-                    tutorialPage(
-                        symbol: "headphones",
-                        title: "Build Smart Dictation sets",
-                        summary: "Create a set from the words you are learning, then work through an audio-first flashcard session.",
-                        points: [
-                            TutorialPoint(symbol: "plus.circle.fill", title: "Create a focused set", detail: "Enter Chinese words or import a prepared list."),
-                            TutorialPoint(symbol: "arrow.triangle.2.circlepath", title: "Practice your way", detail: "Replay, shuffle, reveal hints, and adjust speech in Settings."),
-                            TutorialPoint(symbol: "checkmark.circle.fill", title: "Grade honestly", detail: "Mark each answer Known or Missed and undo mistakes.")
-                        ]
-                    )
-                case .vocabulary:
-                    tutorialPage(
-                        symbol: "character.book.closed.fill",
-                        title: "Grow your Vocabulary Hub",
-                        summary: "Every saved word stays organized in one place for pronunciation, editing, and focused review.",
-                        points: [
-                            TutorialPoint(symbol: "flag.fill", title: "Find missed words", detail: "Filter the catalog to revisit vocabulary that needs attention."),
-                            TutorialPoint(symbol: "lightbulb.fill", title: "Keep learner hints", detail: "Save a short clue and reveal it only when needed."),
-                            TutorialPoint(symbol: "text.bubble.fill", title: "Add real context", detail: "Generate bilingual example sentences with optional Local AI.")
-                        ]
-                    )
-                case .localAI:
-                    localAIPage
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Step \(step.rawValue + 1) of \(Step.allCases.count)")
+                        .font(TingXieTypography.eyebrow)
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                    Text(step.title)
+                        .font(.system(size: 22, weight: .semibold))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 4)
+
+                if isFirstRun {
+                    if step != .localAI {
+                        Button("Skip Tour") {
+                            move(to: .localAI)
+                        }
+                        .buttonStyle(TingXieButtonStyle(variant: .quiet, size: .compact))
+                    }
+                } else {
+                    Button {
+                        onComplete(downloadChoice)
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .buttonStyle(TingXieButtonStyle(variant: .quiet, size: .compact, isIconOnly: true))
+                    .accessibilityLabel("Close tutorial")
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            Divider()
+            Text(step.detail)
+                .font(TingXieTypography.body)
+                .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if step == .localAI {
+                localAIChoices
+            }
 
             HStack(spacing: 12) {
-                pageIndicators
+                progressIndicators
 
                 Spacer()
 
-                if page != .welcome {
+                if step != .welcome {
                     Button(action: moveBackward) {
                         Image(systemName: "chevron.left")
                     }
-                    .buttonStyle(
-                        TingXieButtonStyle(
-                            variant: .secondary,
-                            isIconOnly: true
-                        )
-                    )
-                    .accessibilityLabel("Back")
-                    .help("Previous step")
+                    .buttonStyle(TingXieButtonStyle(variant: .secondary, isIconOnly: true))
+                    .accessibilityLabel("Previous step")
                 }
 
-                if page == .localAI {
+                if step == .localAI {
                     Button(isFirstRun ? "Finish Setup" : "Done") {
                         onComplete(downloadChoice)
                     }
@@ -115,95 +304,41 @@ struct FirstRunTutorialView: View {
                         Image(systemName: "chevron.right")
                     }
                     .buttonStyle(TingXieButtonStyle(isIconOnly: true))
-                    .accessibilityLabel("Continue")
-                    .help("Next step")
+                    .accessibilityLabel("Next step")
                 }
             }
-            .tingXieSheetFooter()
         }
-        .frame(width: 720, height: 570)
-        .foregroundStyle(TingXiePalette.onBackground)
-        .background(TingXiePalette.background)
-        .interactiveDismissDisabled(isFirstRun)
+        .padding(22)
+        .background(TingXiePalette.surface, in: RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(TingXiePalette.outlineVariant, lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.22), radius: 24, y: 10)
     }
 
-    private func tutorialPage(
-        symbol: String,
-        title: String,
-        summary: String,
-        points: [TutorialPoint]
-    ) -> some View {
-        VStack(spacing: 24) {
-            Image(systemName: symbol)
-                .font(.system(size: 48, weight: .semibold))
-                .foregroundStyle(TingXiePalette.accent)
-                .frame(width: 96, height: 96)
-                .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 26))
-
-            VStack(spacing: 8) {
-                Text(title)
-                    .font(.system(size: 30, weight: .semibold))
-                Text(summary)
-                    .font(TingXieTypography.body)
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(3)
-                    .frame(maxWidth: 540)
-            }
-
-            HStack(alignment: .top, spacing: 14) {
-                ForEach(points) { point in
-                    TutorialPointCard(point: point)
-                }
-            }
-            .frame(maxWidth: 620)
-        }
-        .padding(.horizontal, 30)
-    }
-
-    private var localAIPage: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "cpu.fill")
-                .font(.system(size: 42, weight: .semibold))
-                .foregroundStyle(TingXiePalette.accent)
-                .frame(width: 88, height: 88)
-                .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 24))
-
-            VStack(spacing: 7) {
-                Text("Optional private Local AI")
-                    .font(.system(size: 29, weight: .semibold))
-                Text("\(LocalModelSpec.displayName) can fill vocabulary details and create contextual sentences entirely on this Mac.")
-                    .font(TingXieTypography.body)
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(3)
-                    .frame(maxWidth: 550)
-            }
-
-            VStack(spacing: 10) {
-                downloadChoiceButton(
-                    .download,
-                    title: "Download Local AI",
-                    detail: "About \(LocalModelSpec.estimatedDownloadSizeText) · Download continues in the background.",
-                    symbol: "arrow.down.circle.fill"
-                )
-                downloadChoiceButton(
-                    .notNow,
-                    title: "Not Now",
-                    detail: "Dictation, speech, grading, reviews, and manual entry remain fully available.",
-                    symbol: "clock.fill"
-                )
-            }
-            .frame(maxWidth: 590)
+    private var localAIChoices: some View {
+        VStack(spacing: 10) {
+            choiceButton(
+                .download,
+                title: "Download Local AI",
+                detail: "About \(LocalModelSpec.estimatedDownloadSizeText) · Continues in the background.",
+                symbol: "arrow.down.circle.fill"
+            )
+            choiceButton(
+                .notNow,
+                title: "Not Now",
+                detail: "Speech, manual entry, practice, grading, and reviews remain available.",
+                symbol: "clock.fill"
+            )
 
             Label("The model and generated text stay on this Mac.", systemImage: "lock.shield.fill")
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(TingXiePalette.onSurfaceVariant)
         }
-        .padding(.horizontal, 30)
     }
 
-    private func downloadChoiceButton(
+    private func choiceButton(
         _ choice: LocalAIDownloadChoice,
         title: String,
         detail: String,
@@ -212,33 +347,36 @@ struct FirstRunTutorialView: View {
         Button {
             downloadChoice = choice
         } label: {
-            HStack(spacing: 14) {
+            HStack(spacing: 12) {
                 Image(systemName: symbol)
-                    .font(.system(size: 22, weight: .semibold))
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(downloadChoice == choice ? .white : TingXiePalette.accent)
-                    .frame(width: 44, height: 44)
+                    .frame(width: 38, height: 38)
                     .background(
-                        downloadChoice == choice ? TingXiePalette.accent : TingXiePalette.surfaceContainerHigh,
-                        in: RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
+                        downloadChoice == choice
+                            ? TingXiePalette.accent
+                            : TingXiePalette.surfaceContainerHigh,
+                        in: RoundedRectangle(cornerRadius: 10)
                     )
 
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                     Text(detail)
                         .font(.system(size: 11))
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Spacer()
+                Spacer(minLength: 4)
 
                 Image(systemName: downloadChoice == choice ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(downloadChoice == choice ? TingXiePalette.accent : TingXiePalette.outline)
+                    .foregroundStyle(
+                        downloadChoice == choice ? TingXiePalette.accent : TingXiePalette.outline
+                    )
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, minHeight: 74, alignment: .leading)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 TingXiePalette.lightGreenSurface,
                 in: RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
@@ -246,74 +384,60 @@ struct FirstRunTutorialView: View {
             .overlay {
                 RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
                     .stroke(
-                        downloadChoice == choice ? TingXiePalette.accent : TingXiePalette.outlineVariant,
+                        downloadChoice == choice
+                            ? TingXiePalette.accent
+                            : TingXiePalette.outlineVariant,
                         lineWidth: downloadChoice == choice ? 2 : 1
                     )
             }
-            .contentShape(RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius))
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(downloadChoice == choice ? .isSelected : [])
     }
 
-    private var pageIndicators: some View {
-        HStack(spacing: 7) {
-            ForEach(Page.allCases, id: \.self) { item in
+    private var progressIndicators: some View {
+        HStack(spacing: 5) {
+            ForEach(Step.allCases, id: \.self) { item in
                 Capsule()
-                    .fill(item == page ? TingXiePalette.accent : TingXiePalette.outlineVariant)
-                    .frame(width: item == page ? 22 : 7, height: 7)
+                    .fill(item == step ? TingXiePalette.accent : TingXiePalette.outlineVariant)
+                    .frame(width: item == step ? 18 : 5, height: 5)
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: page)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: step)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Tutorial step \(page.rawValue + 1) of \(Page.allCases.count)")
+        .accessibilityLabel("Tutorial step \(step.rawValue + 1) of \(Step.allCases.count)")
     }
 
     private func moveForward() {
-        guard let next = Page(rawValue: page.rawValue + 1) else { return }
-        page = next
+        guard let next = Step(rawValue: step.rawValue + 1) else { return }
+        move(to: next)
     }
 
     private func moveBackward() {
-        guard let previous = Page(rawValue: page.rawValue - 1) else { return }
-        page = previous
+        guard let previous = Step(rawValue: step.rawValue - 1) else { return }
+        move(to: previous)
     }
-}
 
-// Carries one concise learning benefit into a reusable tutorial card.
-private struct TutorialPoint: Identifiable {
-    let id = UUID()
-    let symbol: String
-    let title: String
-    let detail: String
-}
-
-// Keeps tutorial explanations visually balanced and easy to scan.
-private struct TutorialPointCard: View {
-    let point: TutorialPoint
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            Image(systemName: point.symbol)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(TingXiePalette.accent)
-            Text(point.title)
-                .font(.system(size: 13, weight: .semibold))
-            Text(point.detail)
-                .font(.system(size: 11))
-                .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                .lineSpacing(2)
-                .fixedSize(horizontal: false, vertical: true)
+    private func move(to newStep: Step) {
+        if reduceMotion {
+            step = newStep
+        } else {
+            withAnimation(.easeInOut(duration: 0.22)) {
+                step = newStep
+            }
         }
-        .padding(15)
-        .frame(maxWidth: .infinity, minHeight: 132, alignment: .topLeading)
-        .background(
-            TingXiePalette.lightGreenSurface,
-            in: RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
-        )
     }
 }
 
-#Preview("First Run Tutorial") {
-    FirstRunTutorialView(isFirstRun: true, initialDownloadChoice: .undecided) { _ in }
+#Preview("Guided First Run") {
+    FirstRunTutorialView(
+        isFirstRun: true,
+        initialDownloadChoice: .undecided,
+        targetFrames: [.createSetButton: CGRect(x: 950, y: 610, width: 52, height: 52)],
+        containerSize: CGSize(width: 1180, height: 720),
+        onNavigate: { _ in },
+        onComplete: { _ in }
+    )
+    .frame(width: 1180, height: 720)
+    .background(TingXiePalette.background)
 }

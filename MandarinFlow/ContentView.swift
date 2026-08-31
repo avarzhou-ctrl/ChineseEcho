@@ -150,15 +150,29 @@ struct ContentView: View {
             TingXieMotion.contentChange(reduceMotion: reduceMotion),
             value: modelDownloadCoordinator.isStatusVisible
         )
+        .overlayPreferenceValue(TutorialTargetPreferenceKey.self) { anchors in
+            GeometryReader { proxy in
+                if isTutorialPresented {
+                    FirstRunTutorialView(
+                        isFirstRun: tutorialIsFirstRun,
+                        initialDownloadChoice: localAIDownloadChoice,
+                        targetFrames: anchors.mapValues { proxy[$0] },
+                        containerSize: proxy.size,
+                        onNavigate: updateSelection,
+                        onComplete: completeTutorial
+                    )
+                    .transition(.opacity)
+                    .zIndex(100)
+                }
+            }
+            .ignoresSafeArea(.container, edges: .top)
+        }
+        .animation(
+            reduceMotion ? nil : .easeInOut(duration: 0.2),
+            value: isTutorialPresented
+        )
         .sheet(isPresented: $isCreatingSet) {
             NewDictationSetSheet(modelContainer: modelContext.container)
-        }
-        .sheet(isPresented: $isTutorialPresented) {
-            FirstRunTutorialView(
-                isFirstRun: tutorialIsFirstRun,
-                initialDownloadChoice: localAIDownloadChoice,
-                onComplete: completeTutorial
-            )
         }
         .onReceive(NotificationCenter.default.publisher(for: .activePracticeSessionDidChange)) { _ in
             // A restore can replace the saved session while Settings is visible.

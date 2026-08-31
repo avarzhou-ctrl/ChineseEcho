@@ -257,6 +257,7 @@ struct AppSidebar: View {
                     isSelected: selection == .dictation,
                     isCollapsed: isCollapsed,
                     selectionAnimation: selectionAnimation,
+                    tutorialTarget: .dictationSidebar,
                     action: onShowDictationHome
                 )
 
@@ -265,7 +266,8 @@ struct AppSidebar: View {
                     symbol: "character.book.closed",
                     isSelected: selection == .vocabulary,
                     isCollapsed: isCollapsed,
-                    selectionAnimation: selectionAnimation
+                    selectionAnimation: selectionAnimation,
+                    tutorialTarget: .vocabularySidebar
                 ) {
                     selection = .vocabulary
                 }
@@ -275,7 +277,8 @@ struct AppSidebar: View {
                     symbol: "gearshape",
                     isSelected: selection == .settings,
                     isCollapsed: isCollapsed,
-                    selectionAnimation: selectionAnimation
+                    selectionAnimation: selectionAnimation,
+                    tutorialTarget: .settingsSidebar
                 ) {
                     selection = .settings
                 }
@@ -414,6 +417,7 @@ private struct SidebarButton: View {
     let isSelected: Bool
     let isCollapsed: Bool
     let selectionAnimation: Namespace.ID
+    let tutorialTarget: TutorialTarget?
     let action: () -> Void
 
     var body: some View {
@@ -446,6 +450,7 @@ private struct SidebarButton: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 10))
+        .tutorialTarget(tutorialTarget)
         .help(title)
         .accessibilityLabel(title)
     }

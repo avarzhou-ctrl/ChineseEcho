@@ -160,6 +160,7 @@ struct SmartDictationView: View {
                         Image(systemName: "plus")
                     }
                     .buttonStyle(TingXieButtonStyle(size: .prominent, isIconOnly: true))
+                    .tutorialTarget(.createSetButton)
                     .help("Create New Set")
                     .accessibilityLabel("Create New Set")
                     .padding(.trailing, 32)
@@ -1915,6 +1916,13 @@ private struct PracticeFlipCard: View {
                 Text(word.pinyin.isEmpty ? "Listen carefully" : word.pinyin)
                     .font(.system(size: 40, weight: .bold))
                     .foregroundStyle(TingXiePalette.accent)
+
+                Text(word.englishTranslation.isEmpty ? "No translation yet" : word.englishTranslation)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.8)
             }
         }
         .padding(28)
@@ -2287,8 +2295,7 @@ struct NewDictationSetSheet: View {
             .tingXieSheetFooter()
         }
         .foregroundStyle(TingXiePalette.onBackground)
-        .background(.ultraThinMaterial)
-        .background(TingXiePalette.lightGreenSurface.opacity(0.84))
+        .background(TingXiePalette.lightGreenSurface)
         .frame(width: 900, height: 680)
     }
 
@@ -2701,12 +2708,12 @@ private struct DraftVocabularyRow: View {
         }
         .padding(14)
         .background(
-            TingXiePalette.lightGreenSurface.opacity(0.78),
+            TingXiePalette.surfaceContainer.opacity(0.62),
             in: RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
         )
         .overlay {
             RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
-                .stroke(TingXiePalette.outlineVariant.opacity(0.6), lineWidth: 1)
+                .stroke(TingXiePalette.outlineVariant.opacity(0.82), lineWidth: 1)
         }
     }
 }

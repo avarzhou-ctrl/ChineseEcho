@@ -54,10 +54,17 @@ Ask first:
 ## Documentation
 - **Helpful Commenting:** Keep comments concise and focused on "Why" something is being done.
     - Use single-line explanations that provide property wrapper context (e.g., explaining `@State` vs `@Binding`).
-- After completing any coding or design task, you must update the "# Project Log" section of this file. Include date, action, and files affected.
+- After completing any coding or design task, you must update `CHANGELOG.md`. Include date, action, and files affected.
 - Format: "**YYYY-MM-DD**: [Brief description of changes with which files were edited]"
 
-# Project Log
+# Historical Project Log
+Entries through 2026-08-31 are retained here. Add all future changes to `CHANGELOG.md`.
+
+- **2026-08-31**: Replaced the Create New Set editor's gray translucent material with the solid shared light-green surface. Files edited: `MandarinFlow/Views/SmartDictationView.swift`, `AGENTS.md`.
+- **2026-08-31**: Removed the introductory tour reassurance caption and extended the guided-tour dimming backdrop through the hidden macOS title bar for a continuous window treatment. Files edited: `MandarinFlow/ContentView.swift`, `MandarinFlow/Views/FirstRunTutorialView.swift`, `DESIGN.md`, `AGENTS.md`.
+- **2026-08-30**: Replaced the detached first-run tutorial sheet with a versioned guided spotlight tour that moves through Smart Dictation, Vocabulary, and Settings, highlights real navigation, creation, filtering, and voice-preview controls, preserves the optional Local AI choice, and supports replay, skipping, and Reduced Motion. Files edited: `MandarinFlow/ContentView.swift`, `MandarinFlow/Services/AppPreferences.swift`, `MandarinFlow/Views/FirstRunTutorialView.swift`, `MandarinFlow/Views/SettingsDashboard.swift`, `MandarinFlow/Views/SmartDictationView.swift`, `MandarinFlow/Views/TingXieTheme.swift`, `MandarinFlow/Views/VocabularyHubView.swift`, `DESIGN.md`, `AGENTS.md`.
+- **2026-08-30**: Added the English meaning beneath pinyin on unrevealed individual vocabulary practice cards. Files edited: `MandarinFlow/Views/SmartDictationView.swift`, `AGENTS.md`.
+- **2026-08-30**: Disabled Address Sanitizer for normal Debug launches to avoid a pre-main sanitizer runtime deadlock on macOS Tahoe 26.6.2. Files edited: `MandarinFlow.xcodeproj/xcshareddata/xcschemes/MandarinFlow.xcscheme`, `AGENTS.md`.
 - **2026-08-23**: Standardized controls across every workspace with semantic primary, secondary, quiet, destructive, compact, regular, prominent, and icon-only button treatments; shared disabled and pressed states, input surfaces, sheet bars, geometry tokens, component previews, aligned cards and skeletons, and consistent native-control tinting. Files edited: `MandarinFlow/ContentView.swift`, `MandarinFlow/Views/DictationSetAppearanceView.swift`, `MandarinFlow/Views/FirstRunTutorialView.swift`, `MandarinFlow/Views/LLMTestView.swift`, `MandarinFlow/Views/ModelDownloadStatusView.swift`, `MandarinFlow/Views/SettingsDashboard.swift`, `MandarinFlow/Views/SkeletonLoadingView.swift`, `MandarinFlow/Views/SmartDictationView.swift`, `MandarinFlow/Views/SpeechTestView.swift`, `MandarinFlow/Views/TingXieTheme.swift`, `MandarinFlow/Views/VocabularyHubView.swift`, `DESIGN.md`, `AGENTS.md`.
 - **2026-08-23**: Replaced the first-run tutorial Back and Continue labels with accessible left and right chevrons while retaining the outlined and filled navigation treatments. Files edited: `MandarinFlow/Views/FirstRunTutorialView.swift`, `DESIGN.md`, `AGENTS.md`.
 - **2026-08-23**: Restyled the first-run tutorial Back action as an outlined capsule companion to Continue and Done, and made Download Local AI the default first-run selection. Files edited: `MandarinFlow/Views/FirstRunTutorialView.swift`, `DESIGN.md`, `AGENTS.md`.
