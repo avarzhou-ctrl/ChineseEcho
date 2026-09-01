@@ -13,6 +13,18 @@
   - Keep the core dictation workflow usable when Local AI is not installed.
   - Let users replay the tutorial from Settings.
 
+## Fixes
+
+- [ ] **Change start page**
+  - Should start with previews of the different word cards and choice between all words or idioms review
+
+- [ ] **Card memory**
+  - When going to another page and returning, the card should be the same as when the user originally left (i.e. keep an order somehwere).
+  - Sets should not start from the beginning.
+
+- [ ] **Adding quotation marks around phrases with puncutation in them""
+  - e.g. “新三年，旧三年，缝缝补补又三年”
+
 ## Learning improvements
 
 - [x] **Add optional learner hints**
