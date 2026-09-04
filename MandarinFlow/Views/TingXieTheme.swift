@@ -360,7 +360,7 @@ private struct WordOfDayCard: View {
                         }
                     }
 
-                    Text(word?.chinese ?? "开始")
+                    Text(word?.chinese.tingXieVocabularyDisplayText ?? "开始")
                         .font(TingXieTypography.vocabulary(size: 24, weight: .bold))
                     Text(wordDetails(word))
                         .font(.system(size: 13, weight: .medium))
@@ -835,6 +835,21 @@ extension String {
     nonisolated var tingXieNilIfEmpty: String? {
         let trimmed = tingXieTrimmed
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    // Treat punctuation-bearing entries as phrases while leaving stored and spoken text unchanged.
+    nonisolated var tingXieVocabularyDisplayText: String {
+        let value = tingXieTrimmed
+        guard !value.isEmpty else { return value }
+        let quotePairs: [(Character, Character)] = [
+            ("“", "”"), ("「", "」"), ("『", "』"), ("\"", "\"")
+        ]
+        if quotePairs.contains(where: { value.first == $0.0 && value.last == $0.1 }) {
+            return value
+        }
+        let phrasePunctuation = CharacterSet(charactersIn: "，。！？；：、,.!?;:")
+        guard value.unicodeScalars.contains(where: phrasePunctuation.contains) else { return value }
+        return "“\(value)”"
     }
 }
 

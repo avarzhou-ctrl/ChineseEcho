@@ -30,6 +30,7 @@ nonisolated struct MandarinFlowBackup: Codable, Sendable {
         let title: String
         let dateCreated: Date
         let appearance: AppearanceRecord?
+        let cardLayout: String?
         let words: [WordRecord]
     }
 
@@ -49,7 +50,7 @@ nonisolated struct MandarinFlowBackup: Codable, Sendable {
         let tags: [String]
     }
 
-    static let currentSchemaVersion = 2
+    static let currentSchemaVersion = 4
     static let supportedSchemaVersions = 1...currentSchemaVersion
 
     let schemaVersion: Int
@@ -57,6 +58,7 @@ nonisolated struct MandarinFlowBackup: Codable, Sendable {
     let sets: [SetRecord]
     let analytics: PracticeAnalyticsBackup
     let activeSession: SavedPracticeSession?
+    let reviewSchedulePreferences: ReviewSchedulePreferenceSnapshot?
 
     var wordCount: Int { sets.reduce(0) { $0 + $1.words.count } }
 
@@ -120,6 +122,10 @@ nonisolated struct MandarinFlowBackup: Codable, Sendable {
                   (word.reviewBox == nil) == (word.lastReviewedAt == nil)
             else { throw LocalBackupError.invalidLearningProgress }
         }
+        if let reviewSchedulePreferences,
+           !reviewSchedulePreferences.customConfiguration.isValid {
+            throw LocalBackupError.invalidReviewSchedule
+        }
         return self
     }
 
@@ -170,7 +176,8 @@ struct MandarinFlowBackupDocument: FileDocument {
 actor LocalBackupStore {
     func makeBackup(
         analytics: PracticeAnalyticsBackup,
-        activeSession: SavedPracticeSession?
+        activeSession: SavedPracticeSession?,
+        reviewSchedulePreferences: ReviewSchedulePreferenceSnapshot
     ) throws -> MandarinFlowBackup {
         let sets = try modelContext.fetch(FetchDescriptor<DictationSet>())
             .sorted { $0.dateCreated < $1.dateCreated }
@@ -180,6 +187,7 @@ actor LocalBackupStore {
                     title: set.title,
                     dateCreated: set.dateCreated,
                     appearance: MandarinFlowBackup.SetRecord.AppearanceRecord(set.appearance),
+                    cardLayout: set.cardLayout.rawValue,
                     words: set.vocabularyWords.map { word in
                         MandarinFlowBackup.WordRecord(
                             recordID: word.recordID,
@@ -204,7 +212,8 @@ actor LocalBackupStore {
             createdAt: Date(),
             sets: sets,
             analytics: analytics,
-            activeSession: activeSession
+            activeSession: activeSession,
+            reviewSchedulePreferences: reviewSchedulePreferences
         )
     }
 
@@ -224,7 +233,9 @@ actor LocalBackupStore {
                     recordID: savedSet.recordID,
                     title: savedSet.title,
                     dateCreated: savedSet.dateCreated,
-                    appearance: savedSet.appearance?.value ?? .defaultValue
+                    appearance: savedSet.appearance?.value ?? .defaultValue,
+                    cardLayout: savedSet.cardLayout.flatMap(VocabularyCardLayout.init(rawValue:))
+                        ?? AppPreferenceDefault.vocabularyCardLayout
                 )
                 modelContext.insert(set)
                 for savedWord in savedSet.words {
@@ -266,6 +277,7 @@ nonisolated enum LocalBackupError: LocalizedError {
     case incompleteWord
     case invalidLearningProgress
     case invalidPracticeSession
+    case invalidReviewSchedule
 
     var errorDescription: String? {
         switch self {
@@ -277,6 +289,7 @@ nonisolated enum LocalBackupError: LocalizedError {
         case .incompleteWord: "Every restored word must include Chinese, pinyin, and an English meaning."
         case .invalidLearningProgress: "The backup contains invalid learning progress."
         case .invalidPracticeSession: "The backup contains an invalid interrupted practice session."
+        case .invalidReviewSchedule: "The backup contains an invalid custom review schedule."
         }
     }
 }

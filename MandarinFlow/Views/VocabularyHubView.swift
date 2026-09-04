@@ -437,7 +437,7 @@ private struct VocabularyRow: View {
         HStack(spacing: 0) {
             Button(action: onSelect) {
                 HStack(spacing: 14) {
-                    Text(word.chinese)
+                    Text(word.chinese.tingXieVocabularyDisplayText)
                         .font(TingXieTypography.vocabulary(size: 30, weight: .medium))
                         .foregroundStyle(isMissed ? TingXiePalette.missed : TingXiePalette.onBackground)
                         .frame(minWidth: 78, alignment: .leading)
@@ -513,7 +513,7 @@ private struct VocabularySearchResultRow: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 12) {
-                Text(word.chinese)
+                Text(word.chinese.tingXieVocabularyDisplayText)
                     .font(TingXieTypography.vocabulary(size: 24))
                     .foregroundStyle(isMissed ? TingXiePalette.missed : TingXiePalette.accent)
                     .frame(minWidth: 52, alignment: .leading)
@@ -603,7 +603,7 @@ private struct VocabularyInspector: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         HStack(alignment: .center, spacing: 18) {
-                            Text(word.chinese)
+                            Text(word.chinese.tingXieVocabularyDisplayText)
                                 .font(TingXieTypography.vocabulary(size: word.chinese.count > 3 ? 52 : 66, weight: .bold))
                                 .foregroundStyle(TingXiePalette.accent)
                                 .minimumScaleFactor(0.7)

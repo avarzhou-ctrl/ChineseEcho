@@ -49,8 +49,7 @@ struct SettingsDashboard: View {
                     tips: [
                         "Speech choices change the voice, pace, pitch, and pause used during dictation.",
                         "Local AI manages the private on-device model used for enrichment and contextual sentences.",
-                        "Practice choices control audio repeats and whether new cards begin revealed.",
-                        "Local Backup exports or restores the learning library stored on this Mac."
+                        "Practice & Backup controls card playback and moves your local learning library between Macs."
                     ]
                 )
             )
@@ -59,8 +58,7 @@ struct SettingsDashboard: View {
                 VStack(spacing: 18) {
                     speechSection
                     localAISection
-                    practiceSection
-                    localDataSection
+                    practiceAndBackupSection
                 }
                 .frame(maxWidth: 820)
                 .frame(maxWidth: .infinity)
@@ -187,11 +185,11 @@ struct SettingsDashboard: View {
         }
     }
 
-    private var practiceSection: some View {
+    private var practiceAndBackupSection: some View {
         SettingsSectionCard(
-            title: "Practice",
-            symbol: "rectangle.on.rectangle.angled",
-            summary: "Control listening sessions and review your local learning library."
+            title: "Practice & Backup",
+            symbol: "externaldrive.fill",
+            summary: "Control card playback and import or export your local learning library."
         ) {
             Stepper(value: $repeatCount, in: 1...5) {
                 Text("Repeat each word \(repeatCount) time\(repeatCount == 1 ? "" : "s")")
@@ -202,22 +200,33 @@ struct SettingsDashboard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Label(
-                keepCardsRevealed
-                    ? "New cards open on the answer side."
-                    : "New cards open on the listening side and can be flipped with Return or Space.",
-                systemImage: "keyboard"
-            )
-            .font(.system(size: 11))
-            .foregroundStyle(TingXiePalette.onSurfaceVariant)
-            .fixedSize(horizontal: false, vertical: true)
-
             Divider()
 
-            SettingsGroupHeading(title: "Learning Library", symbol: "books.vertical.fill")
-            HStack(spacing: 12) {
-                DataCountBadge(value: setCount, label: "Sets", symbol: "square.stack.3d.up")
-                DataCountBadge(value: wordCount, label: "Words", symbol: "character.book.closed")
+            SettingsGroupHeading(title: "Local Backup", symbol: "externaldrive.fill")
+            HStack(spacing: 10) {
+                Button("Export Backup", systemImage: "square.and.arrow.up", action: exportBackup)
+                    .buttonStyle(TingXieButtonStyle(size: .compact))
+                    .disabled(isRestoringBackup)
+
+                Button("Import Backup", systemImage: "square.and.arrow.down") {
+                    backupError = nil
+                    backupMessage = nil
+                    isImportingBackup = true
+                }
+                .buttonStyle(TingXieButtonStyle(variant: .secondary, size: .compact))
+                .disabled(isRestoringBackup)
+            }
+
+            if let backupMessage {
+                Label(backupMessage, systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(TingXiePalette.accent)
+            }
+            if let backupError, importedBackup == nil {
+                Label(backupError, systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(TingXiePalette.missed)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -341,64 +350,19 @@ struct SettingsDashboard: View {
         }
     }
 
-    private var localDataSection: some View {
-        SettingsSectionCard(
-            title: "Local Backup",
-            symbol: "externaldrive.fill",
-            summary: "Move your sets, vocabulary enrichment, learner hints, and learning progress in one portable JSON file."
-        ) {
-            HStack(spacing: 12) {
-                DataCountBadge(value: setCount, label: "Sets", symbol: "square.stack.3d.up")
-                DataCountBadge(value: wordCount, label: "Words", symbol: "character.book.closed")
-            }
-
-            HStack(spacing: 10) {
-                Button("Export Backup", systemImage: "square.and.arrow.up", action: exportBackup)
-                    .buttonStyle(TingXieButtonStyle(size: .compact))
-                    .disabled(isRestoringBackup)
-
-                Button("Restore Backup", systemImage: "square.and.arrow.down") {
-                    backupError = nil
-                    backupMessage = nil
-                    isImportingBackup = true
-                }
-                .buttonStyle(TingXieButtonStyle(variant: .secondary, size: .compact))
-                .disabled(isRestoringBackup)
-            }
-
-            Label(
-                "Before restoring, MandarinFlow validates the file and shows exactly how many sets and words will replace the library on this Mac.",
-                systemImage: "checkmark.shield"
-            )
-            .font(.system(size: 11))
-            .foregroundStyle(TingXiePalette.onSurfaceVariant)
-            .fixedSize(horizontal: false, vertical: true)
-
-            if let backupMessage {
-                Label(backupMessage, systemImage: "checkmark.circle.fill")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(TingXiePalette.accent)
-            }
-            if let backupError, importedBackup == nil {
-                Label(backupError, systemImage: "exclamationmark.triangle.fill")
-                    .font(.system(size: 11))
-                    .foregroundStyle(TingXiePalette.missed)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-
     private func exportBackup() {
         backupError = nil
         backupMessage = nil
         let store = LocalBackupStore(modelContainer: modelContext.container)
         let analytics = PracticeAnalyticsStore.backup()
         let activeSession = PracticeSessionStore.load()
+        let reviewSchedulePreferences = ReviewSchedulePreferences.snapshot()
         Task {
             do {
                 let backup = try await store.makeBackup(
                     analytics: analytics,
-                    activeSession: activeSession
+                    activeSession: activeSession,
+                    reviewSchedulePreferences: reviewSchedulePreferences
                 )
                 backupDocument = MandarinFlowBackupDocument(backup: backup)
                 isExportingBackup = true
@@ -430,11 +394,13 @@ struct SettingsDashboard: View {
             do {
                 try await store.replaceLibrary(with: backup)
                 PracticeAnalyticsStore.restore(backup.analytics)
+                PracticeSessionStore.clear()
                 if let activeSession = backup.activeSession {
                     PracticeSessionStore.save(activeSession)
-                } else {
-                    PracticeSessionStore.clear()
                 }
+                ReviewSchedulePreferences.restore(
+                    backup.reviewSchedulePreferences ?? .defaultValue
+                )
                 importedBackup = nil
                 backupMessage = "Restored \(backup.sets.count) sets and \(backup.wordCount) words."
             } catch {
@@ -686,33 +652,6 @@ private struct SettingsGroupHeading: View {
         Label(title, systemImage: symbol)
             .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(TingXiePalette.accent)
-    }
-}
-
-// Displays one local-data count as a reusable labeled badge.
-private struct DataCountBadge: View {
-    let value: Int
-    let label: String
-    let symbol: String
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: symbol)
-                .foregroundStyle(TingXiePalette.accent)
-            VStack(alignment: .leading, spacing: 1) {
-                Text("\(value)")
-                    .font(.system(size: 18, weight: .bold))
-                Text(label)
-                    .font(.system(size: 10))
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
-            }
-        }
-        .padding(.horizontal, 14)
-        .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
-        .background(
-            TingXiePalette.surfaceContainer.opacity(0.6),
-            in: RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
-        )
     }
 }
 

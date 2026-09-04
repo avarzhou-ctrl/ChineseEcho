@@ -46,22 +46,89 @@ extension Notification.Name {
 // Stores resumable sessions separately from the SwiftData library for lightweight updates.
 @MainActor
 enum PracticeSessionStore {
+    private struct StoredSessions: Codable {
+        var sessions: [String: SavedPracticeSession]
+    }
+
+    // Returns the most recently updated session for launch recovery and backups.
     static func load() -> SavedPracticeSession? {
-        guard let data = UserDefaults.standard.data(forKey: AppPreferenceKey.activePracticeSession),
-              let session = try? JSONDecoder().decode(SavedPracticeSession.self, from: data),
-              SavedPracticeSession.supportedVersions.contains(session.version)
-        else { return nil }
-        return session
+        loadAll().values.max { $0.savedAt < $1.savedAt }
+    }
+
+    static func load(
+        sourceKind: SavedPracticeSourceKind,
+        setRecordID: UUID?
+    ) -> SavedPracticeSession? {
+        loadAll()[sessionKey(sourceKind: sourceKind, setRecordID: setRecordID)]
     }
 
     static func save(_ session: SavedPracticeSession) {
-        guard let data = try? JSONEncoder().encode(session) else { return }
-        UserDefaults.standard.set(data, forKey: AppPreferenceKey.activePracticeSession)
+        var sessions = loadAll()
+        sessions[sessionKey(
+            sourceKind: session.resolvedSourceKind,
+            setRecordID: session.setRecordID
+        )] = session
+        saveAll(sessions)
         NotificationCenter.default.post(name: .activePracticeSessionDidChange, object: nil)
     }
 
     static func clear() {
         UserDefaults.standard.removeObject(forKey: AppPreferenceKey.activePracticeSession)
         NotificationCenter.default.post(name: .activePracticeSessionDidChange, object: nil)
+    }
+
+    static func clear(
+        sourceKind: SavedPracticeSourceKind,
+        setRecordID: UUID?
+    ) {
+        var sessions = loadAll()
+        sessions.removeValue(forKey: sessionKey(
+            sourceKind: sourceKind,
+            setRecordID: setRecordID
+        ))
+        saveAll(sessions)
+        NotificationCenter.default.post(name: .activePracticeSessionDidChange, object: nil)
+    }
+
+    private static func loadAll() -> [String: SavedPracticeSession] {
+        guard let data = UserDefaults.standard.data(forKey: AppPreferenceKey.activePracticeSession)
+        else { return [:] }
+
+        if let stored = try? JSONDecoder().decode(StoredSessions.self, from: data) {
+            return stored.sessions.filter {
+                SavedPracticeSession.supportedVersions.contains($0.value.version)
+            }
+        }
+
+        // Migrate the original single-session payload without losing progress.
+        if let legacySession = try? JSONDecoder().decode(SavedPracticeSession.self, from: data),
+           SavedPracticeSession.supportedVersions.contains(legacySession.version) {
+            return [sessionKey(
+                sourceKind: legacySession.resolvedSourceKind,
+                setRecordID: legacySession.setRecordID
+            ): legacySession]
+        }
+        return [:]
+    }
+
+    private static func saveAll(_ sessions: [String: SavedPracticeSession]) {
+        guard !sessions.isEmpty else {
+            UserDefaults.standard.removeObject(forKey: AppPreferenceKey.activePracticeSession)
+            return
+        }
+        guard let data = try? JSONEncoder().encode(StoredSessions(sessions: sessions)) else { return }
+        UserDefaults.standard.set(data, forKey: AppPreferenceKey.activePracticeSession)
+    }
+
+    private static func sessionKey(
+        sourceKind: SavedPracticeSourceKind,
+        setRecordID: UUID?
+    ) -> String {
+        switch sourceKind {
+        case .set:
+            return "set-\(setRecordID?.uuidString ?? "missing")"
+        case .dueReview:
+            return "due-review"
+        }
     }
 }

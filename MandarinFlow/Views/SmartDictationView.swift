@@ -185,6 +185,7 @@ struct SmartDictationView: View {
             let setID = set.persistentModelID
             let initialTitle = set.title
             let initialAppearance = set.appearance
+            let initialCardLayout = set.cardLayout
             let initialWords = set.vocabularyWords.map { NewVocabularyWord($0) }
 
             NewDictationSetSheet(
@@ -193,6 +194,7 @@ struct SmartDictationView: View {
                 setID: setID,
                 initialTitle: initialTitle,
                 initialAppearance: initialAppearance,
+                initialCardLayout: initialCardLayout,
                 initialWords: initialWords
             )
         }
@@ -267,11 +269,13 @@ struct SmartDictationView: View {
     private func deletePendingSet() {
         guard let setPendingDeletion else { return }
         let setID = setPendingDeletion.persistentModelID
+        let setRecordID = setPendingDeletion.recordID
         self.setPendingDeletion = nil
         Task {
             do {
                 let store = DictationStore(modelContainer: modelContext.container)
                 try await store.deleteSet(setID: setID)
+                PracticeSessionStore.clear(sourceKind: .set, setRecordID: setRecordID)
             } catch {
                 operationError = error.localizedDescription
             }
@@ -417,7 +421,7 @@ private struct DictationSearchResultRow: View {
                         .lineLimit(1)
 
                     if let matchingWord {
-                        Text("Match: \(matchingWord.chinese)  ·  \(matchingWord.pinyin)")
+                        Text("Match: \(matchingWord.chinese.tingXieVocabularyDisplayText)  ·  \(matchingWord.pinyin)")
                             .lineLimit(1)
                     } else {
                         Text("\(set.vocabularyWords.count) vocabulary words")
@@ -515,6 +519,11 @@ private struct DueReviewCard: View {
     let dueWords: [VocabularyWord]
     let onStartReview: () -> Void
 
+    @AppStorage(AppPreferenceKey.reviewFrequencyPreset)
+    private var reviewFrequencyPreset = AppPreferenceDefault.reviewFrequencyPreset
+    @State private var customScheduleDraft = ReviewScheduleConfiguration.balanced
+    @State private var isCustomSchedulePresented = false
+
     private var nextReviewAt: Date? {
         words.compactMap(\.nextReviewAt).filter { $0 > Date() }.min()
     }
@@ -572,9 +581,61 @@ private struct DueReviewCard: View {
 
             Spacer()
 
-            if !dueWords.isEmpty {
-                Button("Start Review", systemImage: "play.fill", action: onStartReview)
-                    .buttonStyle(TingXieButtonStyle())
+            HStack(spacing: 10) {
+                Menu {
+                    Section("When Words Return") {
+                        ForEach(ReviewFrequencyPreset.allCases.filter { $0 != .custom }) { preset in
+                            Button {
+                                reviewFrequencyPreset = preset
+                            } label: {
+                                if reviewFrequencyPreset == preset {
+                                    Label(presetMenuTitle(preset), systemImage: "checkmark")
+                                } else {
+                                    Text(presetMenuTitle(preset))
+                                }
+                            }
+                        }
+                    }
+
+                    Divider()
+
+                    Button {
+                        customScheduleDraft = ReviewSchedulePreferences.snapshot().customConfiguration
+                        isCustomSchedulePresented = true
+                    } label: {
+                        Label(
+                            reviewFrequencyPreset == .custom ? "Exact Timing (Selected)…" : "Choose Exact Timing…",
+                            systemImage: "slider.horizontal.3"
+                        )
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                        .frame(width: 36, height: 36)
+                        .contentShape(Rectangle())
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help("Choose when words return for review")
+                .accessibilityLabel("Choose when words return for review")
+                .popover(isPresented: $isCustomSchedulePresented, arrowEdge: .bottom) {
+                    CustomReviewScheduleEditor(
+                        schedule: $customScheduleDraft,
+                        onCancel: { isCustomSchedulePresented = false },
+                        onSave: {
+                            ReviewSchedulePreferences.saveCustomConfiguration(customScheduleDraft)
+                            reviewFrequencyPreset = .custom
+                            isCustomSchedulePresented = false
+                        }
+                    )
+                }
+
+                if !dueWords.isEmpty {
+                    Button("Start Review", systemImage: "play.fill", action: onStartReview)
+                        .buttonStyle(TingXieButtonStyle())
+                }
             }
         }
         .padding(.horizontal, 22)
@@ -597,6 +658,120 @@ private struct DueReviewCard: View {
             radius: 10,
             y: 4
         )
+    }
+
+    private func presetMenuTitle(_ preset: ReviewFrequencyPreset) -> String {
+        "\(preset.title) — after \(preset.configuration(custom: .balanced).intervalSummary)"
+    }
+}
+
+// Edits a valid ascending five-box schedule before committing it to UserDefaults.
+private struct CustomReviewScheduleEditor: View {
+    @Binding var schedule: ReviewScheduleConfiguration
+    let onCancel: () -> Void
+    let onSave: () -> Void
+
+    private let timingLabels = [
+        "After Missed",
+        "After first Known",
+        "After second Known",
+        "After third Known",
+        "After four or more Known"
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Choose Exact Review Timing")
+                    .font(TingXieTypography.sectionTitle)
+                Text("Set how long a word waits before it appears in Due Review again.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
+            }
+
+            VStack(spacing: 0) {
+                ForEach(0..<timingLabels.count, id: \.self) { index in
+                    HStack(spacing: 14) {
+                        Text(timingLabels[index])
+                            .font(.system(size: 13, weight: .semibold))
+
+                        Spacer()
+
+                        Stepper(value: intervalBinding(for: index), in: allowedRange(for: index)) {
+                            Text(dayLabel(schedule.intervals[index]))
+                                .font(.system(size: 12, weight: .medium))
+                                .monospacedDigit()
+                                .frame(minWidth: 58, alignment: .trailing)
+                        }
+                        .fixedSize()
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(height: 54)
+
+                    if index < timingLabels.count - 1 {
+                        Divider().padding(.leading, 14)
+                    }
+                }
+            }
+            .background(TingXiePalette.lightGreenSurface, in: RoundedRectangle(cornerRadius: 12))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(TingXiePalette.outlineVariant.opacity(0.65), lineWidth: 1)
+            }
+
+            Label(
+                "Known moves a word to the next longer wait. Missed returns it to the shortest wait.",
+                systemImage: "info.circle"
+            )
+            .font(.system(size: 11))
+            .foregroundStyle(TingXiePalette.onSurfaceVariant)
+            .fixedSize(horizontal: false, vertical: true)
+
+            Text("Changes apply the next time each word is graded. Existing review dates stay unchanged.")
+                .font(.system(size: 11))
+                .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 10) {
+                Spacer()
+                Button("Keep Current", action: onCancel)
+                    .buttonStyle(TingXieButtonStyle(variant: .secondary, size: .compact))
+                Button("Use This Timing", action: onSave)
+                    .buttonStyle(TingXieButtonStyle(size: .compact))
+                    .disabled(!schedule.isValid)
+            }
+        }
+        .padding(20)
+        .frame(width: 390)
+    }
+
+    private func intervalBinding(for index: Int) -> Binding<Int> {
+        Binding(
+            get: { schedule.intervals[index] },
+            set: { newValue in
+                switch index {
+                case 0: schedule.box1Days = newValue
+                case 1: schedule.box2Days = newValue
+                case 2: schedule.box3Days = newValue
+                case 3: schedule.box4Days = newValue
+                default: schedule.box5Days = newValue
+                }
+            }
+        )
+    }
+
+    private func allowedRange(for index: Int) -> ClosedRange<Int> {
+        switch index {
+        case 0: 1...(schedule.box2Days - 1)
+        case 1: (schedule.box1Days + 1)...(schedule.box3Days - 1)
+        case 2: (schedule.box2Days + 1)...(schedule.box4Days - 1)
+        case 3: (schedule.box3Days + 1)...(schedule.box5Days - 1)
+        default: (schedule.box4Days + 1)...ReviewScheduleConfiguration.maximumIntervalDays
+        }
+    }
+
+    private func dayLabel(_ days: Int) -> String {
+        "in \(days) day\(days == 1 ? "" : "s")"
     }
 }
 
@@ -824,6 +999,13 @@ private enum PracticeSessionSource {
         guard case .dueReview(_, let wordIDs) = self else { return [] }
         return wordIDs
     }
+
+    var cardLayout: VocabularyCardLayout {
+        guard case .set(let set) = self else {
+            return AppPreferenceDefault.vocabularyCardLayout
+        }
+        return set.cardLayout
+    }
 }
 
 // Captures the persisted word state needed to reverse one grading decision.
@@ -898,6 +1080,8 @@ private struct PracticeSessionView: View {
     @State private var suppressNextFilterReset = false
     @State private var shouldDiscardOnDisappear = false
     @State private var dueQueueRecordIDs: [UUID]
+    @State private var isStartPagePresented: Bool
+    @State private var hasRestorableSession = false
 
     init(
         source: PracticeSessionSource,
@@ -908,6 +1092,7 @@ private struct PracticeSessionView: View {
         self.onClose = onClose
         self.onFinish = onFinish
         _dueQueueRecordIDs = State(initialValue: source.initialDueWordRecordIDs)
+        _isStartPagePresented = State(initialValue: source.supportsFilters)
     }
 
     private var filteredWords: [VocabularyWord] {
@@ -934,13 +1119,6 @@ private struct PracticeSessionView: View {
 
     private var canUndoLastGrade: Bool {
         !gradeHistory.isEmpty && (currentIndex > 0 || hasGradedCurrentCard) && !isUpdatingGrade
-    }
-
-    private var animatedFilter: Binding<PracticeFilter> {
-        Binding(
-            get: { filter },
-            set: updateFilter
-        )
     }
 
     var body: some View {
@@ -970,6 +1148,19 @@ private struct PracticeSessionView: View {
                     onContinueSession: { self.summary = nil },
                     onFinish: finishSession
                 )
+            } else if isStartPagePresented {
+                PracticeSessionStartView(
+                    title: source.title,
+                    appearance: source.appearance,
+                    words: source.words,
+                    cardLayout: source.cardLayout,
+                    canResumeSession: hasRestorableSession,
+                    resumeDetail: resumeDetail,
+                    onResumeSession: resumeSavedSession,
+                    onStartAllWords: { startNewSession(filter: .all) },
+                    onStartMissedWords: { startNewSession(filter: .missed) },
+                    onStartIdioms: { startNewSession(filter: .idioms) }
+                )
             } else {
                 HStack(alignment: .bottom, spacing: 20) {
                     HStack(spacing: 12) {
@@ -997,10 +1188,6 @@ private struct PracticeSessionView: View {
                         }
                     }
                     Spacer()
-                    if source.supportsFilters {
-                        PracticeFilterBar(selection: animatedFilter)
-                            .frame(maxWidth: 430)
-                    }
                 }
                 .padding(.horizontal, 40)
 
@@ -1031,7 +1218,7 @@ private struct PracticeSessionView: View {
             audioEngine.onUtteranceFinished = {
                 Task { @MainActor in continueAutomaticPlayback() }
             }
-            restoreSessionOrStartNew()
+            restoreSessionOrPresentStart()
         }
         .onDisappear {
             stopPlayback()
@@ -1246,16 +1433,6 @@ private struct PracticeSessionView: View {
         audioEngine.speak(currentWord.chinese)
     }
 
-    private func updateFilter(_ newFilter: PracticeFilter) {
-        guard newFilter != filter else { return }
-        let filters = PracticeFilter.allCases
-        let oldIndex = filters.firstIndex(of: filter) ?? 0
-        let newIndex = filters.firstIndex(of: newFilter) ?? 0
-        filterTransitionEdge = newIndex > oldIndex ? .trailing : .leading
-        cardTransitionEdge = filterTransitionEdge
-        filter = newFilter
-    }
-
     private func resetSessionQueue(wordIDs: [PersistentIdentifier]? = nil) {
         stopPlayback()
         sessionWordIDs = wordIDs ?? filteredWords.map(\.persistentModelID)
@@ -1271,12 +1448,16 @@ private struct PracticeSessionView: View {
         scheduleAutomaticPlayback()
     }
 
-    private func restoreSessionOrStartNew() {
-        guard let saved = PracticeSessionStore.load(),
-              saved.resolvedSourceKind == source.savedKind,
-              saved.resolvedSourceKind == .dueReview || saved.setRecordID == source.setRecordID
-        else {
-            resetSessionQueue()
+    private func restoreSessionOrPresentStart() {
+        guard let saved = PracticeSessionStore.load(
+            sourceKind: source.savedKind,
+            setRecordID: source.setRecordID
+        ) else {
+            if source.supportsFilters {
+                prepareStartPage()
+            } else {
+                resetSessionQueue()
+            }
             return
         }
 
@@ -1307,8 +1488,12 @@ private struct PracticeSessionView: View {
               saved.currentIndex >= 0,
               saved.currentIndex < restoredWords.count
         else {
-            PracticeSessionStore.clear()
-            resetSessionQueue()
+            clearSavedSession()
+            if source.supportsFilters {
+                prepareStartPage()
+            } else {
+                resetSessionQueue()
+            }
             return
         }
 
@@ -1332,6 +1517,14 @@ private struct PracticeSessionView: View {
         hasGradedCurrentCard = restoredGrades.last?.queueIndex == saved.currentIndex
         hasInitializedQueue = true
         shouldDiscardOnDisappear = false
+
+        if source.supportsFilters {
+            hasRestorableSession = true
+            isStartPagePresented = true
+            return
+        }
+
+        isStartPagePresented = false
 
         if restoredGrades.count >= restoredWords.count {
             presentSummary()
@@ -1379,7 +1572,7 @@ private struct PracticeSessionView: View {
     }
 
     private func startSessionOver() {
-        PracticeSessionStore.clear()
+        clearSavedSession()
         shouldDiscardOnDisappear = false
         resetSessionQueue()
     }
@@ -1391,8 +1584,63 @@ private struct PracticeSessionView: View {
 
     private func finishSession() {
         shouldDiscardOnDisappear = true
-        PracticeSessionStore.clear()
+        clearSavedSession()
         onFinish()
+    }
+
+    private func prepareStartPage() {
+        stopPlayback()
+        sessionWordIDs = []
+        currentIndex = 0
+        gradeHistory.removeAll()
+        missedOverrides.removeAll()
+        revealedHintWordIDs.removeAll()
+        summary = nil
+        hasGradedCurrentCard = false
+        hasInitializedQueue = true
+        isQueueShuffled = false
+        isCardFlipped = keepCardsRevealed
+        shouldDiscardOnDisappear = false
+        hasRestorableSession = false
+        isStartPagePresented = true
+    }
+
+    private func startNewSession(filter selectedFilter: PracticeFilter) {
+        if filter != selectedFilter {
+            suppressNextFilterReset = true
+            filterTransitionEdge = selectedFilter == .idioms ? .trailing : .leading
+            cardTransitionEdge = filterTransitionEdge
+            filter = selectedFilter
+        }
+        hasRestorableSession = false
+        isStartPagePresented = false
+        resetSessionQueue()
+    }
+
+    private var resumeDetail: String {
+        let remainingCount = max(sessionWordIDs.count - gradeHistory.count, 0)
+        if remainingCount == 0 {
+            return "View the completed session summary"
+        }
+        return "\(remainingCount) card\(remainingCount == 1 ? "" : "s") remaining"
+    }
+
+    private func resumeSavedSession() {
+        guard hasRestorableSession else { return }
+        hasRestorableSession = false
+        isStartPagePresented = false
+        if gradeHistory.count >= sessionWordIDs.count {
+            presentSummary()
+        } else {
+            scheduleAutomaticPlayback()
+        }
+    }
+
+    private func clearSavedSession() {
+        PracticeSessionStore.clear(
+            sourceKind: source.savedKind,
+            setRecordID: source.setRecordID
+        )
     }
 
     private func stopPlayback() {
@@ -1454,6 +1702,7 @@ private struct PracticeSessionView: View {
         let currentSetKey = setKey(for: currentWord)
         let gradedQueueIndex = currentIndex
         let recordedAt = Date()
+        let scheduleConfiguration = ReviewSchedulePreferences.currentConfiguration()
         let previousMastery = PracticeAnalyticsStore.masteryState(for: vocabularyKey)
         let previousSetMastery = PracticeAnalyticsStore.masteryState(
             for: vocabularyKey,
@@ -1468,7 +1717,8 @@ private struct PracticeSessionView: View {
                     PracticeResultRequest(
                         wordRecordID: wordRecordID,
                         isMissed: asMissed,
-                        reviewedAt: recordedAt
+                        reviewedAt: recordedAt,
+                        scheduleConfiguration: scheduleConfiguration
                     )
                 )
                 let action = PracticeGradeAction(
@@ -1600,6 +1850,225 @@ private struct PracticeSessionView: View {
     }
 }
 
+// Lets learners preview a set and choose its initial review scope before audio begins.
+private struct PracticeSessionStartView: View {
+    let title: String
+    let appearance: DictationSetAppearance?
+    let words: [VocabularyWord]
+    let cardLayout: VocabularyCardLayout
+    let canResumeSession: Bool
+    let resumeDetail: String
+    let onResumeSession: () -> Void
+    let onStartAllWords: () -> Void
+    let onStartMissedWords: () -> Void
+    let onStartIdioms: () -> Void
+
+    private var idiomCount: Int { words.filter(\.isIdiom).count }
+    private var missedCount: Int { words.filter(\.isMissedWord).count }
+    private var previewWords: [VocabularyWord] { Array(words.prefix(3)) }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 28) {
+                HStack(spacing: 14) {
+                    DictationSetIconBadge(
+                        appearance: appearance ?? .defaultValue,
+                        size: 46,
+                        cornerRadius: 12
+                    )
+                    .background(.white.opacity(0.94), in: RoundedRectangle(cornerRadius: 12))
+
+                    Text(title)
+                        .font(.system(size: 22, weight: .semibold))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 14)
+                .background(
+                    TingXiePalette.accent,
+                    in: RoundedRectangle(cornerRadius: TingXieControlMetrics.prominentCardCornerRadius)
+                )
+                .frame(maxWidth: 560)
+
+                HStack(spacing: 16) {
+                    ForEach(previewWords) { word in
+                        VocabularyCardPreview(word: word, layout: cardLayout)
+                    }
+                }
+                .frame(maxWidth: 760)
+
+                if words.isEmpty {
+                    ContentUnavailableView(
+                        "No Words in This Set",
+                        systemImage: "text.badge.xmark",
+                        description: Text("Add vocabulary to this set before starting a review.")
+                    )
+                } else {
+                    if canResumeSession {
+                        ReviewScopeButton(
+                            title: "Continue Session",
+                            detail: resumeDetail,
+                            symbol: "play.fill",
+                            isProminent: true,
+                            action: onResumeSession
+                        )
+                        .frame(maxWidth: 660)
+                    }
+
+                    HStack(spacing: 14) {
+                        ReviewScopeButton(
+                            title: "Review All Words",
+                            detail: "\(words.count) card\(words.count == 1 ? "" : "s")",
+                            symbol: "rectangle.stack.fill",
+                            isProminent: !canResumeSession,
+                            action: onStartAllWords
+                        )
+                        if missedCount > 0 {
+                            ReviewScopeButton(
+                                title: "Review Missed Words",
+                                detail: "\(missedCount) card\(missedCount == 1 ? "" : "s")",
+                                symbol: "xmark.circle.fill",
+                                accentColor: TingXiePalette.missed,
+                                action: onStartMissedWords
+                            )
+                        }
+                        ReviewScopeButton(
+                            title: "Review Idioms",
+                            detail: idiomCount == 0
+                                ? "No idioms in this set"
+                                : "\(idiomCount) card\(idiomCount == 1 ? "" : "s")",
+                            symbol: "text.book.closed.fill",
+                            isEnabled: idiomCount > 0,
+                            action: onStartIdioms
+                        )
+                    }
+                    .frame(maxWidth: missedCount > 0 ? 880 : 660)
+                }
+            }
+            .padding(.horizontal, 40)
+            .padding(.top, 24)
+            .padding(.bottom, 40)
+            .frame(maxWidth: .infinity)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// Shows a compact sample using the learner's current card-content preference.
+private struct VocabularyCardPreview: View {
+    let word: VocabularyWord
+    let layout: VocabularyCardLayout
+
+    var body: some View {
+        VStack(spacing: 10) {
+            switch layout {
+            case .chineseFirst:
+                Text(word.chinese.tingXieVocabularyDisplayText)
+                    .font(TingXieTypography.vocabulary(size: 28, weight: .bold))
+                    .foregroundStyle(TingXiePalette.accent)
+                definition(font: .system(size: 13, weight: .medium))
+            case .englishFirst:
+                definition(font: .system(size: 18, weight: .semibold))
+                Text(word.chinese.tingXieVocabularyDisplayText)
+                    .font(TingXieTypography.vocabulary(size: 21, weight: .semibold))
+                    .foregroundStyle(TingXiePalette.accent)
+            case .englishOnly:
+                definition(font: .system(size: 18, weight: .semibold))
+            }
+
+            Text(word.pinyin.isEmpty ? "No pinyin" : word.pinyin)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.78))
+        }
+        .multilineTextAlignment(.center)
+        .padding(18)
+        .frame(maxWidth: .infinity, minHeight: 160)
+        .background(
+            TingXiePalette.lightGreenSurface,
+            in: RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
+                .strokeBorder(TingXiePalette.outlineVariant.opacity(0.65), lineWidth: 1)
+        }
+    }
+
+    private func definition(font: Font) -> some View {
+        Text(word.englishTranslation.isEmpty ? "No translation yet" : word.englishTranslation)
+            .font(font)
+            .foregroundStyle(TingXiePalette.onBackground)
+            .lineLimit(3)
+            .minimumScaleFactor(0.75)
+    }
+}
+
+// Presents one large, keyboard-friendly review choice.
+private struct ReviewScopeButton: View {
+    let title: String
+    let detail: String
+    let symbol: String
+    var isEnabled = true
+    var isProminent = false
+    var accentColor = TingXiePalette.accent
+    let action: () -> Void
+
+    private var foregroundColor: Color {
+        isProminent ? .white : TingXiePalette.onBackground
+    }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Image(systemName: symbol)
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(isProminent ? .white : accentColor)
+                    .frame(width: 42, height: 42)
+                    .background(
+                        isProminent ? Color.white.opacity(0.16) : accentColor.opacity(0.1),
+                        in: RoundedRectangle(cornerRadius: 11)
+                    )
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                    Text(detail)
+                        .font(.system(size: 12))
+                        .foregroundStyle(
+                            isProminent
+                                ? Color.white.opacity(0.78)
+                                : TingXiePalette.onSurfaceVariant
+                        )
+                }
+                .foregroundStyle(foregroundColor)
+                Spacer()
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(isProminent ? .white : accentColor)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, minHeight: 76, maxHeight: 76)
+            .contentShape(RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius))
+        }
+        .buttonStyle(.plain)
+        .background(
+            isProminent ? TingXiePalette.accent : TingXiePalette.surfaceContainerHigh,
+            in: RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
+                .strokeBorder(
+                    isProminent ? Color.white.opacity(0.12) : accentColor.opacity(0.28),
+                    lineWidth: 1
+                )
+        }
+        .opacity(isEnabled ? 1 : 0.5)
+        .disabled(!isEnabled)
+    }
+}
+
 // Provides minimal navigation chrome while practice occupies the full workspace.
 private struct PracticeImmersiveHeader: View {
     let title: String?
@@ -1637,19 +2106,6 @@ private struct PracticeImmersiveHeader: View {
         }
         .frame(height: 58)
         .padding(.horizontal, 24)
-    }
-}
-
-// Presents the full-set and missed-only practice modes as a compact segmented control.
-private struct PracticeFilterBar: View {
-    @Binding var selection: PracticeFilter
-
-    var body: some View {
-        SlidingFilterBar(
-            items: PracticeFilter.allCases,
-            selection: $selection,
-            title: \.rawValue
-        )
     }
 }
 
@@ -1806,7 +2262,7 @@ private struct SessionSummaryWordList: View {
             } else {
                 ForEach(words) { word in
                     HStack(spacing: 10) {
-                        Text(word.chinese)
+                        Text(word.chinese.tingXieVocabularyDisplayText)
                             .font(TingXieTypography.vocabulary(size: 20, weight: .bold))
                             .foregroundStyle(color)
                         Text(word.pinyin.isEmpty ? "No pinyin" : word.pinyin)
@@ -1838,6 +2294,13 @@ private struct PracticeFlipCard: View {
     let isHintRevealed: Bool
     let onRevealHint: () -> Void
     let reduceMotion: Bool
+
+    @AppStorage(AppPreferenceKey.vocabularyCardLayout)
+    private var defaultCardLayout = AppPreferenceDefault.vocabularyCardLayout
+
+    private var cardLayout: VocabularyCardLayout {
+        word.session?.cardLayout ?? defaultCardLayout
+    }
 
     var body: some View {
         ZStack {
@@ -1899,19 +2362,7 @@ private struct PracticeFlipCard: View {
     private func cardFace(isAnswer: Bool) -> some View {
         VStack(spacing: 18) {
             if isAnswer {
-                Text(word.chinese)
-                    .font(TingXieTypography.vocabulary(size: word.chinese.count > 4 ? 48 : 64, weight: .bold))
-                    .foregroundStyle(showsMissed ? TingXiePalette.missed : TingXiePalette.accent)
-                    .minimumScaleFactor(0.6)
-                    .lineLimit(1)
-
-                Text(word.pinyin.isEmpty ? "No pinyin" : word.pinyin)
-                    .font(.system(size: 25, weight: .semibold))
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
-
-                Text(word.englishTranslation.isEmpty ? "No translation yet" : word.englishTranslation)
-                    .font(.system(size: 15))
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.78))
+                answerContent
             } else {
                 Text(word.pinyin.isEmpty ? "Listen carefully" : word.pinyin)
                     .font(.system(size: 40, weight: .bold))
@@ -1927,6 +2378,51 @@ private struct PracticeFlipCard: View {
         }
         .padding(28)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private var answerContent: some View {
+        switch cardLayout {
+        case .chineseFirst:
+            chineseText(size: word.chinese.count > 4 ? 48 : 64, weight: .bold)
+            pinyinText(size: 25)
+            englishText(size: 15, weight: .regular, secondary: true)
+        case .englishFirst:
+            englishText(size: 34, weight: .bold, secondary: false)
+            chineseText(size: word.chinese.count > 4 ? 34 : 44, weight: .semibold)
+            pinyinText(size: 17)
+        case .englishOnly:
+            englishText(size: 38, weight: .bold, secondary: false)
+            pinyinText(size: 20)
+        }
+    }
+
+    private func chineseText(size: CGFloat, weight: Font.Weight) -> some View {
+        Text(word.chinese.tingXieVocabularyDisplayText)
+            .font(TingXieTypography.vocabulary(size: size, weight: weight))
+            .foregroundStyle(showsMissed ? TingXiePalette.missed : TingXiePalette.accent)
+            .minimumScaleFactor(0.55)
+            .lineLimit(2)
+            .multilineTextAlignment(.center)
+    }
+
+    private func pinyinText(size: CGFloat) -> some View {
+        Text(word.pinyin.isEmpty ? "No pinyin" : word.pinyin)
+            .font(.system(size: size, weight: .semibold))
+            .foregroundStyle(TingXiePalette.onSurfaceVariant)
+    }
+
+    private func englishText(size: CGFloat, weight: Font.Weight, secondary: Bool) -> some View {
+        Text(word.englishTranslation.isEmpty ? "No translation yet" : word.englishTranslation)
+            .font(.system(size: size, weight: weight))
+            .foregroundStyle(
+                secondary
+                    ? TingXiePalette.onSurfaceVariant.opacity(0.78)
+                    : TingXiePalette.onBackground
+            )
+            .multilineTextAlignment(.center)
+            .lineLimit(3)
+            .minimumScaleFactor(0.65)
     }
 
     private func flip() {
@@ -1993,6 +2489,21 @@ enum DictationSetEditorMode {
     }
 }
 
+// Keeps set details and card presentation focused on separate editor pages.
+private enum DictationSetEditorPage: String, CaseIterable, Identifiable {
+    case vocabulary = "Vocabulary"
+    case cardStyle = "Card Style"
+
+    var id: Self { self }
+
+    var symbol: String {
+        switch self {
+        case .vocabulary: "text.book.closed"
+        case .cardStyle: "rectangle.on.rectangle.angled"
+        }
+    }
+}
+
 // Holds mutable editor fields until they are validated into a save payload.
 private struct DraftVocabularyWord: Identifiable {
     let id: UUID
@@ -2052,6 +2563,8 @@ struct NewDictationSetSheet: View {
 
     @State private var title: String
     @State private var appearance: DictationSetAppearance
+    @State private var cardLayout: VocabularyCardLayout
+    @State private var editorPage = DictationSetEditorPage.vocabulary
     @State private var chineseWordInput = ""
     @State private var manualText = ""
     @State private var draftWords: [DraftVocabularyWord]
@@ -2069,6 +2582,7 @@ struct NewDictationSetSheet: View {
         setID: PersistentIdentifier? = nil,
         initialTitle: String = "",
         initialAppearance: DictationSetAppearance = .defaultValue,
+        initialCardLayout: VocabularyCardLayout? = nil,
         initialWords: [NewVocabularyWord] = []
     ) {
         self.mode = mode
@@ -2076,6 +2590,12 @@ struct NewDictationSetSheet: View {
         self.setID = setID
         _title = State(initialValue: initialTitle)
         _appearance = State(initialValue: initialAppearance)
+        _cardLayout = State(
+            initialValue: initialCardLayout
+                ?? UserDefaults.standard.string(forKey: AppPreferenceKey.vocabularyCardLayout)
+                    .flatMap(VocabularyCardLayout.init(rawValue:))
+                ?? AppPreferenceDefault.vocabularyCardLayout
+        )
         _draftWords = State(initialValue: initialWords.map { DraftVocabularyWord($0) })
     }
 
@@ -2104,7 +2624,21 @@ struct NewDictationSetSheet: View {
 
             Divider().overlay(TingXiePalette.outlineVariant.opacity(0.5))
 
-            HSplitView {
+            Picker("Editor Page", selection: $editorPage) {
+                ForEach(DictationSetEditorPage.allCases) { page in
+                    Label(page.rawValue, systemImage: page.symbol).tag(page)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: 360)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 10)
+
+            Divider().overlay(TingXiePalette.outlineVariant.opacity(0.5))
+
+            if editorPage == .vocabulary {
+                HSplitView {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         VStack(alignment: .leading, spacing: 7) {
@@ -2274,6 +2808,9 @@ struct NewDictationSetSheet: View {
                 }
                 .padding(24)
                 .frame(minWidth: 440, idealWidth: 500)
+                }
+            } else {
+                cardStyleEditorPage
             }
 
             Divider().overlay(TingXiePalette.outlineVariant.opacity(0.5))
@@ -2297,6 +2834,90 @@ struct NewDictationSetSheet: View {
         .foregroundStyle(TingXiePalette.onBackground)
         .background(TingXiePalette.lightGreenSurface)
         .frame(width: 900, height: 680)
+    }
+
+    private var cardStyleEditorPage: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                VStack(alignment: .leading, spacing: 7) {
+                    Label("Customize Vocabulary Cards", systemImage: "rectangle.on.rectangle.angled")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(TingXiePalette.accent)
+                    Text("Choose what learners see after revealing a card in this set. This setting stays with the set when it is duplicated, backed up, or restored.")
+                        .font(TingXieTypography.body)
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Picker("Card content", selection: $cardLayout) {
+                    ForEach(VocabularyCardLayout.allCases) { layout in
+                        Text(layout.title).tag(layout)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Live Preview")
+                        .font(.system(size: 13, weight: .semibold))
+                    HStack(spacing: 14) {
+                        ForEach(cardPreviewWords) { word in
+                            DraftVocabularyCardPreview(word: word, layout: cardLayout)
+                        }
+                    }
+                }
+
+                Label(cardLayoutDescription, systemImage: "info.circle")
+                    .font(.system(size: 12))
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        TingXiePalette.surfaceContainer.opacity(0.62),
+                        in: RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
+                    )
+            }
+            .frame(maxWidth: 760)
+            .padding(.horizontal, 40)
+            .padding(.vertical, 28)
+            .frame(maxWidth: .infinity)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var cardPreviewWords: [DraftVocabularyWord] {
+        let enteredWords = draftWords.filter { !$0.chinese.tingXieTrimmed.isEmpty }
+        if !enteredWords.isEmpty {
+            return Array(enteredWords.prefix(3))
+        }
+        return [
+            DraftVocabularyWord(
+                chinese: "坚持",
+                pinyin: "jiān chí",
+                translation: "to persist"
+            ),
+            DraftVocabularyWord(
+                chinese: "莫名其妙",
+                pinyin: "mò míng qí miào",
+                translation: "baffling",
+                isIdiom: true
+            ),
+            DraftVocabularyWord(
+                chinese: "新三年，旧三年",
+                pinyin: "xīn sān nián, jiù sān nián",
+                translation: "three years new, three years old"
+            )
+        ]
+    }
+
+    private var cardLayoutDescription: String {
+        switch cardLayout {
+        case .chineseFirst:
+            "Chinese is the primary answer, with pinyin and the English definition underneath."
+        case .englishFirst:
+            "The English definition is primary, with written Chinese and pinyin underneath."
+        case .englishOnly:
+            "Only the English definition and pinyin are shown; written Chinese stays hidden."
+        }
     }
 
     private var cleanTitle: String {
@@ -2594,6 +3215,7 @@ struct NewDictationSetSheet: View {
                 ?? .new,
             title: cleanTitle,
             appearance: appearance,
+            cardLayout: cardLayout,
             words: validWords
         )
         isSaving = true
@@ -2615,6 +3237,73 @@ struct NewDictationSetSheet: View {
                 isSaving = false
             }
         }
+    }
+}
+
+// Mirrors the revealed practice card while the set is still being edited.
+private struct DraftVocabularyCardPreview: View {
+    let word: DraftVocabularyWord
+    let layout: VocabularyCardLayout
+
+    var body: some View {
+        VStack(spacing: 10) {
+            switch layout {
+            case .chineseFirst:
+                chineseText(size: 28, weight: .bold)
+                pinyinText
+                englishText(size: 13, weight: .regular, secondary: true)
+            case .englishFirst:
+                englishText(size: 20, weight: .bold, secondary: false)
+                chineseText(size: 22, weight: .semibold)
+                pinyinText
+            case .englishOnly:
+                englishText(size: 22, weight: .bold, secondary: false)
+                pinyinText
+            }
+        }
+        .multilineTextAlignment(.center)
+        .padding(18)
+        .frame(maxWidth: .infinity, minHeight: 180)
+        .background(
+            TingXiePalette.lightGreenSurface,
+            in: RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
+                .strokeBorder(TingXiePalette.outlineVariant.opacity(0.72), lineWidth: 1)
+        }
+        .shadow(color: TingXiePalette.accent.opacity(0.07), radius: 12, y: 7)
+    }
+
+    private func chineseText(size: CGFloat, weight: Font.Weight) -> some View {
+        Text(word.chinese.tingXieVocabularyDisplayText)
+            .font(TingXieTypography.vocabulary(size: size, weight: weight))
+            .foregroundStyle(TingXiePalette.accent)
+            .lineLimit(2)
+            .minimumScaleFactor(0.7)
+    }
+
+    private var pinyinText: some View {
+        Text(word.pinyin.tingXieNilIfEmpty ?? "No pinyin")
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(TingXiePalette.onSurfaceVariant)
+            .lineLimit(2)
+    }
+
+    private func englishText(
+        size: CGFloat,
+        weight: Font.Weight,
+        secondary: Bool
+    ) -> some View {
+        Text(word.translation.tingXieNilIfEmpty ?? "No translation yet")
+            .font(.system(size: size, weight: weight))
+            .foregroundStyle(
+                secondary
+                    ? TingXiePalette.onSurfaceVariant.opacity(0.78)
+                    : TingXiePalette.onBackground
+            )
+            .lineLimit(3)
+            .minimumScaleFactor(0.72)
     }
 }
 

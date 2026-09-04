@@ -18,6 +18,7 @@ nonisolated final class DictationSet {
     var iconKindRawValue: String?
     var iconValue: String?
     var iconColorRawValue: String?
+    var cardLayoutRawValue: String?
     
     // Deleting a set also removes its saved words.
     @Relationship(deleteRule: .cascade)
@@ -27,7 +28,8 @@ nonisolated final class DictationSet {
         recordID: UUID = UUID(),
         title: String,
         dateCreated: Date = Date(),
-        appearance: DictationSetAppearance = .defaultValue
+        appearance: DictationSetAppearance = .defaultValue,
+        cardLayout: VocabularyCardLayout = AppPreferenceDefault.vocabularyCardLayout
     ) {
         self.recordID = recordID
         self.title = title
@@ -35,6 +37,7 @@ nonisolated final class DictationSet {
         iconKindRawValue = appearance.kind.rawValue
         iconValue = appearance.iconValue
         iconColorRawValue = appearance.color.rawValue
+        cardLayoutRawValue = cardLayout.rawValue
     }
 }
 
@@ -52,6 +55,25 @@ extension DictationSet {
             iconKindRawValue = newValue.kind.rawValue
             iconValue = newValue.iconValue
             iconColorRawValue = newValue.color.rawValue
+        }
+    }
+
+    // Falls back to the former app-wide preference for sets saved before this field existed.
+    var cardLayout: VocabularyCardLayout {
+        get {
+            if let cardLayoutRawValue,
+               let layout = VocabularyCardLayout(rawValue: cardLayoutRawValue) {
+                return layout
+            }
+            if let legacyRawValue = UserDefaults.standard.string(
+                forKey: AppPreferenceKey.vocabularyCardLayout
+            ), let legacyLayout = VocabularyCardLayout(rawValue: legacyRawValue) {
+                return legacyLayout
+            }
+            return AppPreferenceDefault.vocabularyCardLayout
+        }
+        set {
+            cardLayoutRawValue = newValue.rawValue
         }
     }
 }

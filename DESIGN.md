@@ -190,7 +190,9 @@ If a filter has no matches, use **No Words in This Filter** with “Choose a dif
 
 ### Due review
 
-Every Known or Missed grading decision schedules that saved vocabulary record independently. A first Known result enters box 2; a Missed result enters or returns to box 1. Known answers advance through five boxes with 3, 7, 14, and 30-day intervals, while box 1 returns after 1 day. Untouched words remain unscheduled.
+Every Known or Missed grading decision schedules that saved vocabulary record independently. A first Known result uses the second timing interval; a Missed result uses the shortest interval. The default Standard schedule waits 1, 3, 7, 14, and 30 days as the learner repeatedly marks a word Known. Untouched words remain unscheduled.
+
+The Due Review card's trailing ellipsis exposes More Often, Standard, and Less Often presets plus an exact-timing editor. The editor labels waits by visible learning outcomes—After Missed, After first Known, and subsequent Known results—rather than exposing the underlying box numbers. Custom intervals must increase and remain between 1 and 365 days. Frequency changes apply the next time a word is graded; existing review dates remain stable so active queues, Undo snapshots, and notifications are not silently rewritten. The selected preset and custom intervals persist locally and travel with versioned backups.
 
 Starting **Due Review** opens the same immersive listening and grading interface with a snapshot of all currently due words across sets, ordered most overdue first. The set filter is hidden, the footer reads **Finish Review**, and completion reads **Review Complete**. Grading from any practice mode updates the schedule, Undo restores the previous schedule, and an interrupted due-review queue resumes exactly after relaunch.
 

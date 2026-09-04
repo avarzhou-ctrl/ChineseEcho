@@ -297,7 +297,10 @@ struct ContentView: View {
                   dictationSets.contains(where: { $0.recordID == setRecordID }) {
             activeSetRecordID = setRecordID
         } else {
-            PracticeSessionStore.clear()
+            PracticeSessionStore.clear(
+                sourceKind: savedSession.resolvedSourceKind,
+                setRecordID: savedSession.setRecordID
+            )
         }
     }
 

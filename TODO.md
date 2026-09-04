@@ -12,7 +12,6 @@
   - Show the expected download and storage size, with **Download** and **Not Now** actions.
   - Keep the core dictation workflow usable when Local AI is not installed.
   - Let users replay the tutorial from Settings.
-
 ## Fixes
 
 - [ ] **Change start page**
@@ -25,7 +24,14 @@
 - [ ] **Adding quotation marks around phrases with puncutation in them""
   - e.g. “新三年，旧三年，缝缝补补又三年”
 
+- [ ] **Choice to customize vocab cards**
+  - e.g. whether they want only english definition or both english and chinese and in what order which one being primary and which one secondary
+
 ## Learning improvements
+
+- [x] **Customize review timing**
+  - Choose More Often, Standard, or Less Often from the Due Review card's ellipsis menu.
+  - Set exact increasing waits using clear Missed and Known outcome labels.
 
 - [x] **Add optional learner hints**
   - Allow a short hint to be saved per vocabulary word.

@@ -1,7 +1,7 @@
 import Foundation
 
 // Centralizes UserDefaults keys so settings views and playback services stay synchronized.
-enum AppPreferenceKey {
+nonisolated enum AppPreferenceKey {
     static let voiceIdentifier = "speechVoiceIdentifier"
     static let pronunciationProfile = "pronunciationProfile"
     static let speechRate = "speechRate"
@@ -9,6 +9,9 @@ enum AppPreferenceKey {
     static let interWordPause = "interWordPause"
     static let repeatCount = "practiceRepeatCount"
     static let keepCardsRevealed = "practiceKeepCardsRevealed"
+    static let vocabularyCardLayout = "vocabularyCardLayout"
+    static let reviewFrequencyPreset = "reviewFrequencyPreset"
+    static let customReviewSchedule = "customReviewSchedule"
     static let reviewNotificationsEnabled = "reviewNotificationsEnabled"
     static let practiceAnalytics = "practiceAnalytics"
     static let activePracticeSession = "activePracticeSession"
@@ -23,8 +26,86 @@ enum AppPreferenceKey {
         interWordPause,
         repeatCount,
         keepCardsRevealed,
+        vocabularyCardLayout,
+        reviewFrequencyPreset,
+        customReviewSchedule,
         reviewNotificationsEnabled
     ]
+}
+
+// Makes the review-frequency choice portable while keeping UserDefaults out of model actors.
+nonisolated struct ReviewSchedulePreferenceSnapshot: Codable, Equatable, Sendable {
+    let preset: ReviewFrequencyPreset
+    let customConfiguration: ReviewScheduleConfiguration
+
+    static let defaultValue = Self(preset: .balanced, customConfiguration: .balanced)
+
+    var resolvedConfiguration: ReviewScheduleConfiguration {
+        preset.configuration(custom: customConfiguration)
+    }
+}
+
+// Owns validation and encoding for the learner's global review-frequency preference.
+@MainActor
+enum ReviewSchedulePreferences {
+    static func snapshot(defaults: UserDefaults = .standard) -> ReviewSchedulePreferenceSnapshot {
+        let preset = defaults.string(forKey: AppPreferenceKey.reviewFrequencyPreset)
+            .flatMap(ReviewFrequencyPreset.init(rawValue:)) ?? AppPreferenceDefault.reviewFrequencyPreset
+        let customConfiguration: ReviewScheduleConfiguration
+        if let data = defaults.data(forKey: AppPreferenceKey.customReviewSchedule),
+           let decoded = try? JSONDecoder().decode(ReviewScheduleConfiguration.self, from: data),
+           decoded.isValid {
+            customConfiguration = decoded
+        } else {
+            customConfiguration = AppPreferenceDefault.customReviewSchedule
+        }
+        return ReviewSchedulePreferenceSnapshot(
+            preset: preset,
+            customConfiguration: customConfiguration
+        )
+    }
+
+    static func currentConfiguration(defaults: UserDefaults = .standard) -> ReviewScheduleConfiguration {
+        snapshot(defaults: defaults).resolvedConfiguration
+    }
+
+    static func saveCustomConfiguration(
+        _ configuration: ReviewScheduleConfiguration,
+        defaults: UserDefaults = .standard
+    ) {
+        guard configuration.isValid,
+              let data = try? JSONEncoder().encode(configuration) else { return }
+        defaults.set(data, forKey: AppPreferenceKey.customReviewSchedule)
+        defaults.set(ReviewFrequencyPreset.custom.rawValue, forKey: AppPreferenceKey.reviewFrequencyPreset)
+    }
+
+    static func restore(
+        _ snapshot: ReviewSchedulePreferenceSnapshot,
+        defaults: UserDefaults = .standard
+    ) {
+        let restored = snapshot.customConfiguration.isValid ? snapshot : .defaultValue
+        if let data = try? JSONEncoder().encode(restored.customConfiguration) {
+            defaults.set(data, forKey: AppPreferenceKey.customReviewSchedule)
+        }
+        defaults.set(restored.preset.rawValue, forKey: AppPreferenceKey.reviewFrequencyPreset)
+    }
+}
+
+// Defines which language leads the revealed side of vocabulary cards.
+nonisolated enum VocabularyCardLayout: String, CaseIterable, Identifiable, Sendable {
+    case chineseFirst
+    case englishFirst
+    case englishOnly
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .chineseFirst: "Chinese First"
+        case .englishFirst: "English First"
+        case .englishOnly: "English Only"
+        }
+    }
 }
 
 // Keeps onboarding replayable while allowing future tutorial revisions to be introduced safely.
@@ -240,13 +321,16 @@ enum PracticeAnalyticsStore {
 }
 
 // Defines the first-launch values used by speech and practice controls.
-enum AppPreferenceDefault {
+nonisolated enum AppPreferenceDefault {
     static let pronunciationProfile = "Mainland Mandarin"
     static let speechRate = 0.5
     static let speechPitch = 1.0
     static let interWordPause = 1.25
     static let repeatCount = 1
     static let keepCardsRevealed = false
+    static let vocabularyCardLayout = VocabularyCardLayout.chineseFirst
+    static let reviewFrequencyPreset = ReviewFrequencyPreset.balanced
+    static let customReviewSchedule = ReviewScheduleConfiguration.balanced
     static let reviewNotificationsEnabled = false
 }
 

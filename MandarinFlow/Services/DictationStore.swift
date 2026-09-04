@@ -42,6 +42,7 @@ nonisolated struct DictationSetSaveRequest: Sendable {
     let destination: Destination
     let title: String
     let appearance: DictationSetAppearance
+    let cardLayout: VocabularyCardLayout
     let words: [NewVocabularyWord]
 }
 
@@ -64,6 +65,7 @@ nonisolated struct PracticeResultRequest: Sendable {
     let wordRecordID: UUID
     let isMissed: Bool
     let reviewedAt: Date
+    let scheduleConfiguration: ReviewScheduleConfiguration
 }
 
 // Restores both missed and scheduling state when the learner uses Undo.
@@ -96,7 +98,11 @@ actor DictationStore {
     private func createSet(
         _ request: DictationSetSaveRequest
     ) throws -> [ContextualSentenceGenerationTarget] {
-        let set = DictationSet(title: request.title, appearance: request.appearance)
+        let set = DictationSet(
+            title: request.title,
+            appearance: request.appearance,
+            cardLayout: request.cardLayout
+        )
         modelContext.insert(set)
         var newlyCreatedWords: [VocabularyWord] = []
 
@@ -134,6 +140,7 @@ actor DictationStore {
         }
         set.title = request.title
         set.appearance = request.appearance
+        set.cardLayout = request.cardLayout
         var unmatchedWords = set.vocabularyWords
         var updatedWords: [VocabularyWord] = []
         var newlyCreatedWords: [VocabularyWord] = []
@@ -182,7 +189,11 @@ actor DictationStore {
     func duplicateSet(setID: PersistentIdentifier) throws {
         guard let source = modelContext.model(for: setID) as? DictationSet else { return }
         let copyTitle = "\(source.title) Copy"
-        let copy = DictationSet(title: copyTitle, appearance: source.appearance)
+        let copy = DictationSet(
+            title: copyTitle,
+            appearance: source.appearance,
+            cardLayout: source.cardLayout
+        )
         modelContext.insert(copy)
 
         for sourceWord in source.vocabularyWords {
@@ -227,7 +238,8 @@ actor DictationStore {
         let nextSchedule = ReviewScheduler.nextState(
             previousBox: word.reviewBox,
             isCorrect: !request.isMissed,
-            reviewedAt: request.reviewedAt
+            reviewedAt: request.reviewedAt,
+            configuration: request.scheduleConfiguration
         )
         word.isMissedWord = request.isMissed
         word.reviewBox = nextSchedule.reviewBox
