@@ -14,17 +14,17 @@
   - Let users replay the tutorial from Settings.
 ## Fixes
 
-- [ ] **Change start page**
+- [x] **Change start page**
   - Should start with previews of the different word cards and choice between all words or idioms review
 
-- [ ] **Card memory**
+- [x] **Card memory**
   - When going to another page and returning, the card should be the same as when the user originally left (i.e. keep an order somehwere).
   - Sets should not start from the beginning.
 
-- [ ] **Adding quotation marks around phrases with puncutation in them""
+- [x] **Adding quotation marks around phrases with puncutation in them**
   - e.g. “新三年，旧三年，缝缝补补又三年”
 
-- [ ] **Choice to customize vocab cards**
+- [x] **Choice to customize vocab cards**
   - e.g. whether they want only english definition or both english and chinese and in what order which one being primary and which one secondary
 
 ## Learning improvements
