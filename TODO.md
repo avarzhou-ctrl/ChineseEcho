@@ -27,6 +27,9 @@
 - [x] **Choice to customize vocab cards**
   - e.g. whether they want only english definition or both english and chinese and in what order which one being primary and which one secondary
 
+- [x] **Draggable vocab cards**
+  - Vocab cards should be draggable instead of having to rely on the chevrons and should also have visible animation for UI/UX
+
 ## Learning improvements
 
 - [x] **Customize review timing**

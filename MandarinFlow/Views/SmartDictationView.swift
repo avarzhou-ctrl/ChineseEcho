@@ -2,6 +2,7 @@ import AppKit
 import AVFoundation
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 
 // Drives dictation-set search, list actions, practice presentation, and editor sheets.
 struct SmartDictationView: View {
@@ -2556,6 +2557,7 @@ private struct DraftVocabularyWord: Identifiable {
 @MainActor
 struct NewDictationSetSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let mode: DictationSetEditorMode
     let modelContainer: ModelContainer
@@ -2574,6 +2576,8 @@ struct NewDictationSetSheet: View {
     @State private var isSaving = false
     @State private var isGenerating = false
     @State private var isAppearancePickerPresented = false
+    @State private var draggedWordID: UUID?
+    @State private var dropTargetWordID: UUID?
     @State private var modelDownloadCoordinator = ModelDownloadCoordinator.shared
 
     init(
@@ -2795,14 +2799,36 @@ struct NewDictationSetSheet: View {
                                 ForEach($draftWords) { $word in
                                     DraftVocabularyRow(
                                         word: $word,
+                                        position: draftWordPosition(id: word.id),
+                                        totalCount: draftWords.count,
                                         canMoveUp: word.id != draftWords.first?.id,
                                         canMoveDown: word.id != draftWords.last?.id,
+                                        isDropTarget: dropTargetWordID == word.id,
+                                        onDrag: {
+                                            draggedWordID = word.id
+                                            return NSItemProvider(
+                                                object: word.id.uuidString as NSString
+                                            )
+                                        },
                                         onMoveUp: { moveWord(id: word.id, by: -1) },
                                         onMoveDown: { moveWord(id: word.id, by: 1) },
                                         onDelete: { deleteWord(id: word.id) }
                                     )
+                                    .onDrop(
+                                        of: [UTType.plainText],
+                                        delegate: DraftVocabularyDropDelegate(
+                                            targetWordID: word.id,
+                                            draggedWordID: $draggedWordID,
+                                            dropTargetWordID: $dropTargetWordID,
+                                            onMove: moveWord
+                                        )
+                                    )
                                 }
                             }
+                            .animation(
+                                TingXieMotion.contentChange(reduceMotion: reduceMotion),
+                                value: draftWords.map(\.id)
+                            )
                         }
                     }
                 }
@@ -3023,6 +3049,18 @@ struct NewDictationSetSheet: View {
         let destination = index + offset
         guard draftWords.indices.contains(index), draftWords.indices.contains(destination) else { return }
         draftWords.swapAt(index, destination)
+    }
+
+    private func moveWord(from sourceID: UUID, to targetID: UUID) {
+        guard sourceID != targetID,
+              let sourceIndex = draftWords.firstIndex(where: { $0.id == sourceID }),
+              let targetIndex = draftWords.firstIndex(where: { $0.id == targetID }) else { return }
+        let movedWord = draftWords.remove(at: sourceIndex)
+        draftWords.insert(movedWord, at: min(targetIndex, draftWords.endIndex))
+    }
+
+    private func draftWordPosition(id: UUID) -> Int {
+        (draftWords.firstIndex { $0.id == id } ?? 0) + 1
     }
 
     private func deleteWord(id: UUID) {
@@ -3319,91 +3357,162 @@ private enum VocabularyGenerationError: LocalizedError {
 // Edits and reorders one vocabulary draft in the set review column.
 private struct DraftVocabularyRow: View {
     @Binding var word: DraftVocabularyWord
+    let position: Int
+    let totalCount: Int
     let canMoveUp: Bool
     let canMoveDown: Bool
+    let isDropTarget: Bool
+    let onDrag: () -> NSItemProvider
     let onMoveUp: () -> Void
     let onMoveDown: () -> Void
     let onDelete: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                TextField("Chinese", text: $word.chinese)
-                    .font(.system(size: 18, weight: .semibold))
+        HStack(spacing: 4) {
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                .frame(width: 18, height: 44)
+                .contentShape(Rectangle())
+                .onDrag(onDrag) {
+                    DraftVocabularyDragPreview(word: word)
+                }
+                .help("Drag to reorder")
+                .accessibilityLabel("Reorder \(word.chinese.tingXieNilIfEmpty ?? "word")")
+                .accessibilityValue("Position \(position) of \(totalCount)")
+                .accessibilityAdjustableAction { direction in
+                    switch direction {
+                    case .increment where canMoveDown:
+                        onMoveDown()
+                    case .decrement where canMoveUp:
+                        onMoveUp()
+                    default:
+                        break
+                    }
+                }
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    TextField("Chinese", text: $word.chinese)
+                        .font(.system(size: 18, weight: .semibold))
+                        .textFieldStyle(.plain)
+                        .frame(minWidth: 90)
+
+                    Toggle("Idiom", isOn: $word.isIdiom)
+                        .toggleStyle(.checkbox)
+                        .font(.system(size: 10))
+
+                    Spacer()
+
+                    Button(role: .destructive, action: onDelete) {
+                        Image(systemName: "trash")
+                    }
+                    .buttonStyle(
+                        TingXieButtonStyle(
+                            variant: .destructive,
+                            size: .compact,
+                            isIconOnly: true
+                        )
+                    )
+                    .help("Delete word")
+                    .accessibilityLabel("Delete word")
+                }
+
+                TextField("Pinyin", text: $word.pinyin)
                     .textFieldStyle(.plain)
-                    .frame(minWidth: 90)
+                    .font(.system(size: 12))
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
 
-                Toggle("Idiom", isOn: $word.isIdiom)
-                    .toggleStyle(.checkbox)
-                    .font(.system(size: 10))
+                TextField("English translation", text: $word.translation)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
 
-                Spacer()
-
-                Button(action: onMoveUp) {
-                    Image(systemName: "chevron.up")
-                }
-                .buttonStyle(
-                    TingXieButtonStyle(
-                        variant: .quiet,
-                        size: .compact,
-                        isIconOnly: true
-                    )
-                )
-                .disabled(!canMoveUp)
-                .help("Move word up")
-                .accessibilityLabel("Move word up")
-
-                Button(action: onMoveDown) {
-                    Image(systemName: "chevron.down")
-                }
-                .buttonStyle(
-                    TingXieButtonStyle(
-                        variant: .quiet,
-                        size: .compact,
-                        isIconOnly: true
-                    )
-                )
-                .disabled(!canMoveDown)
-                .help("Move word down")
-                .accessibilityLabel("Move word down")
-
-                Button(role: .destructive, action: onDelete) {
-                    Image(systemName: "trash")
-                }
-                .buttonStyle(
-                    TingXieButtonStyle(
-                        variant: .destructive,
-                        size: .compact,
-                        isIconOnly: true
-                    )
-                )
-                .help("Delete word")
-                .accessibilityLabel("Delete word")
+                TextField("Optional learner hint", text: $word.learnerHint)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
             }
-
-            TextField("Pinyin", text: $word.pinyin)
-                .textFieldStyle(.plain)
-                .font(.system(size: 12))
-                .foregroundStyle(TingXiePalette.onSurfaceVariant)
-
-            TextField("English translation", text: $word.translation)
-                .textFieldStyle(.plain)
-                .font(.system(size: 12))
-
-            TextField("Optional learner hint", text: $word.learnerHint)
-                .textFieldStyle(.plain)
-                .font(.system(size: 12))
-                .foregroundStyle(TingXiePalette.onSurfaceVariant)
+            .padding(14)
+            .frame(maxWidth: .infinity)
+            .background(
+                TingXiePalette.surfaceContainer.opacity(0.62),
+                in: RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
+                    .stroke(
+                        isDropTarget
+                            ? TingXiePalette.accent
+                            : TingXiePalette.outlineVariant.opacity(0.82),
+                        lineWidth: isDropTarget ? 2 : 1
+                    )
+            }
+            .scaleEffect(isDropTarget ? 1.012 : 1)
+            .shadow(
+                color: isDropTarget ? TingXiePalette.accent.opacity(0.16) : .clear,
+                radius: 10,
+                y: 4
+            )
         }
-        .padding(14)
+        .animation(.easeOut(duration: 0.16), value: isDropTarget)
+    }
+}
+
+// Shows the essential word identity while a draft card is being repositioned.
+private struct DraftVocabularyDragPreview: View {
+    let word: DraftVocabularyWord
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "line.3.horizontal")
+                .foregroundStyle(TingXiePalette.onSurfaceVariant)
+            Text(word.chinese.tingXieNilIfEmpty ?? "Untitled word")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(TingXiePalette.onBackground)
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 48)
         .background(
-            TingXiePalette.surfaceContainer.opacity(0.62),
+            TingXiePalette.lightGreenSurface,
             in: RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
         )
         .overlay {
             RoundedRectangle(cornerRadius: TingXieControlMetrics.controlCornerRadius)
-                .stroke(TingXiePalette.outlineVariant.opacity(0.82), lineWidth: 1)
+                .stroke(TingXiePalette.accent.opacity(0.55), lineWidth: 1)
         }
+    }
+}
+
+// Reorders draft cards as the pointer crosses them and clears transient drag styling on drop.
+private struct DraftVocabularyDropDelegate: DropDelegate {
+    let targetWordID: UUID
+    @Binding var draggedWordID: UUID?
+    @Binding var dropTargetWordID: UUID?
+    let onMove: (UUID, UUID) -> Void
+
+    func validateDrop(info: DropInfo) -> Bool {
+        draggedWordID != nil
+    }
+
+    func dropEntered(info: DropInfo) {
+        guard let draggedWordID, draggedWordID != targetWordID else { return }
+        dropTargetWordID = targetWordID
+        onMove(draggedWordID, targetWordID)
+    }
+
+    func dropExited(info: DropInfo) {
+        guard dropTargetWordID == targetWordID else { return }
+        dropTargetWordID = nil
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggedWordID = nil
+        dropTargetWordID = nil
+        return true
     }
 }
 
