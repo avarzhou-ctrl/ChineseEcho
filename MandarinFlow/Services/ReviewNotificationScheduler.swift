@@ -5,6 +5,13 @@ import UserNotifications
 enum ReviewNotificationScheduler {
     static let requestIdentifier = "mandarinflow.next-due-review"
 
+    private static let scheduleModeKey = "reviewScheduleMode"
+    private static let scheduledFireDateKey = "reviewNotificationScheduledFireDate"
+    private static let dueScheduleMode = "dailyDueReview"
+    private static let futureScheduleMode = "futureReview"
+    private static let minimumLeadTime: TimeInterval = 5
+    private static let reminderCooldown: TimeInterval = 86_400
+
     static func authorizationStatus() async -> UNAuthorizationStatus {
         await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
     }
@@ -24,34 +31,94 @@ enum ReviewNotificationScheduler {
 
     static func scheduleNextReview(from reviewDates: [Date], now: Date = Date()) async {
         let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: [requestIdentifier])
-        center.removeDeliveredNotifications(withIdentifiers: [requestIdentifier])
-
         let status = await center.notificationSettings().authorizationStatus
-        guard isAuthorized(status), let nextReviewAt = reviewDates.min() else { return }
+        guard isAuthorized(status) else { return }
+
+        guard let nextReviewAt = reviewDates.min() else {
+            clearScheduledReminder(center: center)
+            return
+        }
 
         let dueCount = reviewDates.filter { $0 <= now }.count
+        let pendingRequest = await center.pendingNotificationRequests()
+            .first { $0.identifier == requestIdentifier }
+
+        if dueCount > 0,
+           pendingRequest?.content.userInfo[scheduleModeKey] as? String == dueScheduleMode {
+            return
+        }
+
         let content = UNMutableNotificationContent()
         content.title = dueCount > 0 ? "Your review is ready" : "Time for a Mandarin review"
         content.body = notificationBody(dueCount: dueCount)
         content.sound = .default
         content.userInfo = ["destination": "dueReview"]
 
-        // A short floor avoids an invalid interval when an overdue review is rescheduled.
-        let interval = max(nextReviewAt.timeIntervalSince(now), 5)
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)
+        let trigger: UNNotificationTrigger
+        let scheduledFireDate: Date
+        if dueCount > 0 {
+            scheduledFireDate = nextDueReminderDate(now: now)
+            content.userInfo[scheduleModeKey] = dueScheduleMode
+
+            // A repeating calendar trigger delivers once at the chosen time, then no more than daily.
+            let components = Calendar.current.dateComponents(
+                [.hour, .minute, .second],
+                from: scheduledFireDate
+            )
+            trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+        } else {
+            scheduledFireDate = nextReviewAt
+            content.userInfo[scheduleModeKey] = futureScheduleMode
+            trigger = UNTimeIntervalNotificationTrigger(
+                timeInterval: max(nextReviewAt.timeIntervalSince(now), minimumLeadTime),
+                repeats: false
+            )
+        }
+
+        center.removePendingNotificationRequests(withIdentifiers: [requestIdentifier])
         let request = UNNotificationRequest(
             identifier: requestIdentifier,
             content: content,
             trigger: trigger
         )
-        try? await center.add(request)
+        do {
+            try await center.add(request)
+            UserDefaults.standard.set(scheduledFireDate, forKey: scheduledFireDateKey)
+        } catch {
+            UserDefaults.standard.removeObject(forKey: scheduledFireDateKey)
+        }
     }
 
     static func cancel() {
         let center = UNUserNotificationCenter.current()
+        clearScheduledReminder(center: center, removeDelivered: true)
+    }
+
+    private static func nextDueReminderDate(now: Date) -> Date {
+        let earliestImmediateDate = now.addingTimeInterval(minimumLeadTime)
+        guard let lastScheduledFireDate = UserDefaults.standard.object(
+            forKey: scheduledFireDateKey
+        ) as? Date,
+              lastScheduledFireDate <= now
+        else {
+            return earliestImmediateDate
+        }
+
+        return max(
+            lastScheduledFireDate.addingTimeInterval(reminderCooldown),
+            earliestImmediateDate
+        )
+    }
+
+    private static func clearScheduledReminder(
+        center: UNUserNotificationCenter,
+        removeDelivered: Bool = false
+    ) {
         center.removePendingNotificationRequests(withIdentifiers: [requestIdentifier])
-        center.removeDeliveredNotifications(withIdentifiers: [requestIdentifier])
+        if removeDelivered {
+            center.removeDeliveredNotifications(withIdentifiers: [requestIdentifier])
+        }
+        UserDefaults.standard.removeObject(forKey: scheduledFireDateKey)
     }
 
     private static func notificationBody(dueCount: Int) -> String {

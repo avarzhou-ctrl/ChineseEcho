@@ -1498,6 +1498,13 @@ private struct PracticeSessionView: View {
             return
         }
 
+        // A completed due queue is historical, not an interrupted session to resume.
+        if !source.supportsFilters, restoredGrades.count >= restoredWords.count {
+            clearSavedSession()
+            resetSessionQueue()
+            return
+        }
+
         stopPlayback()
         if filter != restoredFilter {
             suppressNextFilterReset = true
@@ -1527,11 +1534,7 @@ private struct PracticeSessionView: View {
 
         isStartPagePresented = false
 
-        if restoredGrades.count >= restoredWords.count {
-            presentSummary()
-        } else {
-            scheduleAutomaticPlayback()
-        }
+        scheduleAutomaticPlayback()
     }
 
     private func persistSession() {
