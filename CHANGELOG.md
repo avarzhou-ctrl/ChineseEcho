@@ -18,3 +18,25 @@
 - **2026-08-31**: Increased separation between the Create New Set background and vocabulary draft cards with a darker tonal green surface, stronger outline, and matching loading skeletons. Files edited: `ChineseEcho/Views/SmartDictationView.swift`, `ChineseEcho/Views/SkeletonLoadingView.swift`, `CHANGELOG.md`.
 - **2026-08-31**: Replaced the tutorial panels' gray system material with the solid shared pale-green card surface so the guided tour matches the rest of ChineseEcho. Files edited: `ChineseEcho/Views/FirstRunTutorialView.swift`, `DESIGN.md`, `CHANGELOG.md`.
 - **2026-08-31**: Moved future project change logging from `AGENTS.md` to this changelog while retaining the earlier history in place. Files edited: `AGENTS.md`, `CHANGELOG.md`.
+
+- **2026-09-07**: Generated a preview-only ChineseEcho bamboo logo concept with three stalks, a taller center, and one leaf using built-in image generation. Files edited: `CHANGELOG.md`; preview retained in generated image storage.
+
+- **2026-09-07**: Increased the center-stalk height contrast in the preview bamboo logo using built-in image generation. Files edited: `CHANGELOG.md`; revised preview retained in generated image storage.
+
+- **2026-09-07**: Revised the bamboo logo preview by raising the left stalk to medium height while preserving the tall center and short right stalk. Files edited: `CHANGELOG.md`; preview retained in generated image storage.
+
+- **2026-09-07**: Generated the approved three-stalk bamboo logo preview in deep jade on warm ivory using built-in image generation. Files edited: `CHANGELOG.md`; preview retained in generated image storage.
+
+- **2026-09-07**: Enlarged the bamboo logo preview and requested the app primary accent (#0E490E) from TingXieTheme.swift using built-in image generation. Files edited: `CHANGELOG.md`; preview retained in generated image storage.
+
+- **2026-09-07**: Added a subtle app-palette green gradient to the approved bamboo logo preview using built-in image generation. Files edited: `CHANGELOG.md`; preview retained in generated image storage.
+
+- **2026-09-07**: Generated an Apple-inspired translucent green glass treatment for the approved bamboo logo preview. Files edited: `CHANGELOG.md`; preview retained in generated image storage.
+
+- **2026-09-07**: Revised the bamboo icon preview to an Excel-reference macOS rounded white tile with opaque green dimensional forms. Files edited: `CHANGELOG.md`; preview retained in generated image storage.
+
+- **2026-09-07**: Restyled the user-selected bamboo logo preview as an Excel-inspired app icon while preserving all eight segments and open joints. Files edited: `CHANGELOG.md`; preview retained in generated image storage.
+
+- **2026-09-07**: Cropped the selected bamboo artwork to a 1024 × 1024 app-logo PNG without resizing or restyling. Files added: `bamboo-logo-1024.png`; files edited: `CHANGELOG.md`.
+
+- **2026-09-07**: Replaced all ten AppIcon PNG sizes with the approved cropped bamboo logo; native review notifications use this shared app icon. Files edited: `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_*.png`, `CHANGELOG.md`.
