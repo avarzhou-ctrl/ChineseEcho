@@ -2,7 +2,7 @@
 
 ## Before 1.0
 
-- [ ] **Finish the MandarinFlow app icon**
+- [x] **Finish the ChineseEcho app icon**
   - Prepare the existing logo for every required macOS icon size.
   - Check that the mark remains clear at the smallest Finder and Dock sizes.
 
@@ -12,6 +12,7 @@
   - Show the expected download and storage size, with **Download** and **Not Now** actions.
   - Keep the core dictation workflow usable when Local AI is not installed.
   - Let users replay the tutorial from Settings.
+
 ## Fixes
 
 - [x] **Change start page**

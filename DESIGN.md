@@ -1,4 +1,4 @@
-# MandarinFlow Design Guide
+# ChineseEcho Design Guide
 
 ## Source of Truth
 
@@ -8,7 +8,7 @@ When this document and the application disagree, the current implementation is a
 
 ## Product Definition
 
-**MandarinFlow** is a native Chinese-learning app built around audio-first dictation practice.
+**ChineseEcho** is a native Chinese-learning app built around audio-first dictation practice.
 
 Its primary loop is:
 
@@ -67,11 +67,11 @@ Playback progress should be legible without creating urgency. Marking a word mis
 
 ### Private by default
 
-Vocabulary, review scheduling, and practice state remain in SwiftData. The active practice queue is checkpointed locally after meaningful changes so the exact set or cross-set due-review source, card order, current card, and completed grading can resume when that practice source is reopened, while every fresh launch remains anchored on Smart Dictation home. Versioned JSON backups include the full learning library, enrichment, hints, missed-word state, review dates, analytics, and any interrupted session; imports are validated and previewed before replacing local data. On first launch, MandarinFlow presents Getting Started before requesting notification permission through the native macOS dialog; accepted reminders keep one notification scheduled for the earliest due review. Due reminders request the native macOS banner and sound presentation even while MandarinFlow is active, while the learner's System Settings retain final control over notification visibility and style. Sentence generation runs in-process with Qwen through MLX after the learner explicitly chooses the optional download or selects an AI generation action. Product copy should say “local” or “on this Mac” where technical context is useful, but should not turn privacy architecture into the main learning experience.
+Vocabulary, review scheduling, and practice state remain in SwiftData. The active practice queue is checkpointed locally after meaningful changes so the exact set or cross-set due-review source, card order, current card, and completed grading can resume when that practice source is reopened, while every fresh launch remains anchored on Smart Dictation home. Versioned JSON backups include the full learning library, enrichment, hints, missed-word state, review dates, analytics, and any interrupted session; imports are validated and previewed before replacing local data. On first launch, ChineseEcho presents Getting Started before requesting notification permission through the native macOS dialog; accepted reminders keep one notification scheduled for the earliest due review. Due reminders request the native macOS banner and sound presentation even while ChineseEcho is active, while the learner's System Settings retain final control over notification visibility and style. Sentence generation runs in-process with Qwen through MLX after the learner explicitly chooses the optional download or selects an AI generation action. Product copy should say “local” or “on this Mac” where technical context is useful, but should not turn privacy architecture into the main learning experience.
 
 ## Information Architecture
 
-The app uses a custom horizontal split shell with a branded sidebar and a single main workspace. The interface uses the original MandarinFlow palette, tonal cards, solid controls, and restrained system materials.
+The app uses a custom horizontal split shell with a branded sidebar and a single main workspace. The interface uses the original ChineseEcho palette, tonal cards, solid controls, and restrained system materials.
 
 | Destination | Purpose | Primary content |
 | --- | --- | --- |
@@ -97,13 +97,13 @@ On a true first run, a versioned **Getting Started** spotlight tour runs over th
 - A custom accessible resize handle manages the persistent sidebar width
 - Branded colors and tonal surfaces remain visually stable during live resizing
 
-The shell is implemented in `MandarinFlow/ContentView.swift`. Shared sidebar and header elements live in `MandarinFlow/Views/TingXieTheme.swift`.
+The shell is implemented in `ChineseEcho/ContentView.swift`. Shared sidebar and header elements live in `ChineseEcho/Views/TingXieTheme.swift`.
 
 ### Sidebar
 
 The sidebar contains:
 
-1. Product name: **MandarinFlow**
+1. Product name: **ChineseEcho**
 2. **Smart Dictation**
 3. Active set title when applicable
 4. **Vocabulary**
@@ -235,7 +235,7 @@ Settings uses a centered single-column sequence of compact grouped lists in this
 4. **Practice**
 5. **Local Backup**
 
-Each group uses a simple icon-and-title header and separator. Pickers, sliders, toggles, and steppers retain native macOS interaction, while actions use the shared MandarinFlow semantic button styles.
+Each group uses a simple icon-and-title header and separator. Pickers, sliders, toggles, and steppers retain native macOS interaction, while actions use the shared ChineseEcho semantic button styles.
 
 Review notification consent does not appear in Settings or in a custom in-app banner. On first launch, present Getting Started first, then use only the native macOS notification-permission dialog; after the learner responds, macOS retains that choice in System Settings.
 
@@ -243,7 +243,7 @@ Review notification consent does not appear in Settings or in a custom in-app ba
 
 ### Color
 
-Colors are defined in `MandarinFlow/Views/TingXieTheme.swift`.
+Colors are defined in `ChineseEcho/Views/TingXieTheme.swift`.
 
 | Token | Value | Use |
 | --- | --- | --- |
@@ -256,7 +256,7 @@ Colors are defined in `MandarinFlow/Views/TingXieTheme.swift`.
 | `missed` | `#C41F23` | Missed state, destructive emphasis, and errors |
 | `tableStripe` | `#A5C6A2` at 40% | Alternating vocabulary rows |
 
-Structural tokens retain the original fixed MandarinFlow green palette in every appearance. Primary actions use solid accent fills, secondary actions use subtle tonal fills and outlines, search and filter controls use opaque palette surfaces, and content cards use the established light material treatment.
+Structural tokens retain the original fixed ChineseEcho green palette in every appearance. Primary actions use solid accent fills, secondary actions use subtle tonal fills and outlines, search and filter controls use opaque palette surfaces, and content cards use the established light material treatment.
 
 Do not add decorative colors without a semantic need. Use semantic SwiftUI foreground styles for primary and secondary text so the app remains readable in Light and Dark appearance.
 
@@ -393,19 +393,19 @@ Disabled controls retain their semantic color at reduced opacity, and pressed co
 
 | Area | Source |
 | --- | --- |
-| App lifecycle and schema | `MandarinFlow/MandarinFlowApp.swift` |
-| Root navigation shell | `MandarinFlow/ContentView.swift` |
-| Theme and shared shell UI | `MandarinFlow/Views/TingXieTheme.swift` |
-| First-run guidance | `MandarinFlow/Views/FirstRunTutorialView.swift` |
-| Skeleton loading system | `MandarinFlow/Views/SkeletonLoadingView.swift` |
-| Dictation workflow | `MandarinFlow/Views/SmartDictationView.swift` |
-| Vocabulary review and Settings | `MandarinFlow/Views/VocabularyHubView.swift` |
-| Speech diagnostic UI | `MandarinFlow/Views/SpeechTestView.swift` |
-| Local-model diagnostic UI | `MandarinFlow/Views/LLMTestView.swift` |
-| Set and word models | `MandarinFlow/Models/DictationSet.swift`, `MandarinFlow/Models/VocabularyWord.swift` |
-| Background persistence | `MandarinFlow/Services/DictationStore.swift` |
-| Review scheduling | `MandarinFlow/Services/ReviewScheduler.swift` |
-| Review notifications | `MandarinFlow/Services/ReviewNotificationScheduler.swift` |
-| Native speech | `MandarinFlow/Services/SpeechAudioEngine.swift` |
-| Local generation | `MandarinFlow/Services/LLM.swift` |
-| Dependencies and build configuration | `MandarinFlow.xcodeproj/project.pbxproj` |
+| App lifecycle and schema | `ChineseEcho/ChineseEchoApp.swift` |
+| Root navigation shell | `ChineseEcho/ContentView.swift` |
+| Theme and shared shell UI | `ChineseEcho/Views/TingXieTheme.swift` |
+| First-run guidance | `ChineseEcho/Views/FirstRunTutorialView.swift` |
+| Skeleton loading system | `ChineseEcho/Views/SkeletonLoadingView.swift` |
+| Dictation workflow | `ChineseEcho/Views/SmartDictationView.swift` |
+| Vocabulary review and Settings | `ChineseEcho/Views/VocabularyHubView.swift` |
+| Speech diagnostic UI | `ChineseEcho/Views/SpeechTestView.swift` |
+| Local-model diagnostic UI | `ChineseEcho/Views/LLMTestView.swift` |
+| Set and word models | `ChineseEcho/Models/DictationSet.swift`, `ChineseEcho/Models/VocabularyWord.swift` |
+| Background persistence | `ChineseEcho/Services/DictationStore.swift` |
+| Review scheduling | `ChineseEcho/Services/ReviewScheduler.swift` |
+| Review notifications | `ChineseEcho/Services/ReviewNotificationScheduler.swift` |
+| Native speech | `ChineseEcho/Services/SpeechAudioEngine.swift` |
+| Local generation | `ChineseEcho/Services/LLM.swift` |
+| Dependencies and build configuration | `ChineseEcho.xcodeproj/project.pbxproj` |
