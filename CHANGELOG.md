@@ -40,3 +40,7 @@
 - **2026-09-07**: Cropped the selected bamboo artwork to a 1024 × 1024 app-logo PNG without resizing or restyling. Files added: `bamboo-logo-1024.png`; files edited: `CHANGELOG.md`.
 
 - **2026-09-07**: Replaced all ten AppIcon PNG sizes with the approved cropped bamboo logo; native review notifications use this shared app icon. Files edited: `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_*.png`, `CHANGELOG.md`.
+
+- **2026-09-07**: Removed the stale in-project build and package cache from Git tracking after the workspace rename, ignored future `build/` and `dist/` output, and verified a clean ChineseEcho macOS build. Files edited: `.gitignore`, `CHANGELOG.md`; generated cache moved to `/tmp/ChineseEcho-stale-build-before-folder-rename`.
+
+- **2026-09-07**: Widened the bamboo app-icon margins by restoring the full uncropped square composition and regenerated all ten macOS icon sizes without altering the artwork. Files edited: `bamboo-logo-1024.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_*.png`, `CHANGELOG.md`.
