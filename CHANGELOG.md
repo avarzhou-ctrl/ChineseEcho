@@ -1,5 +1,7 @@
 # Changelog
 
+- **2026-09-08**: Centered the bamboo logo on its square canvas using built-in image generation, preserving the original image. File added: `bamboo-logo-centered.png`; file edited: `CHANGELOG.md`.
+
 - **2026-09-08**: Stop offering completed practice queues as resumable sessions, ignore completed checkpoints from older saves, and prevent summary exit from saving them again. Applies to full sets, filtered practice, and due reviews while preserving interrupted sessions. File edited: `ChineseEcho/Services/PracticeSessionStore.swift`; regression coverage: `tests/practice_session_completion.swift`, `tests/practice_session_completion.sh`.
 
 - **2026-09-07**: Replaced the ChineseEcho app icon with the simplified larger-ribbon design, removed the generated checkerboard through a clean alpha mask, and regenerated every macOS AppIcon size used automatically by Dock and notification presentation. Files added: `logo_v2_clean.png`; files edited: `ChineseEcho/Assets.xcassets/AppIcon.appiconset/*.png`, `CHANGELOG.md`.
