@@ -1,0 +1,12 @@
+CC-CEDICT
+Community maintained free Chinese-English dictionary.
+
+Published by MDBG.
+https://www.mdbg.net/chinese/dictionary?page=cc-cedict
+
+Licensed under the Creative Commons Attribution-ShareAlike 4.0 International
+License.
+https://creativecommons.org/licenses/by-sa/4.0/
+
+The bundled dictionary release is dated 2026-08-08T09:14:40Z and contains
+124,790 entries. Its source data is stored in cedict_ts.u8 with LF line endings.
