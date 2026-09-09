@@ -1077,6 +1077,7 @@ private struct PracticeSessionView: View {
     @State private var summary: PracticeSessionSummaryData?
     @State private var queuedFollowUpWordIDs: [PersistentIdentifier]?
     @State private var audioEngine = SpeechAudioEngine()
+    @State private var automaticPlaybackTask: Task<Void, Never>?
     @State private var isConfirmingStartOver = false
     @State private var suppressNextFilterReset = false
     @State private var shouldDiscardOnDisappear = false
@@ -1217,7 +1218,7 @@ private struct PracticeSessionView: View {
         .onAppear {
             audioEngine.configureFromPreferences()
             audioEngine.onUtteranceFinished = {
-                Task { @MainActor in continueAutomaticPlayback() }
+                continueAutomaticPlayback()
             }
             restoreSessionOrPresentStart()
         }
@@ -1648,13 +1649,17 @@ private struct PracticeSessionView: View {
     }
 
     private func stopPlayback() {
+        automaticPlaybackTask?.cancel()
+        automaticPlaybackTask = nil
         remainingAutomaticRepetitions = 0
         audioEngine.stop()
     }
 
     private func scheduleAutomaticPlayback() {
-        Task { @MainActor in
+        automaticPlaybackTask?.cancel()
+        automaticPlaybackTask = Task { @MainActor in
             await Task.yield()
+            guard !Task.isCancelled else { return }
             startAutomaticPlayback()
         }
     }

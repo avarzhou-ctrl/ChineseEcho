@@ -1,5 +1,7 @@
 # Changelog
 
+- **2026-09-08**: Added fresh speech synthesizers for playback, bounded timeout/cancellation recovery with a same-region fallback voice, stale callback protection, and cancellation of pending automatic playback. Files edited: `ChineseEcho/Services/SpeechAudioEngine.swift`, `ChineseEcho/Views/SmartDictationView.swift`, `CHANGELOG.md`. Regression coverage added: `tests/speech_recovery.swift`, `tests/speech_recovery.sh`.
+
 - **2026-09-08**: Centered the bamboo logo on its square canvas using built-in image generation, preserving the original image. File added: `bamboo-logo-centered.png`; file edited: `CHANGELOG.md`.
 
 - **2026-09-08**: Stop offering completed practice queues as resumable sessions, ignore completed checkpoints from older saves, and prevent summary exit from saving them again. Applies to full sets, filtered practice, and due reviews while preserving interrupted sessions. File edited: `ChineseEcho/Services/PracticeSessionStore.swift`; regression coverage: `tests/practice_session_completion.swift`, `tests/practice_session_completion.sh`.
