@@ -1,5 +1,7 @@
 # Changelog
 
+- **2026-09-17**: Removed the three sample vocabulary cards from the Vocab Review start page along with their now-unused preview view and card-layout plumbing. Files edited: `ChineseEcho/Views/SmartDictationView.swift`, `CHANGELOG.md`.
+
 - **2026-09-17**: Added an optional random draw on the practice start page so learners can be tested on a chosen number of words from any scope, in both Dictation and Vocab Review, with scope buttons reporting the sampled count. Files edited: `ChineseEcho/Views/SmartDictationView.swift`, `DESIGN.md`, `CHANGELOG.md`.
 
 - **2026-09-17**: Added Previous and the Left Arrow shortcut to continuous dictation, replaying the preceding word with fresh writing time while preserving queue order and unique words-played progress. Files edited: `ChineseEcho/Views/ContinuousDictationView.swift`, `DESIGN.md`, `CHANGELOG.md`.

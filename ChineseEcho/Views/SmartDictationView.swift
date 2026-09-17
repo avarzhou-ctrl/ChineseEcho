@@ -1001,12 +1001,6 @@ private enum PracticeSessionSource {
         return wordIDs
     }
 
-    var cardLayout: VocabularyCardLayout {
-        guard case .set(let set) = self else {
-            return AppPreferenceDefault.vocabularyCardLayout
-        }
-        return set.cardLayout
-    }
 }
 
 // Captures the persisted word state needed to reverse one grading decision.
@@ -1169,7 +1163,6 @@ private struct PracticeSessionView: View {
                     title: source.title,
                     appearance: source.appearance,
                     words: source.words,
-                    cardLayout: source.cardLayout,
                     canResumeSession: hasRestorableSession,
                     resumeDetail: resumeDetail,
                     onResumeSession: resumeSavedSession,
@@ -1932,7 +1925,6 @@ private struct PracticeSessionStartView: View {
     let title: String
     let appearance: DictationSetAppearance?
     let words: [VocabularyWord]
-    let cardLayout: VocabularyCardLayout
     let canResumeSession: Bool
     let resumeDetail: String
     let onResumeSession: () -> Void
@@ -1946,7 +1938,6 @@ private struct PracticeSessionStartView: View {
 
     private var idiomCount: Int { words.filter(\.isIdiom).count }
     private var missedCount: Int { words.filter(\.isMissedWord).count }
-    private var previewWords: [VocabularyWord] { Array(words.prefix(3)) }
     private var randomLimit: Int? { usesRandomSubset ? randomWordCount : nil }
 
     private func scopeDetail(_ available: Int) -> String {
@@ -2015,15 +2006,6 @@ private struct PracticeSessionStartView: View {
                 .frame(maxWidth: 560)
                 .onAppear { randomWordCount = min(randomWordCount, max(words.count, 1)) }
 
-                if !usesContinuousDictation {
-                    HStack(spacing: 16) {
-                        ForEach(previewWords) { word in
-                            VocabularyCardPreview(word: word, layout: cardLayout)
-                        }
-                    }
-                    .frame(maxWidth: 760)
-                }
-
                 if words.isEmpty {
                     ContentUnavailableView(
                         "No Words in This Set",
@@ -2078,54 +2060,6 @@ private struct PracticeSessionStartView: View {
             .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-// Shows a compact sample using the learner's current card-content preference.
-private struct VocabularyCardPreview: View {
-    let word: VocabularyWord
-    let layout: VocabularyCardLayout
-
-    var body: some View {
-        VStack(spacing: 10) {
-            switch layout {
-            case .chineseFirst:
-                Text(word.chinese.tingXieVocabularyDisplayText)
-                    .font(TingXieTypography.vocabulary(size: 28, weight: .bold))
-                    .foregroundStyle(TingXiePalette.accent)
-                definition(font: .system(size: 13, weight: .medium))
-            case .englishFirst:
-                definition(font: .system(size: 18, weight: .semibold))
-                Text(word.chinese.tingXieVocabularyDisplayText)
-                    .font(TingXieTypography.vocabulary(size: 21, weight: .semibold))
-                    .foregroundStyle(TingXiePalette.accent)
-            case .englishOnly:
-                definition(font: .system(size: 18, weight: .semibold))
-            }
-
-            Text(word.pinyin.isEmpty ? "No pinyin" : word.pinyin)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.78))
-        }
-        .multilineTextAlignment(.center)
-        .padding(18)
-        .frame(maxWidth: .infinity, minHeight: 160)
-        .background(
-            TingXiePalette.lightGreenSurface,
-            in: RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
-                .strokeBorder(TingXiePalette.outlineVariant.opacity(0.65), lineWidth: 1)
-        }
-    }
-
-    private func definition(font: Font) -> some View {
-        Text(word.englishTranslation.isEmpty ? "No translation yet" : word.englishTranslation)
-            .font(font)
-            .foregroundStyle(TingXiePalette.onBackground)
-            .lineLimit(3)
-            .minimumScaleFactor(0.75)
     }
 }
 
