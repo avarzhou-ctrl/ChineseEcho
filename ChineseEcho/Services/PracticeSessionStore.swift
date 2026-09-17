@@ -20,7 +20,7 @@ nonisolated enum SavedPracticeSourceKind: String, Codable, Equatable, Sendable {
 
 // Persists the minimum state needed to resume the exact open practice queue.
 nonisolated struct SavedPracticeSession: Codable, Equatable, Sendable {
-    static let currentVersion = 2
+    static let currentVersion = 3
     static let supportedVersions = 1...currentVersion
 
     let version: Int
@@ -33,9 +33,11 @@ nonisolated struct SavedPracticeSession: Codable, Equatable, Sendable {
     let isQueueShuffled: Bool
     let isCardFlipped: Bool
     let savedAt: Date
+    var dictation: SavedContinuousDictation? = nil
 
     // Completion belongs to the saved queue, including missed-word and idiom reviews.
     var isComplete: Bool {
+        if let dictation { return dictation.phase == .results }
         guard !queueWordRecordIDs.isEmpty else { return false }
         let gradedIndices = Set(grades.compactMap { grade -> Int? in
             guard queueWordRecordIDs.indices.contains(grade.queueIndex),
@@ -113,13 +115,15 @@ enum PracticeSessionStore {
         if let stored = try? JSONDecoder().decode(StoredSessions.self, from: data) {
             return stored.sessions.filter {
                 SavedPracticeSession.supportedVersions.contains($0.value.version) && !$0.value.isComplete
+                    && ($0.value.dictation?.isValid(for: $0.value.queueWordRecordIDs) ?? true)
             }
         }
 
         // Migrate the original single-session payload without losing progress.
         if let legacySession = try? JSONDecoder().decode(SavedPracticeSession.self, from: data),
            SavedPracticeSession.supportedVersions.contains(legacySession.version),
-           !legacySession.isComplete {
+           !legacySession.isComplete,
+           legacySession.dictation?.isValid(for: legacySession.queueWordRecordIDs) ?? true {
             return [sessionKey(
                 sourceKind: legacySession.resolvedSourceKind,
                 setRecordID: legacySession.setRecordID
@@ -147,5 +151,27 @@ enum PracticeSessionStore {
         case .dueReview:
             return "due-review"
         }
+    }
+}
+
+// Draft marking stays separate from recorded learning results until the learner saves.
+nonisolated struct SavedContinuousDictation: Codable, Equatable, Sendable {
+    enum Phase: String, Codable, Sendable { case listening, ready, marking, results }
+    var id = UUID()
+    var phase: Phase = .listening
+    var heardWordIDs: Set<UUID> = []
+    var missedWordIDs: Set<UUID> = []
+    var repetitions = 2
+    var writingSeconds = 8
+    var submissionDate: Date?
+
+    func isValid(for queue: [UUID]) -> Bool {
+        let ids = Set(queue)
+        return !queue.isEmpty && ids.count == queue.count
+            && heardWordIDs.isSubset(of: ids)
+            && missedWordIDs.isSubset(of: heardWordIDs)
+            && (1...5).contains(repetitions) && (3...30).contains(writingSeconds)
+            && (phase == .listening || !heardWordIDs.isEmpty)
+            && (submissionDate == nil || phase == .marking || phase == .results)
     }
 }

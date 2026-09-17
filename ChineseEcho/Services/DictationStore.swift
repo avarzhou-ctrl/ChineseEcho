@@ -249,6 +249,31 @@ actor DictationStore {
         return previousState
     }
 
+    // Save the entire answer sheet once; roll back every mutation if any word or save fails.
+    func applyDictationResults(_ requests: [PracticeResultRequest]) throws {
+        do {
+            for request in requests {
+                guard let word = try word(recordID: request.wordRecordID) else {
+                    throw DictationStoreError.wordNotFound
+                }
+                // The draft keeps this timestamp through retries and relaunches.
+                if let recorded = word.lastReviewedAt, recorded >= request.reviewedAt { continue }
+                let next = ReviewScheduler.nextState(
+                    previousBox: word.reviewBox, isCorrect: !request.isMissed,
+                    reviewedAt: request.reviewedAt, configuration: request.scheduleConfiguration
+                )
+                word.isMissedWord = request.isMissed
+                word.reviewBox = next.reviewBox
+                word.lastReviewedAt = next.lastReviewedAt
+                word.nextReviewAt = next.nextReviewAt
+            }
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+    }
+
     func restorePracticeResult(_ request: PracticeResultRestoreRequest) throws {
         guard let word = try word(recordID: request.wordRecordID) else {
             throw DictationStoreError.wordNotFound

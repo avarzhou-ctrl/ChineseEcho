@@ -140,7 +140,7 @@ struct ContentView: View {
         .tint(TingXiePalette.accent)
         .background(TingXiePalette.workspace)
         .overlay(alignment: .bottomTrailing) {
-            if modelDownloadCoordinator.isStatusVisible {
+            if modelDownloadCoordinator.isStatusVisible && !isPracticePresented {
                 ModelDownloadStatusView(coordinator: modelDownloadCoordinator)
                     .padding(.trailing, 20)
                     .padding(.bottom, modelStatusBottomPadding)

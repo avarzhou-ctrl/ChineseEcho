@@ -7,6 +7,9 @@ nonisolated enum AppPreferenceKey {
     static let speechRate = "speechRate"
     static let speechPitch = "speechPitch"
     static let interWordPause = "interWordPause"
+    static let continuousDictation = "continuousDictation"
+    static let dictationRepetitions = "dictationRepetitions"
+    static let dictationWritingSeconds = "dictationWritingSeconds"
     static let repeatCount = "practiceRepeatCount"
     static let keepCardsRevealed = "practiceKeepCardsRevealed"
     static let vocabularyCardLayout = "vocabularyCardLayout"
@@ -25,6 +28,9 @@ nonisolated enum AppPreferenceKey {
         speechPitch,
         interWordPause,
         repeatCount,
+        continuousDictation,
+        dictationRepetitions,
+        dictationWritingSeconds,
         keepCardsRevealed,
         vocabularyCardLayout,
         reviewFrequencyPreset,
@@ -158,6 +164,7 @@ nonisolated struct PracticeAnalyticsBackup: Codable, Equatable, Sendable {
     let days: [String: Day]
     let mastery: [String: Bool]
     let setMastery: [String: [String: Bool]]
+    var dictationReceipts: Set<UUID>? = nil
 
     static let empty = PracticeAnalyticsBackup(days: [:], mastery: [:], setMastery: [:])
 }
@@ -179,6 +186,7 @@ enum PracticeAnalyticsStore {
         var mastery: [String: Bool] = [:]
         // Optional so analytics saved before per-set progress still decode normally.
         var setMastery: [String: [String: Bool]]?
+        var dictationReceipts: Set<UUID>?
     }
 
     static func snapshot() -> PracticeAnalyticsSnapshot {
@@ -203,7 +211,8 @@ enum PracticeAnalyticsStore {
                 .init(correctAttempts: $0.correctAttempts, totalAttempts: $0.totalAttempts)
             },
             mastery: analytics.mastery,
-            setMastery: analytics.setMastery ?? [:]
+            setMastery: analytics.setMastery ?? [:],
+            dictationReceipts: analytics.dictationReceipts
         )
     }
 
@@ -213,7 +222,8 @@ enum PracticeAnalyticsStore {
                 DayRecord(correctAttempts: $0.correctAttempts, totalAttempts: $0.totalAttempts)
             },
             mastery: backup.mastery,
-            setMastery: backup.setMastery.isEmpty ? nil : backup.setMastery
+            setMastery: backup.setMastery.isEmpty ? nil : backup.setMastery,
+            dictationReceipts: backup.dictationReceipts
         )
         save(analytics)
     }
@@ -244,6 +254,27 @@ enum PracticeAnalyticsStore {
         currentSetMastery[vocabularyKey] = isCorrect
         setMastery[setKey] = currentSetMastery
         analytics.setMastery = setMastery
+        save(analytics)
+    }
+
+    // A receipt and its totals are encoded together, so retrying a saved draft cannot double-count.
+    static func recordDictation(
+        id: UUID, recordedAt: Date, results: [(key: String, setKey: String, correct: Bool)]
+    ) {
+        var analytics = load()
+        guard !(analytics.dictationReceipts ?? []).contains(id) else { return }
+        let key = dayKey(for: recordedAt)
+        var day = analytics.days[key] ?? DayRecord(correctAttempts: 0, totalAttempts: 0)
+        var setMastery = analytics.setMastery ?? [:]
+        for result in results {
+            day.totalAttempts += 1
+            if result.correct { day.correctAttempts += 1 }
+            analytics.mastery[result.key] = result.correct
+            setMastery[result.setKey, default: [:]][result.key] = result.correct
+        }
+        analytics.days[key] = day
+        analytics.setMastery = setMastery
+        analytics.dictationReceipts = (analytics.dictationReceipts ?? []).union([id])
         save(analytics)
     }
 

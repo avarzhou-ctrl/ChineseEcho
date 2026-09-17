@@ -27,6 +27,8 @@ final class SpeechAudioEngine: NSObject, AVSpeechSynthesizerDelegate {
     // Dictation playback uses this callback to repeat only after speech truly finishes.
     @ObservationIgnored
     var onUtteranceFinished: (() -> Void)?
+    @ObservationIgnored
+    var onPlaybackFailed: (() -> Void)?
 
     // AVSpeechUtterance expects Float values for speech tuning.
     var rate: Float = AVSpeechUtteranceDefaultSpeechRate
@@ -138,6 +140,7 @@ final class SpeechAudioEngine: NSObject, AVSpeechSynthesizerDelegate {
         stop()
         guard !hasRetried else {
             logger.error("Speech recovery exhausted; playback stopped. Use replay to try again.")
+            onPlaybackFailed?()
             return
         }
         hasRetried = true

@@ -56,9 +56,10 @@ The practice state should withhold Chinese characters until the learner explicit
 Each state needs an obvious primary action:
 
 - Empty state: **Create New Set**
-- Practice before playback: **Play Dictation Audio Continuously**
-- Practice before reveal: **Reveal Characters**
-- Practice after reveal: **Mark Missed** or **Finish Set**
+- Dictation setup: **Start Dictation**
+- Dictation playback: **Pause / Resume**
+- Dictation complete: **Check Answers**, then **Save Results**
+- Vocab Review: reveal, then **Mark Known** or **Mark Missed**
 - Vocabulary detail: regenerate a contextual sentence or **Mark As Learned**
 
 ### Calm progress, visible consequences
@@ -164,27 +165,17 @@ The implementation currently classifies any four-character entry as an idiom. De
 
 ### Practice session
 
-The active set title replaces the generic workspace title. Below it, show a segmented filter with:
+The set start page offers **Dictation** (default) and **Vocab Review**, with All Words, Missed Words, and Idioms scopes. Dictation hides vocabulary previews and remembers repetitions (default two) and writing time (default eight seconds).
 
-- **All Words**
-- **Missed Words**
-- **Idioms**
+Continuous dictation speaks only the vocabulary word, then leaves an adjustable writing interval before advancing automatically. Show only the word number and listening/writing status, with **Previous** (Left Arrow), **Pause / Resume** (Space), **Repeat** (R), and **Next** (Right Arrow). Previous replays the preceding word with a fresh writing interval, preserves numbering and words-played progress, and is disabled on the first word. Never reveal characters, pinyin, or meanings during listening. Next is enabled only after the word has actually played. Repeating restarts the writing interval; pausing freezes it. Shuffle is available before the first word finishes so numbering stays stable afterward. Leaving the app pauses playback. Hide the floating Local AI status card during immersive practice so it cannot obscure playback or marking controls.
 
-The practice card contains:
+After the final writing interval, show **Ready to check your answers?** and an explicit **Check Answers** action. The answer sheet preserves playback order and numbers, with Chinese, pinyin, English meaning, and one **Missed** checkbox per attempted word. Explain that unchecked answers become correct only when **Save Results** is pressed. The save button previews correct and missed counts. Draft marking never changes mastery, accuracy, or review dates.
 
-1. A wrapping word field on the pale surface color
-2. Pinyin before reveal and Chinese characters after reveal
-3. Bold styling for the current word
-4. Red styling for revealed missed words
-5. A progress bar
-6. One play/stop control
-7. Reveal and completion actions
+**Finish & Check** can end listening early. Only words whose speech finished appear in marking; unheard words remain ungraded. The ready screen can continue listening. Results reuse the original session-summary page with Accuracy, Learned, and Missed metrics, both word lists, **Practice Missed Words**, and **Return to Sets**. Early finishes show **Session So Far** and **Continue Session** to practice the remaining words.
 
-Words may include a short optional learner hint. The listening side exposes a **Show Hint** action only when a hint exists; the hint remains concealed until requested and does not reveal the answer.
+Save the answer sheet through one background SwiftData transaction, rolling back on failure. Persist draft selections and a stable submission timestamp before saving; retrying cannot advance review schedules or analytics twice. Backups preserve draft marking and analytics receipts. Completed submissions clear their checkpoint; interrupted listening and marking remain resumable.
 
-Grading the final card opens a session summary automatically. **Finish Set** opens the same summary early with partial-session progress. The summary reports current-session accuracy, learned words, and missed words, and can start a follow-up queue containing only the words missed in that run.
-
-Playback proceeds through the filtered list and stops after its final item. Selecting a word moves playback to that position and continues forward. A 1.25-second post-utterance pause separates entries.
+Vocab Review retain the existing reveal, learner hint, per-word Known/Missed grading, Undo, and summary flow. Existing saved flashcard sessions resume in their original mode. Scheduled due reviews retain their flashcard flow.
 
 If a filter has no matches, use **No Words in This Filter** with “Choose a different category to continue practicing.”
 

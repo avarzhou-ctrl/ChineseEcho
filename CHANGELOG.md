@@ -1,5 +1,15 @@
 # Changelog
 
+- **2026-09-17**: Added Previous and the Left Arrow shortcut to continuous dictation, replaying the preceding word with fresh writing time while preserving queue order and unique words-played progress. Files edited: `ChineseEcho/Views/ContinuousDictationView.swift`, `DESIGN.md`, `CHANGELOG.md`.
+
+- **2026-09-17**: Reused the original session-summary page for dictation results, including learned/missed lists and partial-session continuation, and renamed the preserved flipping-card mode to Vocab Review. Files edited: `ChineseEcho/Views/ContinuousDictationView.swift`, `ChineseEcho/Views/SmartDictationView.swift`, `DESIGN.md`, `CHANGELOG.md`.
+
+- **2026-09-17**: Made the continuous-dictation progress bar prominent beneath the words-played count with an eight-point green fill, visible track, accessible count, and Reduced Motion support. Files edited: `ChineseEcho/Views/ContinuousDictationView.swift`, `CHANGELOG.md`.
+
+- **2026-09-17**: Removed spoken question numbers from continuous dictation while retaining on-screen numbering and the selected repetition count. Files edited: `ChineseEcho/Views/ContinuousDictationView.swift`, `DESIGN.md`, `CHANGELOG.md`.
+
+- **2026-09-17**: Added continuous paper dictation with numbered speech, adjustable repetitions and writing time, pause/repeat/next controls, resumable end-of-session marking, partial-session handling, missed-word follow-up, atomic background result saving, and retry-safe analytics while retaining flashcards. Files added: `ChineseEcho/Views/ContinuousDictationView.swift`, `tests/continuous_dictation.swift`, `tests/continuous_dictation.sh`; files edited: `ChineseEcho/ContentView.swift`, `ChineseEcho/Views/SmartDictationView.swift`, `ChineseEcho/Services/PracticeSessionStore.swift`, `ChineseEcho/Services/AppPreferences.swift`, `ChineseEcho/Services/DictationStore.swift`, `ChineseEcho/Services/SpeechAudioEngine.swift`, `ChineseEcho/Services/LocalBackup.swift`, `tests/speech_recovery.swift`, `DESIGN.md`, `CHANGELOG.md`.
+
 - **2026-09-08**: Added fresh speech synthesizers for playback, bounded timeout/cancellation recovery with a same-region fallback voice, stale callback protection, and cancellation of pending automatic playback. Files edited: `ChineseEcho/Services/SpeechAudioEngine.swift`, `ChineseEcho/Views/SmartDictationView.swift`, `CHANGELOG.md`. Regression coverage added: `tests/speech_recovery.swift`, `tests/speech_recovery.sh`.
 
 - **2026-09-08**: Centered the bamboo logo on its square canvas using built-in image generation, preserving the original image. File added: `bamboo-logo-centered.png`; file edited: `CHANGELOG.md`.

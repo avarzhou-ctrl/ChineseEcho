@@ -1024,7 +1024,7 @@ private struct PracticeGradeAction {
 }
 
 // Freezes the current session results so the summary stays stable while it is visible.
-private struct PracticeSessionSummaryData {
+struct PracticeSessionSummaryData {
     struct Word: Identifiable {
         let id: PersistentIdentifier
         let chinese: String
@@ -1068,6 +1068,9 @@ private struct PracticeSessionView: View {
     @State private var isCardFlipped = false
     @State private var remainingAutomaticRepetitions = 0
     @State private var missedOverrides: [PersistentIdentifier: Bool] = [:]
+    @AppStorage(AppPreferenceKey.continuousDictation) private var usesContinuousDictation = true
+    @State private var continuousSession: SavedPracticeSession?
+    @State private var savedContinuousSession: SavedPracticeSession?
     @State private var gradeHistory: [PracticeGradeAction] = []
     @State private var isUpdatingGrade = false
     @State private var hasGradedCurrentCard = false
@@ -1124,18 +1127,29 @@ private struct PracticeSessionView: View {
     }
 
     var body: some View {
+        if let continuousSession {
+            ContinuousDictationView(
+                title: source.title, words: source.words, initialSession: continuousSession,
+                onClose: onClose, onFinish: onFinish
+            )
+        } else {
+            flashcardBody
+        }
+    }
+
+    private var flashcardBody: some View {
         VStack(spacing: 0) {
             PracticeImmersiveHeader(
                 title: summary == nil ? nil : "Session Summary",
                 info: WorkspaceInfo(
                     title: "About Practice Sessions",
                     symbol: "rectangle.on.rectangle.angled",
-                    summary: "Listen first, then flip each card to check the characters before deciding whether the word needs more review.",
+                    summary: "Choose Dictation to write without interruptions and check all answers at the end, or Vocab Review to reveal and mark one word at a time.",
                     tips: [
-                        "Select the card or press Return or Space to flip between the listening prompt and the answer.",
-                        "Request an optional learner hint without revealing the answer.",
-                        "The missed and known actions appear only after the answer is visible.",
-                        "Each card plays automatically using the repeat count in Settings; use the speaker for one extra playback."
+                        "Dictation reads numbered words automatically, with adjustable writing time between words.",
+                        "In Dictation, Space pauses or resumes; Repeat plays the word again and restarts writing time.",
+                        "At the end, select incorrect or blank answers and save the results together.",
+                        "In Vocab Review, flip with Return or Space, request hints, and mark each revealed word Known or Missed."
                     ]
                 ),
                 onClose: closeSession
@@ -1463,6 +1477,15 @@ private struct PracticeSessionView: View {
             return
         }
 
+        if let draft = saved.dictation,
+           draft.isValid(for: saved.queueWordRecordIDs),
+           Set(saved.queueWordRecordIDs).isSubset(of: Set(source.words.map(\.recordID))),
+           saved.queueWordRecordIDs.indices.contains(saved.currentIndex) {
+            savedContinuousSession = saved
+            hasRestorableSession = true
+            isStartPagePresented = true
+            return
+        }
         let restoredFilter = PracticeFilter(rawValue: saved.filter) ?? .all
 
         let wordsByRecordID = Dictionary(uniqueKeysWithValues: source.words.map {
@@ -1539,7 +1562,7 @@ private struct PracticeSessionView: View {
     }
 
     private func persistSession() {
-        guard hasInitializedQueue, !sessionWordIDs.isEmpty, !shouldDiscardOnDisappear else { return }
+        guard continuousSession == nil, savedContinuousSession == nil, hasInitializedQueue, !sessionWordIDs.isEmpty, !shouldDiscardOnDisappear else { return }
         let wordsByID = Dictionary(uniqueKeysWithValues: source.words.map {
             ($0.persistentModelID, $0)
         })
@@ -1611,6 +1634,28 @@ private struct PracticeSessionView: View {
     }
 
     private func startNewSession(filter selectedFilter: PracticeFilter) {
+        savedContinuousSession = nil
+        if usesContinuousDictation {
+            let words = source.words.filter { word in
+                switch selectedFilter {
+                case .all: true
+                case .missed: word.isMissedWord
+                case .idioms: word.isIdiom
+                }
+            }
+            guard !words.isEmpty else { return }
+            let defaults = UserDefaults.standard
+            var draft = SavedContinuousDictation()
+            draft.repetitions = min(5, max(1, defaults.object(forKey: AppPreferenceKey.dictationRepetitions) as? Int ?? 2))
+            draft.writingSeconds = min(30, max(3, defaults.object(forKey: AppPreferenceKey.dictationWritingSeconds) as? Int ?? 8))
+            continuousSession = SavedPracticeSession(
+                version: SavedPracticeSession.currentVersion, sourceKind: source.savedKind,
+                setRecordID: source.setRecordID, filter: selectedFilter.rawValue,
+                queueWordRecordIDs: words.map(\.recordID), currentIndex: 0, grades: [],
+                isQueueShuffled: false, isCardFlipped: false, savedAt: Date(), dictation: draft
+            )
+            return
+        }
         if filter != selectedFilter {
             suppressNextFilterReset = true
             filterTransitionEdge = selectedFilter == .idioms ? .trailing : .leading
@@ -1623,6 +1668,11 @@ private struct PracticeSessionView: View {
     }
 
     private var resumeDetail: String {
+        if let saved = savedContinuousSession, let draft = saved.dictation {
+            return draft.phase == .listening
+                ? "Continue dictation · word \(saved.currentIndex + 1) of \(saved.queueWordRecordIDs.count)"
+                : "Continue checking your answers"
+        }
         let remainingCount = max(sessionWordIDs.count - gradeHistory.count, 0)
         if remainingCount == 0 {
             return "View the completed session summary"
@@ -1632,6 +1682,10 @@ private struct PracticeSessionView: View {
 
     private func resumeSavedSession() {
         guard hasRestorableSession else { return }
+        if let saved = savedContinuousSession {
+            continuousSession = saved
+            return
+        }
         hasRestorableSession = false
         isStartPagePresented = false
         if gradeHistory.count >= sessionWordIDs.count {
@@ -1861,6 +1915,9 @@ private struct PracticeSessionView: View {
 
 // Lets learners preview a set and choose its initial review scope before audio begins.
 private struct PracticeSessionStartView: View {
+    @AppStorage(AppPreferenceKey.continuousDictation) private var usesContinuousDictation = true
+    @AppStorage(AppPreferenceKey.dictationRepetitions) private var dictationRepetitions = 2
+    @AppStorage(AppPreferenceKey.dictationWritingSeconds) private var writingSeconds = 8
     let title: String
     let appearance: DictationSetAppearance?
     let words: [VocabularyWord]
@@ -1901,12 +1958,32 @@ private struct PracticeSessionStartView: View {
                 )
                 .frame(maxWidth: 560)
 
-                HStack(spacing: 16) {
-                    ForEach(previewWords) { word in
-                        VocabularyCardPreview(word: word, layout: cardLayout)
+                VStack(spacing: 16) {
+                    Picker("Practice mode", selection: $usesContinuousDictation) {
+                        Text("Dictation").tag(true)
+                        Text("Vocab Review").tag(false)
+                    }
+                    .pickerStyle(.segmented)
+                    Text(usesContinuousDictation
+                         ? "Write on paper as the words play. Check your answers together at the end."
+                         : "Reveal and mark each card before moving on.")
+                        .font(.callout)
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                    if usesContinuousDictation {
+                        Stepper("Read each word \(dictationRepetitions) times", value: $dictationRepetitions, in: 1...5)
+                        Stepper("Writing time: \(writingSeconds) seconds", value: $writingSeconds, in: 3...30)
                     }
                 }
-                .frame(maxWidth: 760)
+                .frame(maxWidth: 560)
+
+                if !usesContinuousDictation {
+                    HStack(spacing: 16) {
+                        ForEach(previewWords) { word in
+                            VocabularyCardPreview(word: word, layout: cardLayout)
+                        }
+                    }
+                    .frame(maxWidth: 760)
+                }
 
                 if words.isEmpty {
                     ContentUnavailableView(
@@ -1928,26 +2005,26 @@ private struct PracticeSessionStartView: View {
 
                     HStack(spacing: 14) {
                         ReviewScopeButton(
-                            title: "Review All Words",
-                            detail: "\(words.count) card\(words.count == 1 ? "" : "s")",
+                            title: usesContinuousDictation ? "Start Dictation" : "Review All Words",
+                            detail: "\(words.count) words",
                             symbol: "rectangle.stack.fill",
                             isProminent: !canResumeSession,
                             action: onStartAllWords
                         )
                         if missedCount > 0 {
                             ReviewScopeButton(
-                                title: "Review Missed Words",
-                                detail: "\(missedCount) card\(missedCount == 1 ? "" : "s")",
+                                title: usesContinuousDictation ? "Dictate Missed Words" : "Review Missed Words",
+                                detail: "\(missedCount) words",
                                 symbol: "xmark.circle.fill",
                                 accentColor: TingXiePalette.missed,
                                 action: onStartMissedWords
                             )
                         }
                         ReviewScopeButton(
-                            title: "Review Idioms",
+                            title: usesContinuousDictation ? "Dictate Idioms" : "Review Idioms",
                             detail: idiomCount == 0
                                 ? "No idioms in this set"
-                                : "\(idiomCount) card\(idiomCount == 1 ? "" : "s")",
+                                : "\(idiomCount) words",
                             symbol: "text.book.closed.fill",
                             isEnabled: idiomCount > 0,
                             action: onStartIdioms
@@ -2079,7 +2156,7 @@ private struct ReviewScopeButton: View {
 }
 
 // Provides minimal navigation chrome while practice occupies the full workspace.
-private struct PracticeImmersiveHeader: View {
+struct PracticeImmersiveHeader: View {
     let title: String?
     let info: WorkspaceInfo
     let onClose: () -> Void
@@ -2119,7 +2196,7 @@ private struct PracticeImmersiveHeader: View {
 }
 
 // Turns one completed or partial grading run into an actionable learning recap.
-private struct PracticeSessionSummaryView: View {
+struct PracticeSessionSummaryView: View {
     let sessionTitle: String
     let isDueReview: Bool
     let summary: PracticeSessionSummaryData

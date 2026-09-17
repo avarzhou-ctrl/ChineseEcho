@@ -98,6 +98,7 @@ nonisolated struct ChineseEchoBackup: Codable, Sendable {
             }
             let queueWordIDs = Set(activeSession.queueWordRecordIDs)
             guard SavedPracticeSession.supportedVersions.contains(activeSession.version),
+                  activeSession.dictation?.isValid(for: activeSession.queueWordRecordIDs) ?? true,
                   activeSession.currentIndex >= 0,
                   activeSession.currentIndex < activeSession.queueWordRecordIDs.count,
                   queueWordIDs.count == activeSession.queueWordRecordIDs.count,

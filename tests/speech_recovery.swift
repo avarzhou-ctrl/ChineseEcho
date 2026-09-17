@@ -31,16 +31,21 @@ struct SpeechRecoveryTests {
             instances.append(instance)
             return instance
         }, startupTimeout: 0.05)
+        var failures = 0
+        engine.onPlaybackFailed = { failures += 1 }
         var completions = 0
         engine.onUtteranceFinished = { completions += 1 }
 
         engine.speak("你好")
         let original = instances.last!
         let originalUtterance = original.submitted!
-        try await Task.sleep(for: .milliseconds(150))
+        for _ in 0..<40 where failures == 0 {
+            try await Task.sleep(for: .milliseconds(25))
+        }
         precondition(instances.count == 3, "A stalled request must retry exactly once")
         precondition(instances.last!.submitted!.speechString == "你好")
         precondition(completions == 0, "Failure must not advance dictation repeats")
+        precondition(failures == 1, "Exhausted recovery must pause the dictation UI")
 
         engine.speak("再见")
         let stoppedCount = instances.count
