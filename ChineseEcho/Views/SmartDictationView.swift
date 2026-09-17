@@ -1173,9 +1173,9 @@ private struct PracticeSessionView: View {
                     canResumeSession: hasRestorableSession,
                     resumeDetail: resumeDetail,
                     onResumeSession: resumeSavedSession,
-                    onStartAllWords: { startNewSession(filter: .all) },
-                    onStartMissedWords: { startNewSession(filter: .missed) },
-                    onStartIdioms: { startNewSession(filter: .idioms) }
+                    onStartAllWords: { startNewSession(filter: .all, randomLimit: $0) },
+                    onStartMissedWords: { startNewSession(filter: .missed, randomLimit: $0) },
+                    onStartIdioms: { startNewSession(filter: .idioms, randomLimit: $0) }
                 )
             } else {
                 HStack(alignment: .bottom, spacing: 20) {
@@ -1633,17 +1633,25 @@ private struct PracticeSessionView: View {
         isStartPagePresented = true
     }
 
-    private func startNewSession(filter selectedFilter: PracticeFilter) {
+    private func startNewSession(filter selectedFilter: PracticeFilter, randomLimit: Int?) {
         savedContinuousSession = nil
-        if usesContinuousDictation {
-            let words = source.words.filter { word in
-                switch selectedFilter {
-                case .all: true
-                case .missed: word.isMissedWord
-                case .idioms: word.isIdiom
-                }
+        let scopedWords = source.words.filter { word in
+            switch selectedFilter {
+            case .all: true
+            case .missed: word.isMissedWord
+            case .idioms: word.isIdiom
             }
-            guard !words.isEmpty else { return }
+        }
+        // Randomize which words are drawn, not their order, so Shuffle stays a separate choice.
+        let words: [VocabularyWord]
+        if let randomLimit, randomLimit < scopedWords.count {
+            let drawn = Set(scopedWords.shuffled().prefix(randomLimit).map(\.recordID))
+            words = scopedWords.filter { drawn.contains($0.recordID) }
+        } else {
+            words = scopedWords
+        }
+        guard !words.isEmpty else { return }
+        if usesContinuousDictation {
             let defaults = UserDefaults.standard
             var draft = SavedContinuousDictation()
             draft.repetitions = min(5, max(1, defaults.object(forKey: AppPreferenceKey.dictationRepetitions) as? Int ?? 2))
@@ -1664,7 +1672,10 @@ private struct PracticeSessionView: View {
         }
         hasRestorableSession = false
         isStartPagePresented = false
-        resetSessionQueue()
+        // A random draw needs an explicit queue; the full scope can rebuild from the filter.
+        resetSessionQueue(
+            wordIDs: words.count == scopedWords.count ? nil : words.map(\.persistentModelID)
+        )
     }
 
     private var resumeDetail: String {
@@ -1925,13 +1936,25 @@ private struct PracticeSessionStartView: View {
     let canResumeSession: Bool
     let resumeDetail: String
     let onResumeSession: () -> Void
-    let onStartAllWords: () -> Void
-    let onStartMissedWords: () -> Void
-    let onStartIdioms: () -> Void
+    let onStartAllWords: (Int?) -> Void
+    let onStartMissedWords: (Int?) -> Void
+    let onStartIdioms: (Int?) -> Void
+
+    // A random draw is deliberately per-visit, so it never silently shrinks a later session.
+    @State private var usesRandomSubset = false
+    @State private var randomWordCount = 10
 
     private var idiomCount: Int { words.filter(\.isIdiom).count }
     private var missedCount: Int { words.filter(\.isMissedWord).count }
     private var previewWords: [VocabularyWord] { Array(words.prefix(3)) }
+    private var randomLimit: Int? { usesRandomSubset ? randomWordCount : nil }
+
+    private func scopeDetail(_ available: Int) -> String {
+        guard usesRandomSubset, randomWordCount < available else {
+            return "\(available) word\(available == 1 ? "" : "s")"
+        }
+        return "\(randomWordCount) random of \(available)"
+    }
 
     var body: some View {
         ScrollView {
@@ -1973,8 +1996,24 @@ private struct PracticeSessionStartView: View {
                         Stepper("Read each word \(dictationRepetitions) times", value: $dictationRepetitions, in: 1...5)
                         Stepper("Writing time: \(writingSeconds) seconds", value: $writingSeconds, in: 3...30)
                     }
+                    if !words.isEmpty {
+                        Divider()
+                        Toggle("Test a random selection", isOn: $usesRandomSubset.animation(.easeOut(duration: 0.18)))
+                            .toggleStyle(.switch)
+                        if usesRandomSubset {
+                            Stepper(
+                                "Draw \(randomWordCount) word\(randomWordCount == 1 ? "" : "s")",
+                                value: $randomWordCount,
+                                in: 1...max(words.count, 1)
+                            )
+                            Text("Each start draws a fresh random sample from the scope you choose.")
+                                .font(.callout)
+                                .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                        }
+                    }
                 }
                 .frame(maxWidth: 560)
+                .onAppear { randomWordCount = min(randomWordCount, max(words.count, 1)) }
 
                 if !usesContinuousDictation {
                     HStack(spacing: 16) {
@@ -2006,28 +2045,28 @@ private struct PracticeSessionStartView: View {
                     HStack(spacing: 14) {
                         ReviewScopeButton(
                             title: usesContinuousDictation ? "Start Dictation" : "Review All Words",
-                            detail: "\(words.count) words",
+                            detail: scopeDetail(words.count),
                             symbol: "rectangle.stack.fill",
                             isProminent: !canResumeSession,
-                            action: onStartAllWords
+                            action: { onStartAllWords(randomLimit) }
                         )
                         if missedCount > 0 {
                             ReviewScopeButton(
                                 title: usesContinuousDictation ? "Dictate Missed Words" : "Review Missed Words",
-                                detail: "\(missedCount) words",
+                                detail: scopeDetail(missedCount),
                                 symbol: "xmark.circle.fill",
                                 accentColor: TingXiePalette.missed,
-                                action: onStartMissedWords
+                                action: { onStartMissedWords(randomLimit) }
                             )
                         }
                         ReviewScopeButton(
                             title: usesContinuousDictation ? "Dictate Idioms" : "Review Idioms",
                             detail: idiomCount == 0
                                 ? "No idioms in this set"
-                                : "\(idiomCount) words",
+                                : scopeDetail(idiomCount),
                             symbol: "text.book.closed.fill",
                             isEnabled: idiomCount > 0,
-                            action: onStartIdioms
+                            action: { onStartIdioms(randomLimit) }
                         )
                     }
                     .frame(maxWidth: missedCount > 0 ? 880 : 660)
