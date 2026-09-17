@@ -1,5 +1,7 @@
 # Changelog
 
+- **2026-09-17**: Added a hover preview to the end-of-session word lists in both dictation and Vocab Review: resting on a learned or missed word opens a compact Vocabulary Hub card with characters, pinyin, playback, tags, meaning, learner hint, and the first contextual sentence. Files added: `ChineseEcho/Views/VocabularyPreviewCard.swift`; files edited: `ChineseEcho/Views/SmartDictationView.swift`, `ChineseEcho/Views/VocabularyHubView.swift`, `ChineseEcho/Views/ContinuousDictationView.swift`, `DESIGN.md`, `CHANGELOG.md`.
+
 - **2026-09-17**: Removed the three sample vocabulary cards from the Vocab Review start page along with their now-unused preview view and card-layout plumbing. Files edited: `ChineseEcho/Views/SmartDictationView.swift`, `CHANGELOG.md`.
 
 - **2026-09-17**: Replaced the continuous-dictation words-played counter with a per-word writing-time gauge that stays full while the word plays, drains smoothly across each waiting window, freezes on pause, and falls back to one-second steps under Reduced Motion. Files edited: `ChineseEcho/Views/ContinuousDictationView.swift`, `DESIGN.md`, `CHANGELOG.md`.

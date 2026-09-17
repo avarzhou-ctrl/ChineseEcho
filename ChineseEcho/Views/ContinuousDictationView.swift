@@ -319,7 +319,7 @@ struct ContinuousDictationView: View {
 
     private var sessionSummary: PracticeSessionSummaryData {
         func summaryWord(_ word: VocabularyWord) -> PracticeSessionSummaryData.Word {
-            .init(id: word.persistentModelID, chinese: word.chinese, pinyin: word.pinyin)
+            .init(word: word)
         }
         return PracticeSessionSummaryData(
             gradedWordCount: attemptedWords.count,

@@ -11,7 +11,7 @@ private enum VocabularyFilter: String, CaseIterable, Identifiable {
 }
 
 // Hides dictionary notation that is useful in source data but noisy in the learning UI.
-private extension String {
+extension String {
     var vocabularyDefinitionDisplayText: String {
         let value = tingXieTrimmed
         for prefix in ["(lit.)", "lit."] where value.lowercased().hasPrefix(prefix) {
@@ -796,10 +796,12 @@ private struct VocabularyInspector: View {
 }
 
 // Presents one example with the studied vocabulary visually anchored in both languages.
-private struct ContextualSentenceCard: View {
+struct ContextualSentenceCard: View {
     let example: ContextualSentence
     let chineseVocabulary: String
     let englishMeaning: String
+    // Hover previews reuse this card at a smaller scale than the inspector.
+    var compact = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
@@ -813,8 +815,8 @@ private struct ContextualSentenceCard: View {
                     .lineSpacing(2)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(.horizontal, compact ? 12 : 16)
+        .padding(.vertical, compact ? 10 : 14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             TingXiePalette.lightGreenSurface,
@@ -830,7 +832,7 @@ private struct ContextualSentenceCard: View {
         highlightedText(
             example.chinese,
             term: chineseVocabulary,
-            size: 18
+            size: compact ? 15 : 18
         )
     }
 
@@ -838,7 +840,7 @@ private struct ContextualSentenceCard: View {
         let recordedTerm = example.englishVocabulary?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         if let recordedTerm, !recordedTerm.isEmpty {
-            return highlightedText(example.english, term: recordedTerm, size: 14)
+            return highlightedText(example.english, term: recordedTerm, size: englishSize)
         }
 
         let matchingTerm = englishMeaningCandidates.first {
@@ -847,9 +849,11 @@ private struct ContextualSentenceCard: View {
         return highlightedText(
             example.english,
             term: matchingTerm ?? "",
-            size: 14
+            size: englishSize
         )
     }
+
+    private var englishSize: CGFloat { compact ? 12 : 14 }
 
     private var englishMeaningCandidates: [String] {
         englishMeaning
@@ -927,7 +931,7 @@ private struct WordTags: View {
 }
 
 // Renders a single vocabulary tag as a compact capsule.
-private struct TagLabel: View {
+struct TagLabel: View {
     let text: String
     let color: Color
     let compact: Bool

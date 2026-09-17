@@ -171,6 +171,8 @@ Continuous dictation speaks only the vocabulary word, then leaves an adjustable 
 
 After the final writing interval, show **Ready to check your answers?** and an explicit **Check Answers** action. The answer sheet preserves playback order and numbers, with Chinese, pinyin, English meaning, and one **Missed** checkbox per attempted word. Explain that unchecked answers become correct only when **Save Results** is pressed. The save button previews correct and missed counts. Draft marking never changes mastery, accuracy, or review dates.
 
+Both summary word lists support a hover preview. Resting the pointer on a learned or missed word for roughly four-tenths of a second opens a compact Vocabulary Hub card beside it: the characters, pinyin, a playback control, the Idiom/Missed tags, the meaning, the learner hint, and the first saved contextual sentence. The card omits generation, editing, and mastery controls—it is a reading surface only—and stays open while the pointer moves onto it so the word can be played. Learned-list cards open toward the leading edge and missed-list cards toward the trailing edge so neither covers the other list. The lists remain fully readable without hovering, and each row exposes its characters, pinyin, and meaning to assistive technology.
+
 **Finish & Check** can end listening early. Only words whose speech finished appear in marking; unheard words remain ungraded. The ready screen can continue listening. Results reuse the original session-summary page with Accuracy, Learned, and Missed metrics, both word lists, **Practice Missed Words**, and **Return to Sets**. Early finishes show **Session So Far** and **Continue Session** to practice the remaining words.
 
 Save the answer sheet through one background SwiftData transaction, rolling back on failure. Persist draft selections and a stable submission timestamp before saving; retrying cannot advance review schedules or analytics twice. Backups preserve draft marking and analytics receipts. Completed submissions clear their checkpoint; interrupted listening and marking remain resumable.
@@ -306,6 +308,8 @@ New work should compose or extend these existing elements before creating parall
 - `SlidingFilterBar`
 - `WordTags`
 - `TagLabel`
+- `ContextualSentenceCard`
+- `VocabularyPreviewCard`
 - `SettingsCard`
 - `FlowLayout`
 
@@ -391,6 +395,8 @@ Disabled controls retain their semantic color at reduced opacity, and pressed co
 | Skeleton loading system | `ChineseEcho/Views/SkeletonLoadingView.swift` |
 | Dictation workflow | `ChineseEcho/Views/SmartDictationView.swift` |
 | Vocabulary review and Settings | `ChineseEcho/Views/VocabularyHubView.swift` |
+| Continuous dictation | `ChineseEcho/Views/ContinuousDictationView.swift` |
+| Compact word hover preview | `ChineseEcho/Views/VocabularyPreviewCard.swift` |
 | Speech diagnostic UI | `ChineseEcho/Views/SpeechTestView.swift` |
 | Local-model diagnostic UI | `ChineseEcho/Views/LLMTestView.swift` |
 | Set and word models | `ChineseEcho/Models/DictationSet.swift`, `ChineseEcho/Models/VocabularyWord.swift` |

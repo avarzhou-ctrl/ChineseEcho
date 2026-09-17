@@ -1019,11 +1019,9 @@ private struct PracticeGradeAction {
 
 // Freezes the current session results so the summary stays stable while it is visible.
 struct PracticeSessionSummaryData {
-    struct Word: Identifiable {
-        let id: PersistentIdentifier
-        let chinese: String
-        let pinyin: String
-    }
+    // The summary lists reuse the hover-preview snapshot so each row can open the
+    // compact Vocabulary Hub card without refetching a possibly edited record.
+    typealias Word = VocabularyPreviewSnapshot
 
     let gradedWordCount: Int
     let availableWordCount: Int
@@ -1882,11 +1880,11 @@ private struct PracticeSessionView: View {
         }
         let learnedWords = resultWords.compactMap { action, word -> PracticeSessionSummaryData.Word? in
             guard !action.markedMissed else { return nil }
-            return .init(id: action.wordID, chinese: word.chinese, pinyin: word.pinyin)
+            return .init(word: word)
         }
         let missedWords = resultWords.compactMap { action, word -> PracticeSessionSummaryData.Word? in
             guard action.markedMissed else { return nil }
-            return .init(id: action.wordID, chinese: word.chinese, pinyin: word.pinyin)
+            return .init(word: word)
         }
         summary = PracticeSessionSummaryData(
             gradedWordCount: resultWords.count,
@@ -2224,13 +2222,16 @@ struct PracticeSessionSummaryView: View {
                         title: "Learned Words",
                         words: summary.learnedWords,
                         color: TingXiePalette.secondary,
-                        emptyMessage: "No words marked known yet."
+                        emptyMessage: "No words marked known yet.",
+                        previewArrowEdge: .leading
                     )
                     SessionSummaryWordList(
                         title: "Missed Words",
                         words: summary.missedWords,
                         color: TingXiePalette.missed,
-                        emptyMessage: "No missed words this session."
+                        emptyMessage: "No missed words this session.",
+                        marksWordsMissed: true,
+                        previewArrowEdge: .trailing
                     )
                 }
 
@@ -2306,6 +2307,9 @@ private struct SessionSummaryWordList: View {
     let words: [PracticeSessionSummaryData.Word]
     let color: Color
     let emptyMessage: String
+    // Missed rows must show the Missed tag even before the record itself is updated.
+    var marksWordsMissed = false
+    var previewArrowEdge: Edge = .trailing
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -2329,6 +2333,16 @@ private struct SessionSummaryWordList: View {
                             .foregroundStyle(TingXiePalette.onSurfaceVariant)
                         Spacer()
                     }
+                    .contentShape(Rectangle())
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(
+                        "\(word.chinese), \(word.pinyin.isEmpty ? "no pinyin" : word.pinyin), \(word.meaningText)"
+                    )
+                    .vocabularyHoverPreview(
+                        word,
+                        showsMissed: marksWordsMissed,
+                        arrowEdge: previewArrowEdge
+                    )
                 }
             }
         }
