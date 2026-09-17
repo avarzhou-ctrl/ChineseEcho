@@ -5,6 +5,7 @@ import SwiftData
 struct ContinuousDictationView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let title: String
     let words: [VocabularyWord]
     let initialSession: SavedPracticeSession
@@ -17,6 +18,8 @@ struct ContinuousDictationView: View {
     @State private var audio = SpeechAudioEngine()
     @State private var countdownTask: Task<Void, Never>?
     @State private var remainingSeconds: Int?
+    // Absolute end of the current writing window so the gauge can drain smoothly between ticks.
+    @State private var writingDeadline: Date?
     @State private var repetitionsLeft = 0
     @State private var isPaused = true
     @State private var isSaving = false
@@ -190,15 +193,8 @@ struct ContinuousDictationView: View {
             .font(.callout)
             Spacer()
             HStack(spacing: 24) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("\(draft.heardWordIDs.count) of \(queue.count) words played")
-                        .font(.callout)
-                    ProgressView(value: Double(draft.heardWordIDs.count), total: Double(max(queue.count, 1)))
-                        .progressViewStyle(DictationProgressBarStyle())
-                        .accessibilityLabel("Words played")
-                        .accessibilityValue("\(draft.heardWordIDs.count) of \(queue.count)")
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                writingTimeGauge
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Button(isShuffled ? "Shuffled" : "Shuffle", systemImage: "shuffle", action: shuffle)
                     .disabled(!draft.heardWordIDs.isEmpty || index != 0)
                     .buttonStyle(TingXieButtonStyle(variant: .quiet))
@@ -207,6 +203,29 @@ struct ContinuousDictationView: View {
                     .buttonStyle(TingXieButtonStyle(variant: .secondary))
             }
         }
+    }
+
+    // Drains across the writing window so the wait for each word is visible without a counter.
+    private var writingTimeGauge: some View {
+        let total = Double(max(draft.writingSeconds, 1))
+        return Group {
+            if let remaining = remainingSeconds {
+                if let writingDeadline, !isPaused, !reduceMotion {
+                    TimelineView(.animation) { context in
+                        let left = max(writingDeadline.timeIntervalSince(context.date), 0)
+                        DictationProgressBar(fraction: left / total)
+                    }
+                } else {
+                    DictationProgressBar(fraction: Double(remaining) / total)
+                }
+            } else {
+                // The full writing window is still ahead while the word is being read.
+                DictationProgressBar(fraction: 1)
+            }
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Writing time remaining")
+        .accessibilityValue(remainingSeconds.map { "\($0) seconds" } ?? "Full, the word is still playing")
     }
 
     private var readyView: some View {
@@ -312,6 +331,7 @@ struct ContinuousDictationView: View {
 
     private func pause() {
         isPaused = true
+        writingDeadline = nil
         countdownTask?.cancel()
         countdownTask = nil
         audio.stop()
@@ -343,6 +363,7 @@ struct ContinuousDictationView: View {
 
     private func startCountdown() {
         countdownTask?.cancel()
+        writingDeadline = Date().addingTimeInterval(Double(remainingSeconds ?? draft.writingSeconds))
         countdownTask = Task { @MainActor in
             while !Task.isCancelled, !isPaused, let remaining = remainingSeconds, remaining > 0 {
                 do { try await Task.sleep(for: .seconds(1)) } catch { return }
@@ -459,11 +480,11 @@ struct ContinuousDictationView: View {
 }
 
 // Gives the listening footer a clear, full-width track in both appearances.
-private struct DictationProgressBarStyle: ProgressViewStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+private struct DictationProgressBar: View {
+    let fraction: Double
 
-    func makeBody(configuration: Configuration) -> some View {
-        let progress = min(max(configuration.fractionCompleted ?? 0, 0), 1)
+    var body: some View {
+        let progress = min(max(fraction, 0), 1)
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 Capsule().fill(TingXiePalette.outlineVariant.opacity(0.55))
@@ -473,6 +494,5 @@ private struct DictationProgressBarStyle: ProgressViewStyle {
             }
         }
         .frame(height: 8)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: progress)
     }
 }
