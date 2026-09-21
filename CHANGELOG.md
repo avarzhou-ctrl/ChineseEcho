@@ -68,3 +68,9 @@
 - **2026-09-07**: Removed the stale in-project build and package cache from Git tracking after the workspace rename, ignored future `build/` and `dist/` output, and verified a clean ChineseEcho macOS build. Files edited: `.gitignore`, `CHANGELOG.md`; generated cache moved to `/tmp/ChineseEcho-stale-build-before-folder-rename`.
 
 - **2026-09-07**: Widened the bamboo app-icon margins by restoring the full uncropped square composition and regenerated all ten macOS icon sizes without altering the artwork. Files edited: `bamboo-logo-1024.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_*.png`, `CHANGELOG.md`.
+
+- **2026-09-21**: Replaced stiff, promotional, redundant, and misleading interface copy across onboarding, dictation, flashcards, vocabulary, settings, backup restore, and save recovery with shorter action-focused language; removed the redundant Settings help panel. Files edited: `ChineseEcho/Views/ContinuousDictationView.swift`, `ChineseEcho/Views/FirstRunTutorialView.swift`, `ChineseEcho/Views/SettingsDashboard.swift`, `ChineseEcho/Views/SkeletonLoadingView.swift`, `ChineseEcho/Views/SmartDictationView.swift`, `ChineseEcho/Views/TingXieTheme.swift`, `ChineseEcho/Views/VocabularyHubView.swift`, `ChineseEcho/Views/VocabularyPreviewCard.swift`, `CHANGELOG.md`.
+
+- **2026-09-21**: Added a subtle full-row hover highlight to the Missed Words list while preserving its stronger selected-row treatment. Files edited: `ChineseEcho/Views/VocabularyHubView.swift`, `CHANGELOG.md`.
+
+- **2026-09-21**: Fixed Dictation Shuffle becoming unavailable after the first spoken word by allowing the unplayed queue to be reordered throughout listening and guaranteeing a visibly different order when multiple words remain. Files edited: `ChineseEcho/Views/ContinuousDictationView.swift`, `CHANGELOG.md`.

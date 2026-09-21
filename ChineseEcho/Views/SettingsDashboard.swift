@@ -40,19 +40,7 @@ struct SettingsDashboard: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            WorkspaceHeader(
-                title: "Settings",
-                info: WorkspaceInfo(
-                    title: "About Settings",
-                    symbol: "gearshape",
-                    summary: "These preferences are stored locally on this Mac and apply to future ChineseEcho practice sessions.",
-                    tips: [
-                        "Speech choices change the voice, pace, pitch, and pause used during dictation.",
-                        "Local AI manages the private on-device model used for enrichment and contextual sentences.",
-                        "Practice & Backup controls card playback and moves your local learning library between Macs."
-                    ]
-                )
-            )
+            WorkspaceHeader(title: "Settings")
 
             ScrollView {
                 VStack(spacing: 18) {
@@ -132,7 +120,7 @@ struct SettingsDashboard: View {
         SettingsSectionCard(
             title: "Speech & Pronunciation",
             symbol: "speaker.wave.2.fill",
-            summary: "Choose how native Apple speech reads every dictation word."
+            summary: "Choose the voice used for dictation."
         ) {
             Picker("Pronunciation", selection: $pronunciationProfile) {
                 Text("Mainland Mandarin").tag("Mainland Mandarin")
@@ -189,7 +177,7 @@ struct SettingsDashboard: View {
         SettingsSectionCard(
             title: "Practice & Backup",
             symbol: "externaldrive.fill",
-            summary: "Control card playback and import or export your local learning library."
+            summary: "Choose how cards behave and back up your sets and progress."
         ) {
             Stepper(value: $repeatCount, in: 1...5) {
                 Text("Repeat each word \(repeatCount) time\(repeatCount == 1 ? "" : "s")")
@@ -235,7 +223,7 @@ struct SettingsDashboard: View {
         SettingsSectionCard(
             title: "Local AI",
             symbol: "cpu.fill",
-            summary: "Manage the private on-device model used for vocabulary enrichment and contextual sentences."
+            summary: "Manage the on-device model that adds word details and example sentences."
         ) {
             HStack(alignment: .center, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -468,7 +456,7 @@ private struct BackupRestorePreview: View {
                         in: RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius)
                     )
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Preview Local Restore")
+                    Text("Review Backup")
                         .font(TingXieTypography.sectionTitle)
                     Text("Backup created \(backup.createdAt.formatted(date: .abbreviated, time: .shortened))")
                         .font(TingXieTypography.metadata)
@@ -490,17 +478,17 @@ private struct BackupRestorePreview: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Label("Included in this restore", systemImage: "checkmark.circle.fill")
+                Label("This backup includes", systemImage: "checkmark.circle.fill")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(TingXiePalette.accent)
-                Text("Set names and dates, vocabulary, contextual sentences, breakdowns, tags, learner hints, missed-word status, and learning progress.")
+                Text("Your sets, words, examples, hints, missed flags, and progress.")
                     .font(.system(size: 12))
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             Label(
-                "Restoring replaces the current learning library and progress on this Mac. Export a backup first if you may need the current data later.",
+                "Restoring replaces your current sets and progress. Export a backup first if you want to keep a copy.",
                 systemImage: "exclamationmark.triangle.fill"
             )
             .font(.system(size: 12, weight: .medium))

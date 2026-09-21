@@ -116,7 +116,7 @@ struct VocabularyPreviewCard: View {
                     .padding(.top, 5)
             }
 
-            PreviewSectionTitle("In Context")
+            PreviewSectionTitle("Example Sentences")
                 .padding(.top, 14)
 
             if let previewSentence {
@@ -128,7 +128,7 @@ struct VocabularyPreviewCard: View {
                 )
                 .padding(.top, 7)
             } else {
-                Text("No sentences generated yet — open the Vocabulary Hub to generate them.")
+                Text("No examples yet — open Vocabulary to create them.")
                     .font(TingXieTypography.metadata)
                     .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.75))
                     .fixedSize(horizontal: false, vertical: true)

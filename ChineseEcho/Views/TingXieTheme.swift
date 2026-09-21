@@ -378,7 +378,7 @@ private struct WordOfDayCard: View {
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(.white.opacity(0.12), lineWidth: 1)
             }
-            .help(word == nil ? "Save vocabulary to receive a daily word." : "Open in Vocabulary Hub")
+            .help(word == nil ? "Save vocabulary to receive a daily word." : "Open in Vocabulary")
             .accessibilityLabel(accessibilityLabel(word))
         }
     }

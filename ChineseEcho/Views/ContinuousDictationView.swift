@@ -64,7 +64,7 @@ struct ContinuousDictationView: View {
                         symbol: "checklist",
                         summary: "Review your saved dictation results and choose what to practice next.",
                         tips: [
-                            "Learned and missed words reflect the answers you checked in this session.",
+                            "Correct and missed words reflect the answers you checked in this session.",
                             "Practice Missed Words starts a new dictation with only those words.",
                             "Continue Session plays the remaining words after an early finish."
                         ]
@@ -196,8 +196,9 @@ struct ContinuousDictationView: View {
                 writingTimeGauge
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Button(isShuffled ? "Shuffled" : "Shuffle", systemImage: "shuffle", action: shuffle)
-                    .disabled(!draft.heardWordIDs.isEmpty || index != 0)
+                    .disabled(!canShuffle)
                     .buttonStyle(TingXieButtonStyle(variant: .quiet))
+                    .help("Shuffle the remaining words")
                 Button("Finish & Check", action: finishListening)
                     .disabled(draft.heardWordIDs.isEmpty)
                     .buttonStyle(TingXieButtonStyle(variant: .secondary))
@@ -268,7 +269,7 @@ struct ContinuousDictationView: View {
                     .disabled(isSaving || attemptedWords.isEmpty)
             }
             if draft.submissionDate != nil && !isSaving {
-                Text("Your answers are locked for this save. Retry Save Results to finish safely.")
+                Text("Your answers are still here. Try saving again.")
                     .font(.caption)
             }
         }
@@ -411,12 +412,28 @@ struct ContinuousDictationView: View {
     }
 
     private func shuffle() {
-        guard draft.heardWordIDs.isEmpty, index == 0 else { return }
-        pause()
-        queue.shuffle()
+        guard canShuffle else { return }
+        let startIndex = hasHeardCurrent ? index + 1 : index
+        let remaining = Array(queue[startIndex...])
+        var shuffled = remaining.shuffled()
+        // A random shuffle can return the same order, which makes the action look broken.
+        if shuffled == remaining {
+            shuffled.append(shuffled.removeFirst())
+        }
+        queue.replaceSubrange(startIndex..., with: shuffled)
         isShuffled = true
         persist()
-        playCurrentWord()
+
+        // If the current word has not finished, restart playback with the newly shuffled first word.
+        if !hasHeardCurrent {
+            playCurrentWord()
+        }
+    }
+
+    private var canShuffle: Bool {
+        guard draft.phase == .listening else { return false }
+        let startIndex = hasHeardCurrent ? index + 1 : index
+        return queue.count - startIndex > 1
     }
 
     private func beginFollowUp(_ ids: [UUID]) {

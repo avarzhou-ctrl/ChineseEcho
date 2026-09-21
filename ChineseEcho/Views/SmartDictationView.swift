@@ -120,11 +120,11 @@ struct SmartDictationView: View {
                             info: WorkspaceInfo(
                                 title: "About Smart Dictation",
                                 symbol: "waveform",
-                                summary: "Build focused listening sets, practice them with native Mandarin speech, and collect the words that need more review.",
+                                summary: "Create sets, listen to each word, and review anything you miss.",
                                 tips: [
-                                    "Use the floating plus button to enter Chinese words, then let the local AI fill in pinyin and English translations.",
-                                    "During practice, select the card or press Return to flip it and check the characters.",
-                                    "Flag difficult words as missed; they will appear in the Vocabulary Hub for focused review."
+                                    "Use + to create or import a set.",
+                                    "Press Return to reveal a flashcard.",
+                                    "Missed words also appear in Vocabulary."
                                 ]
                             )
                         )
@@ -463,12 +463,12 @@ private struct DictationHero: View {
     var body: some View {
         HStack(spacing: 28) {
             VStack(alignment: .leading, spacing: 0) {
-                Text("Master your listening with focused audio drills.")
+                Text("Practice listening with your own words.")
                     .font(.system(size: 25, weight: .medium))
                     .foregroundStyle(TingXiePalette.accent)
                     .frame(maxWidth: 480, alignment: .leading)
 
-                Text("Build a custom set from the Chinese you are learning, then listen, flip, and review at your own pace.")
+                Text("Create a set, then practice by dictation or with flashcards.")
                     .font(.system(size: 15))
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
                     .lineSpacing(3)
@@ -798,7 +798,7 @@ private struct DictationSetCollection: View {
                         .foregroundStyle(TingXiePalette.secondary.opacity(0.7))
                     Text(isSearching ? "No matching sets" : "No Sessions Yet")
                         .font(TingXieTypography.sectionTitle)
-                    Text(isSearching ? "Try a different set name or vocabulary word." : "Create your first custom practice round to start testing your vocabulary.")
+                    Text(isSearching ? "Try a different set name or vocabulary word." : "Create a set to start practicing.")
                         .font(TingXieTypography.body)
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                         .multilineTextAlignment(.center)
@@ -1136,12 +1136,12 @@ private struct PracticeSessionView: View {
                 info: WorkspaceInfo(
                     title: "About Practice Sessions",
                     symbol: "rectangle.on.rectangle.angled",
-                    summary: "Choose Dictation to write without interruptions and check all answers at the end, or Vocab Review to reveal and mark one word at a time.",
+                    summary: "Choose Dictation to write without interruptions and check all answers at the end, or Flashcards to reveal and mark one word at a time.",
                     tips: [
                         "Dictation reads numbered words automatically, with adjustable writing time between words.",
                         "In Dictation, Space pauses or resumes; Repeat plays the word again and restarts writing time.",
                         "At the end, select incorrect or blank answers and save the results together.",
-                        "In Vocab Review, flip with Return or Space, request hints, and mark each revealed word Known or Missed."
+                        "In Flashcards, flip with Return or Space, request hints, and mark whether you got each word."
                     ]
                 ),
                 onClose: closeSession
@@ -1361,8 +1361,8 @@ private struct PracticeSessionView: View {
                     PracticeGradeButton(
                         symbol: "xmark",
                         color: TingXiePalette.missed,
-                        accessibilityLabel: "Mark Missed",
-                        help: "Mark Missed (X)",
+                        accessibilityLabel: "Missed it",
+                        help: "Missed it (X)",
                         shortcut: "x"
                     ) {
                         gradeCurrentWord(asMissed: true)
@@ -1371,8 +1371,8 @@ private struct PracticeSessionView: View {
                     PracticeGradeButton(
                         symbol: "checkmark",
                         color: TingXiePalette.secondary,
-                        accessibilityLabel: "Mark Known",
-                        help: "Mark Known (Right Arrow)",
+                        accessibilityLabel: "Got it",
+                        help: "Got it (Right Arrow)",
                         shortcut: .rightArrow
                     ) {
                         gradeCurrentWord(asMissed: false)
@@ -1973,7 +1973,7 @@ private struct PracticeSessionStartView: View {
                 VStack(spacing: 16) {
                     Picker("Practice mode", selection: $usesContinuousDictation) {
                         Text("Dictation").tag(true)
-                        Text("Vocab Review").tag(false)
+                        Text("Flashcards").tag(false)
                     }
                     .pickerStyle(.segmented)
                     Text(usesContinuousDictation
@@ -2204,7 +2204,7 @@ struct PracticeSessionSummaryView: View {
                         color: TingXiePalette.accent
                     )
                     SessionSummaryMetric(
-                        title: "Learned",
+                        title: "Known",
                         value: "\(summary.learnedWords.count)",
                         symbol: "checkmark.circle.fill",
                         color: TingXiePalette.secondary
@@ -2219,7 +2219,7 @@ struct PracticeSessionSummaryView: View {
 
                 HStack(alignment: .top, spacing: 14) {
                     SessionSummaryWordList(
-                        title: "Learned Words",
+                        title: "Known Words",
                         words: summary.learnedWords,
                         color: TingXiePalette.secondary,
                         emptyMessage: "No words marked known yet.",
@@ -2761,7 +2761,7 @@ struct NewDictationSetSheet: View {
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
-                            Label("Fill Vocabulary Details", systemImage: "text.book.closed")
+                            Label("Add Words", systemImage: "text.book.closed")
                                 .font(.system(size: 15, weight: .bold))
                                 .foregroundStyle(TingXiePalette.accent)
 
@@ -2793,7 +2793,7 @@ struct NewDictationSetSheet: View {
                                     } else if isGenerating {
                                         ProgressView().controlSize(.small)
                                     } else {
-                                        Label("Fill Details", systemImage: "wand.and.stars")
+                                        Label("Look Up Details", systemImage: "wand.and.stars")
                                             .lineLimit(1)
                                             .fixedSize(horizontal: true, vertical: false)
                                     }
@@ -2862,7 +2862,7 @@ struct NewDictationSetSheet: View {
                         ContentUnavailableView(
                             "No Words Yet",
                             systemImage: "text.badge.plus",
-                            description: Text("Generate suggestions, import lines, or add a word manually.")
+                            description: Text("Enter Chinese words, import a list, or add a word manually.")
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
@@ -2914,7 +2914,7 @@ struct NewDictationSetSheet: View {
             Divider().overlay(TingXiePalette.outlineVariant.opacity(0.5))
 
             HStack(spacing: 14) {
-                Text("Dictionary lookups and AI fallbacks stay on this Mac and are always reviewed before saving.")
+                Text("Dictionary lookups and Local AI run on this Mac. Review the results before saving.")
                     .font(.system(size: 10))
                     .foregroundStyle(TingXiePalette.onSurfaceVariant)
                 Spacer()
@@ -2941,7 +2941,7 @@ struct NewDictationSetSheet: View {
                     Label("Customize Vocabulary Cards", systemImage: "rectangle.on.rectangle.angled")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(TingXiePalette.accent)
-                    Text("Choose what learners see after revealing a card in this set. This setting stays with the set when it is duplicated, backed up, or restored.")
+                    Text("Choose what appears after you reveal a card.")
                         .font(TingXieTypography.body)
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                         .fixedSize(horizontal: false, vertical: true)
@@ -3048,7 +3048,7 @@ struct NewDictationSetSheet: View {
             return "Add at least one word before saving."
         }
         if isGenerating {
-            return "Wait for Fill Details to finish before saving."
+            return "Wait for the word lookup to finish before saving."
         }
         return nil
     }

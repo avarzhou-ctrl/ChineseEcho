@@ -108,7 +108,7 @@ struct VocabularyHubView: View {
     var body: some View {
         VStack(spacing: 0) {
             WorkspaceHeader(
-                title: "Your Vocabulary Hub",
+                title: "Vocabulary",
                 searchText: $searchText,
                 searchPrompt: "Search words, meanings, or tags…",
                 searchAccessibilityLabel: "Search vocabulary, translations, and tags",
@@ -117,13 +117,13 @@ struct VocabularyHubView: View {
                 onSearchSubmit: openHighlightedSearchResult,
                 onMoveSearchSelection: moveSearchSelection,
                 info: WorkspaceInfo(
-                    title: "About the Vocabulary Hub",
+                    title: "About Vocabulary",
                     symbol: "character.book.closed",
-                    summary: "Review every saved word, focus on missed items, listen again, and enrich vocabulary with private on-device sentence generation.",
+                    summary: "Browse words from every set, revisit missed words, and create example sentences with Local AI.",
                     tips: [
-                        "Use the full-width tabs to switch between all words, missed words, and idioms.",
-                        "Red text and a Missed tag identify words marked during dictation practice.",
-                        "Mark As Learned removes only the missed status; the word remains safely in your vocabulary."
+                        "Use the tabs to show all words, missed words, or idioms.",
+                        "Select a word to hear it or view examples.",
+                        "Remove from Missed clears the flag without deleting the word."
                     ]
                 )
             )
@@ -192,7 +192,7 @@ struct VocabularyHubView: View {
             Button("Cancel", role: .cancel) { wordPendingDeletion = nil }
             Button("Remove", role: .destructive) { deletePendingWord() }
         } message: {
-            Text("This removes the word from its dictation set and the Vocabulary Hub.")
+            Text("This removes the word from its dictation set and Vocabulary.")
         }
         .alert(
             "Couldn’t Update Vocabulary",
@@ -229,6 +229,7 @@ struct VocabularyHubView: View {
                                         word: word,
                                         isSelected: word.persistentModelID == selectedWord?.persistentModelID,
                                         isMissed: isEffectivelyMissed(word),
+                                        showsHoverHighlight: filter == .missed,
                                         onSelect: { selectWord(word) },
                                         onEdit: { editingWord = word },
                                         onToggleMissed: { setMissed(!isEffectivelyMissed(word), for: word) },
@@ -299,7 +300,7 @@ struct VocabularyHubView: View {
         case .all:
             return "Words from your dictation sets will appear here."
         case .missed:
-            return "Words you flag during practice will appear here for focused review."
+            return "Words you flag during practice will appear here to practice again."
         case .idioms:
             return "Four-character entries saved as idioms will appear here."
         }
@@ -424,10 +425,12 @@ private struct VocabularyFilterBar: View {
 // Displays one vocabulary record and its contextual row actions.
 private struct VocabularyRow: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isHovered = false
 
     let word: VocabularyWord
     let isSelected: Bool
     let isMissed: Bool
+    let showsHoverHighlight: Bool
     let onSelect: () -> Void
     let onEdit: () -> Void
     let onToggleMissed: () -> Void
@@ -460,7 +463,7 @@ private struct VocabularyRow: View {
             Menu {
                 Button("Edit Word", systemImage: "pencil", action: onEdit)
                 Button(
-                    isMissed ? "Mark As Learned" : "Mark Missed",
+                    isMissed ? "Remove from Missed" : "Mark as Missed",
                     systemImage: isMissed ? "checkmark.circle" : "flag",
                     action: onToggleMissed
                 )
@@ -486,7 +489,7 @@ private struct VocabularyRow: View {
                 .padding(.trailing, 16)
         }
         .background(
-            isSelected ? TingXiePalette.lightGreenSurface : Color.clear,
+            rowBackground,
             in: RoundedRectangle(cornerRadius: 13)
         )
         .overlay {
@@ -499,6 +502,23 @@ private struct VocabularyRow: View {
             TingXieMotion.contentChange(reduceMotion: reduceMotion),
             value: isSelected
         )
+        .animation(
+            TingXieMotion.contentChange(reduceMotion: reduceMotion),
+            value: isHovered
+        )
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+
+    private var rowBackground: Color {
+        if isSelected {
+            return TingXiePalette.lightGreenSurface
+        }
+        if showsHoverHighlight && isHovered {
+            return TingXiePalette.surfaceContainer.opacity(0.72)
+        }
+        return .clear
     }
 }
 
@@ -662,7 +682,7 @@ private struct VocabularyInspector: View {
                         }
 
                         HStack(alignment: .center) {
-                            InspectorSectionTitle("Contextual Sentences")
+                            InspectorSectionTitle("Example Sentences")
                             Spacer()
                             Button(action: regenerateSentence) {
                                 if modelDownloadCoordinator.phase == .downloading {
@@ -701,7 +721,7 @@ private struct VocabularyInspector: View {
                             .accessibilityElement(children: .ignore)
                             .accessibilityLabel("Generating contextual sentences")
                         } else if contextualSentences.isEmpty {
-                            Text("No sentences generated yet")
+                            Text("No examples yet")
                                 .font(TingXieTypography.body)
                                 .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.7))
                                 .padding(.top, 10)
@@ -727,15 +747,8 @@ private struct VocabularyInspector: View {
 
                         if isMissed {
                             VStack(alignment: .leading, spacing: 10) {
-                                Label(
-                                    "This word is in Missed Words.",
-                                    systemImage: "flag.fill"
-                                )
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(TingXiePalette.missed)
-
                                 Button(
-                                    "Mark As Learned",
+                                    "Remove from Missed",
                                     systemImage: "checkmark.circle"
                                 ) {
                                     onMarkAsLearned(word)

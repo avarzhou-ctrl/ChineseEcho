@@ -294,7 +294,7 @@ private extension AppSection {
     var accessibilityTitle: String {
         switch self {
         case .dictation: "Smart Dictation"
-        case .vocabulary: "Vocabulary Hub"
+        case .vocabulary: "Vocabulary"
         case .settings: "Settings"
         }
     }

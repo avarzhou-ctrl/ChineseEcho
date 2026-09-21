@@ -85,32 +85,32 @@ struct FirstRunTutorialView: View {
             case .welcome: "Welcome to ChineseEcho"
             case .dictationNavigation: "Start in Smart Dictation"
             case .createSet: "Create your first set"
-            case .vocabularyNavigation: "Keep every word together"
-            case .vocabularyFilters: "Focus your review"
-            case .settingsNavigation: "Make practice yours"
-            case .voicePreview: "Tune the listening experience"
-            case .localAI: "Optional private Local AI"
+            case .vocabularyNavigation: "Find all your words"
+            case .vocabularyFilters: "Filter your vocabulary"
+            case .settingsNavigation: "Adjust your settings"
+            case .voicePreview: "Preview a voice"
+            case .localAI: "Local AI is optional"
             }
         }
 
         var detail: String {
             switch self {
             case .welcome:
-                "Let’s take a quick tour of the real app. You’ll see where to build listening sets, review vocabulary, and adjust speech."
+                "Here’s where to create a set, practice words, and adjust speech."
             case .dictationNavigation:
-                "Use Smart Dictation for audio-first practice, due reviews, and learning progress."
+                "Create listening sets and review words when they’re due."
             case .createSet:
-                "Select this plus button whenever you want to add Chinese words or import a prepared vocabulary list."
+                "Use this plus button to type Chinese words or import a list."
             case .vocabularyNavigation:
-                "The Vocabulary Hub gathers words from every set, including anything you mark as missed during practice."
+                "Vocabulary collects words from every set and flags the ones you miss."
             case .vocabularyFilters:
-                "Switch between All Words, Missed Words, and Idioms to find exactly what you want to revisit."
+                "Show all words, missed words, or idioms."
             case .settingsNavigation:
-                "Settings contains speech, Local AI, practice, and local backup controls."
+                "Change the voice and practice options, manage Local AI, or back up your data."
             case .voicePreview:
-                "Choose a Mainland or Taiwanese profile, adjust speed and pitch, then use Preview Voice to hear the result."
+                "Choose Mainland or Taiwanese Mandarin, adjust the sound, then press Preview Voice."
             case .localAI:
-                "The local model can fill vocabulary details and create bilingual contextual sentences entirely on this Mac."
+                "It can add pinyin, meanings, and example sentences without sending your text off this Mac."
             }
         }
     }
@@ -328,7 +328,7 @@ struct FirstRunTutorialView: View {
             choiceButton(
                 .notNow,
                 title: "Not Now",
-                detail: "Speech, manual entry, practice, grading, and reviews remain available.",
+                detail: "Download it later in Settings. Dictation and manual entry work without it.",
                 symbol: "clock.fill"
             )
 
