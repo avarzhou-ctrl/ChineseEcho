@@ -83,10 +83,7 @@ struct ContinuousDictationView: View {
             }
 
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.callout)
-                    .foregroundStyle(TingXiePalette.missed)
-                    .accessibilityLabel("Error: \(errorMessage)")
+                AccessibleErrorMessage(message: errorMessage)
             }
         }
         .padding(draft.phase == .results ? 0 : 32)

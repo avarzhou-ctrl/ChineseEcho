@@ -2722,11 +2722,7 @@ struct NewDictationSetSheet: View {
                                 Text("Set Name")
                                     .font(.system(size: 13, weight: .semibold))
                                 if let errorMessage {
-                                    Label(errorMessage, systemImage: "exclamationmark.circle.fill")
-                                        .font(.system(size: 10, weight: .medium))
-                                        .foregroundStyle(TingXiePalette.missed)
-                                        .lineLimit(1)
-                                        .help(errorMessage)
+                                    AccessibleErrorMessage(message: errorMessage)
                                 }
                             }
                             HStack(spacing: 10) {
@@ -3159,8 +3155,7 @@ struct NewDictationSetSheet: View {
         repairModelOutput = ""
 
         Task {
-            do {
-                let dictionaryEntries = (try? await CCCEDICTDictionary.shared.entries(for: words)) ?? [:]
+            let dictionaryEntries = (try? await CCCEDICTDictionary.shared.entries(for: words)) ?? [:]
                 let unresolvedWords = words.filter { dictionaryEntries[$0] == nil }
                 var enrichedByWord = Dictionary(
                     uniqueKeysWithValues: dictionaryEntries.map { word, entry in
@@ -3177,47 +3172,58 @@ struct NewDictationSetSheet: View {
                 )
 
                 if !unresolvedWords.isEmpty {
-                    let prompt = vocabularyEnrichmentPrompt(for: unresolvedWords)
-                    let response = try await generateText(prompt: prompt)
-                    initialModelOutput = response
-                    var generated = orderedEnrichment(
-                        parseVocabularyLines(response, usesSystemPinyin: true),
-                        matching: unresolvedWords
-                    )
-
-                    if generated.count != unresolvedWords.count {
-                        let repairedResponse = try await generateText(
-                            prompt: vocabularyRepairPrompt(
-                                for: response,
-                                words: unresolvedWords
-                            )
-                        )
-                        repairModelOutput = repairedResponse
-                        generated = orderedEnrichment(
-                            parseVocabularyLines(
-                                repairedResponse,
-                                usesSystemPinyin: true
-                            ),
+                    do {
+                        let prompt = vocabularyEnrichmentPrompt(for: unresolvedWords)
+                        let response = try await generateText(prompt: prompt)
+                        initialModelOutput = response
+                        let initialEntries = orderedEnrichment(
+                            parseVocabularyLines(response, usesSystemPinyin: true),
                             matching: unresolvedWords
                         )
-                    }
+                        for entry in initialEntries {
+                            enrichedByWord[entry.chinese] = entry
+                        }
 
-                    guard generated.count == unresolvedWords.count else {
-                        throw VocabularyGenerationError.invalidResponse
-                    }
-                    for entry in generated {
-                        enrichedByWord[entry.chinese] = entry
+                        let initiallyMissing = unresolvedWords.filter { enrichedByWord[$0] == nil }
+                        if !initiallyMissing.isEmpty {
+                            let repairedResponse = try await generateText(
+                                prompt: vocabularyRepairPrompt(
+                                    for: response,
+                                    words: initiallyMissing
+                                )
+                            )
+                            repairModelOutput = repairedResponse
+                            let repairedEntries = orderedEnrichment(
+                                parseVocabularyLines(
+                                    repairedResponse,
+                                    usesSystemPinyin: true
+                                ),
+                                matching: initiallyMissing
+                            )
+                            for entry in repairedEntries {
+                                enrichedByWord[entry.chinese] = entry
+                            }
+                        }
+                    } catch {
+                        errorMessage = friendlyGenerationMessage(for: error)
                     }
                 }
 
-                let generated = words.compactMap { enrichedByWord[$0] }
-                guard generated.count == words.count else {
-                    throw VocabularyGenerationError.invalidResponse
+                let missingWords = words.filter { enrichedByWord[$0] == nil }
+                draftWords = words.map { word in
+                    enrichedByWord[word] ?? DraftVocabularyWord(
+                        chinese: word,
+                        pinyin: systemPinyin(for: word) ?? "",
+                        translation: ""
+                    )
                 }
-                draftWords = generated
-            } catch {
-                errorMessage = friendlyGenerationMessage(for: error)
-            }
+
+                if !missingWords.isEmpty {
+                    let missingList = missingWords.joined(separator: ", ")
+                    let partialResultMessage = "Added every available result. Details could not be filled for: \(missingList). You can complete those fields manually."
+                    errorMessage = errorMessage.map { "\($0) \(partialResultMessage)" }
+                        ?? partialResultMessage
+                }
             isGenerating = false
         }
     }
@@ -3417,15 +3423,6 @@ private struct DraftVocabularyCardPreview: View {
     }
 }
 
-// Reports Local AI output that cannot be reconciled with the requested words.
-private enum VocabularyGenerationError: LocalizedError {
-    case invalidResponse
-
-    var errorDescription: String? {
-        "The model could not fill details for every Chinese word. Check the input and try again, or use Manual Import."
-    }
-}
-
 // Edits and reorders one vocabulary draft in the set review column.
 private struct DraftVocabularyRow: View {
     @Binding var word: DraftVocabularyWord
@@ -3444,7 +3441,7 @@ private struct DraftVocabularyRow: View {
             Image(systemName: "line.3.horizontal")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                .frame(width: 18, height: 44)
+                .frame(width: 32, height: 44)
                 .contentShape(Rectangle())
                 .onDrag(onDrag) {
                     DraftVocabularyDragPreview(word: word)

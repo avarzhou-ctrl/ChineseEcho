@@ -390,6 +390,7 @@ struct FirstRunTutorialView: View {
                         lineWidth: downloadChoice == choice ? 2 : 1
                     )
             }
+            .contentShape(RoundedRectangle(cornerRadius: TingXieControlMetrics.cardCornerRadius))
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(downloadChoice == choice ? .isSelected : [])

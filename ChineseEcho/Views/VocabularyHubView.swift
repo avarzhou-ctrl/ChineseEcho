@@ -453,6 +453,11 @@ private struct VocabularyRow: View {
                     }
 
                     Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.5))
+                        .padding(.trailing, 8)
                 }
                 .padding(.leading, 18)
                 .frame(maxWidth: .infinity, minHeight: 76)
@@ -482,11 +487,6 @@ private struct VocabularyRow: View {
             .padding(.trailing, 20)
             .help("Edit \(word.chinese)")
             .accessibilityLabel("Edit \(word.chinese)")
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.5))
-                .padding(.trailing, 16)
         }
         .background(
             rowBackground,
@@ -739,9 +739,7 @@ private struct VocabularyInspector: View {
                         }
 
                         if let generationError {
-                            Label(generationError, systemImage: "exclamationmark.triangle.fill")
-                                .font(.caption)
-                                .foregroundStyle(TingXiePalette.missed)
+                            AccessibleErrorMessage(message: generationError)
                                 .padding(.top, 10)
                         }
 
@@ -1036,9 +1034,7 @@ private struct WordEditorSheet: View {
             .padding(12)
 
             if let errorMessage {
-                Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption)
-                    .foregroundStyle(TingXiePalette.missed)
+                AccessibleErrorMessage(message: errorMessage)
                     .padding(.horizontal, 24)
             }
 

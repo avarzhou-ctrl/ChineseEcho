@@ -561,6 +561,87 @@ struct WorkspaceInfoButton: View {
     }
 }
 
+// Keeps error text readable, discoverable by VoiceOver, and available without relying on truncation.
+struct AccessibleErrorMessage: View {
+    let message: String
+    var title = "Error Details"
+
+    @State private var isShowingDetails = false
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Button {
+                isShowingDetails = true
+            } label: {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(TingXiePalette.missed)
+            .help("Show full error message")
+            .accessibilityLabel("Show error details")
+            .accessibilityHint(message)
+
+            Text(message)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(TingXiePalette.missed)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .contain)
+        .sheet(isPresented: $isShowingDetails) {
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(alignment: .top, spacing: 14) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(TingXiePalette.missed)
+
+                    Text(title)
+                        .font(.system(size: 22, weight: .semibold))
+
+                    Spacer()
+
+                    Button {
+                        isShowingDetails = false
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .buttonStyle(
+                        TingXieButtonStyle(
+                            variant: .quiet,
+                            size: .compact,
+                            isIconOnly: true
+                        )
+                    )
+                    .accessibilityLabel("Close error details")
+                }
+
+                Divider()
+
+                ScrollView {
+                    Text(message)
+                        .font(TingXieTypography.body)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                HStack {
+                    Spacer()
+                    Button("Done") { isShowingDetails = false }
+                        .buttonStyle(TingXieButtonStyle())
+                        .keyboardShortcut(.defaultAction)
+                }
+            }
+            .padding(24)
+            .frame(width: 460)
+            .frame(minHeight: 230)
+            .foregroundStyle(TingXiePalette.onBackground)
+            .background(TingXiePalette.background)
+        }
+    }
+}
+
 // Presents concise guidance without leaving the current workspace.
 private struct WorkspaceInfoSheet: View {
     @Environment(\.dismiss) private var dismiss
@@ -707,6 +788,7 @@ struct SearchField: View {
         .frame(height: 40)
         .contentShape(RoundedRectangle(cornerRadius: 12))
         .onTapGesture {
+            isFocused = true
             if !text.tingXieTrimmed.isEmpty {
                 resultsPresented?.wrappedValue = true
             }

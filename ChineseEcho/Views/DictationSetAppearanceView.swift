@@ -134,6 +134,7 @@ struct DictationSetAppearancePicker: View {
                         lineWidth: isSelected ? 1.5 : 1
                     )
             }
+            .contentShape(RoundedRectangle(cornerRadius: TingXieControlMetrics.compactCornerRadius))
         }
         .buttonStyle(.plain)
         .help(option.accessibilityName)
@@ -150,17 +151,20 @@ struct DictationSetAppearancePicker: View {
                 color: color
             )
         } label: {
-            Circle()
-                .fill(color.tint)
-                .frame(width: 24, height: 24)
-                .padding(3)
-                .overlay {
-                    Circle()
-                        .stroke(
-                            isSelected ? TingXiePalette.onBackground : Color.clear,
-                            lineWidth: 2
-                        )
-                }
+            ZStack {
+                Circle()
+                    .fill(color.tint)
+                    .frame(width: 24, height: 24)
+                    .overlay {
+                        Circle()
+                            .stroke(
+                                isSelected ? TingXiePalette.onBackground : Color.clear,
+                                lineWidth: 2
+                            )
+                    }
+            }
+            .frame(width: 38, height: 38)
+            .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .help(color.accessibilityName)

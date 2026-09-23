@@ -211,10 +211,7 @@ struct SettingsDashboard: View {
                     .foregroundStyle(TingXiePalette.accent)
             }
             if let backupError, importedBackup == nil {
-                Label(backupError, systemImage: "exclamationmark.triangle.fill")
-                    .font(.system(size: 11))
-                    .foregroundStyle(TingXiePalette.missed)
-                    .fixedSize(horizontal: false, vertical: true)
+                AccessibleErrorMessage(message: backupError)
             }
         }
     }
@@ -281,6 +278,11 @@ struct SettingsDashboard: View {
                         .foregroundStyle(TingXiePalette.onSurfaceVariant)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+            } else if case .failed(let message) = modelDownloadCoordinator.phase {
+                AccessibleErrorMessage(
+                    message: message,
+                    title: "Local AI Error"
+                )
             } else {
                 Text(modelDownloadCoordinator.statusDetail)
                     .font(.system(size: 11))
@@ -330,10 +332,7 @@ struct SettingsDashboard: View {
             }
 
             if let modelRemovalError {
-                Label(modelRemovalError, systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption)
-                    .foregroundStyle(TingXiePalette.missed)
-                    .fixedSize(horizontal: false, vertical: true)
+                AccessibleErrorMessage(message: modelRemovalError)
             }
         }
     }
@@ -500,9 +499,7 @@ private struct BackupRestorePreview: View {
             )
 
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.system(size: 11))
-                    .foregroundStyle(TingXiePalette.missed)
+                AccessibleErrorMessage(message: errorMessage)
             }
 
             HStack {

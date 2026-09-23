@@ -95,8 +95,7 @@ struct LLMTestView: View {
         GroupBox {
             ScrollView {
                 if let errorMessage {
-                    Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
+                    AccessibleErrorMessage(message: errorMessage)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else if response.isEmpty {
                     ContentUnavailableView(

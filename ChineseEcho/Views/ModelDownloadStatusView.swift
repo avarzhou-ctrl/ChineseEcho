@@ -26,10 +26,17 @@ struct ModelDownloadStatusView: View {
                     }
                 }
 
-                Text(coordinator.statusDetail)
-                    .font(.system(size: 11))
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                    .lineLimit(2)
+                if case .failed(let message) = coordinator.phase {
+                    AccessibleErrorMessage(
+                        message: message,
+                        title: "Local AI Error"
+                    )
+                } else {
+                    Text(coordinator.statusDetail)
+                        .font(.system(size: 11))
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                        .lineLimit(2)
+                }
 
                 if coordinator.phase == .downloading {
                     ProgressView(value: coordinator.fractionCompleted)
