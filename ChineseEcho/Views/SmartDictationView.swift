@@ -1320,8 +1320,12 @@ private struct PracticeSessionView: View {
                         reduceMotion: reduceMotion
                     )
 
-                    Button(action: replayCurrentWord) {
-                        Image(systemName: "speaker.wave.2.fill")
+                    Button(action: toggleCurrentWordPlayback) {
+                        Image(
+                            systemName: audioEngine.isSpeaking
+                                ? "stop.fill"
+                                : "speaker.wave.2.fill"
+                        )
                     }
                     .buttonStyle(
                         TingXieButtonStyle(
@@ -1329,8 +1333,12 @@ private struct PracticeSessionView: View {
                             isIconOnly: true
                         )
                     )
-                    .help("Play once more")
-                    .accessibilityLabel("Play \(currentWord.chinese) once more")
+                    .help(audioEngine.isSpeaking ? "Stop playback" : "Play once more")
+                    .accessibilityLabel(
+                        audioEngine.isSpeaking
+                            ? "Stop playback"
+                            : "Play \(currentWord.chinese) once more"
+                    )
                     .padding(20)
                 }
                 .frame(maxWidth: 650, minHeight: 300, maxHeight: 360)
@@ -1741,6 +1749,14 @@ private struct PracticeSessionView: View {
     private func replayCurrentWord() {
         stopPlayback()
         speakCurrentWord()
+    }
+
+    private func toggleCurrentWordPlayback() {
+        if audioEngine.isSpeaking {
+            stopPlayback()
+        } else {
+            replayCurrentWord()
+        }
     }
 
     private func shuffleRemainingWords() {

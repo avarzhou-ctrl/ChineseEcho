@@ -108,7 +108,7 @@ struct FirstRunTutorialView: View {
             case .settingsNavigation:
                 "Change the voice and practice options, manage Local AI, or back up your data."
             case .voicePreview:
-                "Choose Mainland or Taiwanese Mandarin, adjust the sound, then press Preview Voice."
+                "Choose Mainland or Taiwanese Mandarin, adjust the sound, then press Preview."
             case .localAI:
                 "It can add pinyin, meanings, and example sentences without sending your text off this Mac."
             }

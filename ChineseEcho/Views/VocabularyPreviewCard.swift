@@ -75,10 +75,13 @@ struct VocabularyPreviewCard: View {
                     .foregroundStyle(TingXiePalette.onBackground)
 
                 Button {
-                    audioEngine.stop()
-                    audioEngine.speak(snapshot.chinese)
+                    audioEngine.togglePlayback(of: snapshot.chinese)
                 } label: {
-                    Image(systemName: "speaker.wave.2.fill")
+                    Image(
+                        systemName: audioEngine.isSpeaking
+                            ? "stop.fill"
+                            : "speaker.wave.2.fill"
+                    )
                 }
                 .buttonStyle(
                     TingXieButtonStyle(
@@ -87,8 +90,10 @@ struct VocabularyPreviewCard: View {
                         isIconOnly: true
                     )
                 )
-                .help("Play \(snapshot.chinese)")
-                .accessibilityLabel("Play \(snapshot.chinese)")
+                .help(audioEngine.isSpeaking ? "Stop playback" : "Play \(snapshot.chinese)")
+                .accessibilityLabel(
+                    audioEngine.isSpeaking ? "Stop playback" : "Play \(snapshot.chinese)"
+                )
 
                 Spacer(minLength: 0)
             }

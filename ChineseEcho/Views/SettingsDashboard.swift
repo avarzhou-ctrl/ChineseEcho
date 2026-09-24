@@ -157,18 +157,20 @@ struct SettingsDashboard: View {
 
             HStack {
                 Button {
-                    audioEngine.stop()
-                    audioEngine.speak(sampleText)
+                    audioEngine.togglePlayback(of: sampleText)
                 } label: {
-                    Label("Preview Voice", systemImage: "play.fill")
+                    Label(
+                        audioEngine.isSpeaking ? "Stop" : "Preview",
+                        systemImage: audioEngine.isSpeaking ? "stop.fill" : "play.fill"
+                    )
                 }
-                .buttonStyle(TingXieButtonStyle(size: .compact))
+                .buttonStyle(
+                    TingXieButtonStyle(
+                        variant: audioEngine.isSpeaking ? .secondary : .primary,
+                        size: .compact
+                    )
+                )
                 .tutorialTarget(.voicePreviewButton)
-
-                Button("Stop", systemImage: "stop.fill") {
-                    audioEngine.stop()
-                }
-                .buttonStyle(TingXieButtonStyle(variant: .secondary, size: .compact))
             }
         }
     }
@@ -429,6 +431,7 @@ struct SettingsDashboard: View {
     }
 
     private func synchronizeAudioEngine() {
+        audioEngine.stop()
         audioEngine.configureFromPreferences()
     }
 }

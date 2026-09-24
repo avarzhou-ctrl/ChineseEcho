@@ -49,8 +49,12 @@ struct SpeechTestView: View {
         .navigationTitle("Speech Test")
         .onAppear(perform: selectDefaultVoice)
         .onChange(of: selectedVoiceIdentifier) { _, newIdentifier in
+            audioEngine.stop()
             audioEngine.selectedVoice = availableVoices.first { $0.identifier == newIdentifier }
         }
+        .onChange(of: audioEngine.rate) { _, _ in audioEngine.stop() }
+        .onChange(of: audioEngine.pitchMultiplier) { _, _ in audioEngine.stop() }
+        .onDisappear { audioEngine.stop() }
     }
 
     private var header: some View {
@@ -106,20 +110,19 @@ struct SpeechTestView: View {
     private var playbackButtons: some View {
         HStack(spacing: 12) {
             Button {
-                audioEngine.stop()
-                audioEngine.speak(sampleText)
+                audioEngine.togglePlayback(of: sampleText)
             } label: {
-                Label("Speak", systemImage: "play.fill")
+                Label(
+                    audioEngine.isSpeaking ? "Stop" : "Preview",
+                    systemImage: audioEngine.isSpeaking ? "stop.fill" : "play.fill"
+                )
             }
-            .buttonStyle(TingXieButtonStyle())
+            .buttonStyle(
+                TingXieButtonStyle(
+                    variant: audioEngine.isSpeaking ? .secondary : .primary
+                )
+            )
             .disabled(availableVoices.isEmpty)
-
-            Button {
-                audioEngine.stop()
-            } label: {
-                Label("Stop", systemImage: "stop.fill")
-            }
-            .buttonStyle(TingXieButtonStyle(variant: .secondary))
         }
     }
 

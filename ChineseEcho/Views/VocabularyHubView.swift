@@ -638,10 +638,13 @@ private struct VocabularyInspector: View {
                                 .foregroundStyle(TingXiePalette.onBackground)
 
                             Button {
-                                audioEngine.stop()
-                                audioEngine.speak(word.chinese)
+                                audioEngine.togglePlayback(of: word.chinese)
                             } label: {
-                                Image(systemName: "speaker.wave.2.fill")
+                                Image(
+                                    systemName: audioEngine.isSpeaking
+                                        ? "stop.fill"
+                                        : "speaker.wave.2.fill"
+                                )
                             }
                             .buttonStyle(
                                 TingXieButtonStyle(
@@ -649,8 +652,10 @@ private struct VocabularyInspector: View {
                                     isIconOnly: true
                                 )
                             )
-                            .help("Play \(word.chinese)")
-                            .accessibilityLabel("Play \(word.chinese)")
+                            .help(audioEngine.isSpeaking ? "Stop playback" : "Play \(word.chinese)")
+                            .accessibilityLabel(
+                                audioEngine.isSpeaking ? "Stop playback" : "Play \(word.chinese)"
+                            )
 
                             WordTags(word: word, compact: false, showsMissed: isMissed)
 
@@ -773,6 +778,7 @@ private struct VocabularyInspector: View {
         }
         .background(TingXiePalette.background)
         .onAppear { audioEngine.configureFromPreferences() }
+        .onChange(of: word?.recordID) { _, _ in audioEngine.stop() }
         .onDisappear { audioEngine.stop() }
     }
 

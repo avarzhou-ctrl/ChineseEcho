@@ -35,6 +35,7 @@ final class SpeechAudioEngine: NSObject, AVSpeechSynthesizerDelegate {
     var pitchMultiplier: Float = 1.0
     var interWordPause: TimeInterval = 1.25
     var selectedVoice: AVSpeechSynthesisVoice?
+    private(set) var isSpeaking = false
 
     init(
         makeSynthesizer: @escaping () -> AVSpeechSynthesizer = { AVSpeechSynthesizer() },
@@ -108,10 +109,19 @@ final class SpeechAudioEngine: NSObject, AVSpeechSynthesizerDelegate {
         begin(utterance)
     }
 
+    func togglePlayback(of text: String) {
+        if isSpeaking {
+            stop()
+        } else {
+            speak(text)
+        }
+    }
+
     func stop() {
         watchdog?.cancel()
         watchdog = nil
         activeUtterance = nil
+        isSpeaking = false
         synthesizer.delegate = nil
         synthesizer.stopSpeaking(at: .immediate)
     }
@@ -121,6 +131,7 @@ final class SpeechAudioEngine: NSObject, AVSpeechSynthesizerDelegate {
         synthesizer = makeSynthesizer()
         synthesizer.delegate = self
         activeUtterance = utterance
+        isSpeaking = true
         armWatchdog(seconds: startupTimeout)
         synthesizer.speak(utterance)
     }
@@ -180,6 +191,7 @@ final class SpeechAudioEngine: NSObject, AVSpeechSynthesizerDelegate {
                 self.watchdog?.cancel()
                 self.watchdog = nil
                 self.activeUtterance = nil
+                self.isSpeaking = false
                 self.onUtteranceFinished?()
             }
         }
