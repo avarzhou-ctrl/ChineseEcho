@@ -31,7 +31,7 @@
 - [x] **Draggable vocab cards**
   - Vocab cards should be draggable instead of having to rely on the chevrons and should also have visible animation for UI/UX
 
-- [ ] **User usage feedback**
+- [x] **User usage feedback**
   - Don’t interrupt in usage (need to /plan how to make interface not interupt with having to flip each word)
   - Can’t find missed words easily (should show the vocab's example sentence in an intuitive way; also need /plan)
   - Random N words (allow user to enter a large set and then choose to randomly pick out N words to practice each time)

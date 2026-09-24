@@ -1,6 +1,22 @@
 # Changelog
 
+- **2026-09-24**: Replaced the macOS app icon with the approved bamboo logo, exporting all required 16–1024 pixel asset variants while preserving its pale-green tile, stronger bamboo gradient, and transparent corners. Files edited: `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_16x16@1x.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_16x16@2x.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_32x32@1x.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_32x32@2x.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_128x128@1x.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_256x256@1x.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_256x256@2x.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_512x512@1x.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png`, `CHANGELOG.md`.
+
+- **2026-09-24**: Strengthened the bamboo logo's diagonal gradient from deep forest green to lighter jade while preserving the original tile, transparency, geometry, and small-size legibility. File added: `Design/LogoConcepts/minimal-bamboo-v5-clear-gradient.png`; file removed: `Design/LogoConcepts/minimal-bamboo-v4-gradient.png`; file edited: `CHANGELOG.md`.
+
+- **2026-09-24**: Replaced the flat bamboo logo with a subtly graded forest-green version while preserving the pale-green rounded tile, transparent exterior corners, exact geometry, and small-size clarity. File added: `Design/LogoConcepts/minimal-bamboo-v4-gradient.png`; file removed: `Design/LogoConcepts/minimal-bamboo-v3-rounded-transparent.png`; file edited: `CHANGELOG.md`.
+
+- **2026-09-24**: Removed the superseded Echoing 回 and earlier bamboo logo concepts, leaving only the corrected pale-green rounded bamboo logo with transparent exterior corners. Files removed: `Design/LogoConcepts/echoing-hui-v1.png`, `Design/LogoConcepts/echoing-hui-v2-chinese-seal.png`, `Design/LogoConcepts/minimal-bamboo-v1.png`, `Design/LogoConcepts/minimal-bamboo-v2-transparent.png`; file edited: `CHANGELOG.md`.
+
+- **2026-09-24**: Added a corrected bamboo logo export that retains the pale-green rounded tile while making only its exterior white corners transparent. File added: `Design/LogoConcepts/minimal-bamboo-v3-rounded-transparent.png`; file edited: `CHANGELOG.md`.
+
+- **2026-09-24**: Removed the background from the minimalist bamboo logo and preserved the green mark as a transparent RGBA PNG. File added: `Design/LogoConcepts/minimal-bamboo-v2-transparent.png`; file edited: `CHANGELOG.md`.
+
+- **2026-09-24**: Added a minimalist bamboo logo concept with three bold stalk segments and two leaf forms tuned for small app-icon sizes. File added: `Design/LogoConcepts/minimal-bamboo-v1.png`; file edited: `CHANGELOG.md`.
+
 - **2026-09-24**: Unified one-shot speech controls into stateful Preview/Stop or play/stop buttons, removed separate Stop actions, stopped stale playback when speech settings or vocabulary selections change, and updated tutorial wording. Files edited: `ChineseEcho/Services/SpeechAudioEngine.swift`, `ChineseEcho/Views/SettingsDashboard.swift`, `ChineseEcho/Views/SpeechTestView.swift`, `ChineseEcho/Views/VocabularyHubView.swift`, `ChineseEcho/Views/VocabularyPreviewCard.swift`, `ChineseEcho/Views/SmartDictationView.swift`, `ChineseEcho/Views/FirstRunTutorialView.swift`, `CHANGELOG.md`.
+
+- **2026-09-24**: Generated two small-size-readable Echoing 回 logo concepts, including a culturally clearer Chinese seal treatment with a vermilion stamp, cream 回 glyph, and restrained sound-wave arcs. Files added: `Design/LogoConcepts/echoing-hui-v1.png`, `Design/LogoConcepts/echoing-hui-v2-chinese-seal.png`; file edited: `CHANGELOG.md`.
 
 - **2026-09-23**: Audited mouse hit regions across the SwiftUI interface, made the full search field focusable, moved the Vocabulary disclosure chevron inside its row action, enlarged alarm, color-swatch, and reorder targets, and explicitly matched card-choice hit shapes to their visible containers. Files edited: `ChineseEcho/Views/TingXieTheme.swift`, `ChineseEcho/Views/VocabularyHubView.swift`, `ChineseEcho/Views/FirstRunTutorialView.swift`, `ChineseEcho/Views/DictationSetAppearanceView.swift`, `ChineseEcho/Views/SmartDictationView.swift`, `CHANGELOG.md`.
 
