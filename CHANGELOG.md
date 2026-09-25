@@ -1,5 +1,7 @@
 # Changelog
 
+- **2026-09-25**: Expanded the public GitHub Pages homepage and added support plus acknowledgements pages covering product features, requirements, troubleshooting, privacy navigation, CC-CEDICT, the optional Qwen model, and resolved software dependencies. Files added: `docs/support.md`, `docs/acknowledgements.md`; files edited: `docs/index.md`, `docs/privacy.md`, `CHANGELOG.md`.
+
 - **2026-09-24**: Replaced the completed product backlog with an App Store release-readiness checklist covering required app changes, signing, compliance, metadata, assets, testing, and submission. Files edited: `TODO.md`, `CHANGELOG.md`.
 
 - **2026-09-24**: Replaced the macOS app icon with the approved bamboo logo, exporting all required 16–1024 pixel asset variants while preserving its pale-green tile, stronger bamboo gradient, and transparent corners. Files edited: `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_16x16@1x.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_16x16@2x.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_32x32@1x.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_32x32@2x.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_128x128@1x.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_256x256@1x.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_256x256@2x.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_512x512@1x.png`, `ChineseEcho/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png`, `CHANGELOG.md`.
