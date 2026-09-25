@@ -1,5 +1,7 @@
 # Changelog
 
+- **2026-09-25**: Added a Privacy section to Settings with a direct link to the public ChineseEcho privacy policy and concise disclosures about local learning data and the optional Hugging Face model download. Files edited: `ChineseEcho/Views/SettingsDashboard.swift`, `CHANGELOG.md`.
+
 - **2026-09-25**: Expanded the public GitHub Pages homepage and added support plus acknowledgements pages covering product features, requirements, troubleshooting, privacy navigation, CC-CEDICT, the optional Qwen model, and resolved software dependencies. Files added: `docs/support.md`, `docs/acknowledgements.md`; files edited: `docs/index.md`, `docs/privacy.md`, `CHANGELOG.md`.
 
 - **2026-09-24**: Replaced the completed product backlog with an App Store release-readiness checklist covering required app changes, signing, compliance, metadata, assets, testing, and submission. Files edited: `TODO.md`, `CHANGELOG.md`.
