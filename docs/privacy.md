@@ -60,4 +60,4 @@ change. The effective date above identifies the latest revision.
 
 ## Contact
 
-For privacy questions, contact: YOUR-PUBLIC-SUPPORT-EMAIL
+For privacy questions, contact: avarzhou@gmail.com
