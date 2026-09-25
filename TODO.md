@@ -9,7 +9,7 @@
 
 ## Submission Blockers
 
-- [ ] Add an in-app Privacy section and publish a public privacy-policy URL.
+- [x] Add an in-app Privacy section and publish a public privacy-policy URL.
   - Explain that vocabulary, practice history, generated content, and preferences stay on the device.
   - Disclose that the optional Local AI model is downloaded from Hugging Face unless its delivery method changes.
   - Explain where local data and downloaded models are stored and how users can delete them.

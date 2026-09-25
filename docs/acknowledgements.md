@@ -23,16 +23,6 @@ The dictionary is licensed under the
 [Creative Commons Attribution-ShareAlike 4.0 International License](https://creativecommons.org/licenses/by-sa/4.0/).
 The bundled dictionary release is dated August 8, 2026.
 
-## Optional language model
-
-ChineseEcho can download
-[mlx-community/Qwen3-4B-4bit](https://huggingface.co/mlx-community/Qwen3-4B-4bit),
-an MLX-formatted quantization of Qwen 3 4B, from Hugging Face. The model page
-contains its model card, attribution, and applicable license information.
-
-Qwen is a trademark of its respective owner. ChineseEcho is not affiliated
-with or endorsed by Qwen, MLX, or Hugging Face.
-
 ## Direct software dependencies
 
 - [MLX Swift LM](https://github.com/ml-explore/mlx-swift-lm) — local model loading and generation; MIT License.
