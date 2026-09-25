@@ -60,7 +60,4 @@ change. The effective date above identifies the latest revision.
 
 ## Contact
 
-For privacy questions, contact
-[avarzhou@gmail.com](mailto:avarzhou@gmail.com).
-
-[Support](../support/) · [Acknowledgements and Licenses](../acknowledgements/) · [Home](../)
+For privacy questions, contact: avarzhou@gmail.com
