@@ -74,11 +74,11 @@ ChineseEcho will initially ship as a free, unsigned macOS download without an Ap
 
 ## Publish the Download
 
-- [ ] Create a versioned release and upload the tested ZIP.
-- [ ] Add release notes, supported macOS versions and architectures, file size, model-download requirements, SHA-256 checksum, and installation instructions.
-- [ ] Download the public asset once more and verify its checksum and launch behavior.
-- [ ] Link the release from the ChineseEcho website and support page.
-- [ ] Keep older releases available until the replacement has been verified by users.
+- [x] Create the versioned `v1.0` release and upload the tested ZIP and checksum file.
+- [x] Add release notes, supported macOS versions and architectures, file size, model-download requirements, SHA-256 checksum, and installation instructions.
+- [x] Download the public assets once more and verify the checksum, extracted architecture, and app version.
+- [x] Link the release from the live ChineseEcho website and support page.
+- [x] Keep older releases available when replacements are published; `v1.0` is the initial release.
 
 ## Deferred Until Apple Developer Membership
 
