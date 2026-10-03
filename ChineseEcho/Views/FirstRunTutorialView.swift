@@ -322,7 +322,7 @@ struct FirstRunTutorialView: View {
             choiceButton(
                 .download,
                 title: "Download Local AI",
-                detail: "About \(LocalModelSpec.estimatedDownloadSizeText) · Continues in the background.",
+                detail: "Apple silicon required · About \(LocalModelSpec.estimatedDownloadSizeText) · Continues in the background.",
                 symbol: "arrow.down.circle.fill"
             )
             choiceButton(

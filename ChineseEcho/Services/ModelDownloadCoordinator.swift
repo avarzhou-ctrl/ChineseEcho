@@ -2,6 +2,20 @@ import Foundation
 import HuggingFace
 import Observation
 
+private enum ModelPreparationError: LocalizedError {
+    case insufficientStorage(required: Int64, available: Int64)
+
+    var errorDescription: String? {
+        switch self {
+        case .insufficientStorage(let required, let available):
+            let formatter = ByteCountFormatter()
+            formatter.allowedUnits = [.useGB]
+            formatter.countStyle = .file
+            return "Local AI needs \(formatter.string(fromByteCount: required)) of free space, but this Mac has \(formatter.string(fromByteCount: available)) available. Free some storage and try again."
+        }
+    }
+}
+
 // Publishes one app-wide model preparation lifecycle for launch, features, and Settings.
 @MainActor
 @Observable
@@ -138,6 +152,21 @@ final class ModelDownloadCoordinator {
         let isFullyCached = await Task.detached(priority: .utility) {
             ModelCacheStore.hasCompleteSelectedModel()
         }.value
+
+        if !isFullyCached {
+            let storage = await Task.detached(priority: .utility) {
+                ModelCacheStore.downloadStorageStatus()
+            }.value
+            if let available = storage.available, available < storage.required {
+                let error = ModelPreparationError.insufficientStorage(
+                    required: storage.required,
+                    available: available
+                )
+                phase = .failed(error.localizedDescription)
+                isStatusVisible = true
+                throw error
+            }
+        }
 
         resetProgressSamples()
         suppressesCachedPreparationStatus = isFullyCached
@@ -424,6 +453,25 @@ nonisolated private enum ModelCacheStore {
                 && hasUsableFile(named: "tokenizer.json", in: snapshot)
                 && hasUsableModelWeights(in: snapshot)
         }
+    }
+
+    static func downloadStorageStatus() -> (required: Int64, available: Int64?) {
+        let remainingDownloadBytes = max(
+            LocalModelSpec.estimatedDownloadByteCount - selectedModelByteCount(),
+            0
+        )
+        let required = remainingDownloadBytes + LocalModelSpec.downloadSafetyMarginByteCount
+
+        var volumeURL = cacheRoot
+        while !FileManager.default.fileExists(atPath: volumeURL.path),
+              volumeURL.pathComponents.count > 1 {
+            volumeURL.deleteLastPathComponent()
+        }
+
+        let values = try? volumeURL.resourceValues(
+            forKeys: [.volumeAvailableCapacityForImportantUsageKey]
+        )
+        return (required, values?.volumeAvailableCapacityForImportantUsage)
     }
 
     static func temporaryDownloadByteCount(modifiedAfter startDate: Date) -> Int64 {

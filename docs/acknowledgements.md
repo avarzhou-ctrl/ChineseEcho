@@ -23,6 +23,14 @@ The dictionary is licensed under the
 [Creative Commons Attribution-ShareAlike 4.0 International License](https://creativecommons.org/licenses/by-sa/4.0/).
 The bundled dictionary release is dated August 8, 2026.
 
+## Optional Local AI model
+
+ChineseEcho can download
+[Qwen3-4B-4bit](https://huggingface.co/mlx-community/Qwen3-4B-4bit) from
+Hugging Face for on-device example generation. The app pins model revision
+`4dcb3d101c2a062e5c1d4bb173588c54ea6c4d25`. Qwen3 is licensed under the
+[Apache License 2.0](https://huggingface.co/Qwen/Qwen3-4B/blob/main/LICENSE).
+
 ## Direct software dependencies
 
 - [MLX Swift LM](https://github.com/ml-explore/mlx-swift-lm) — local model loading and generation; MIT License.
@@ -46,6 +54,9 @@ copyright notices and license terms are available in their linked repositories:
 - [SwiftSyntax](https://github.com/swiftlang/swift-syntax)
 - [Swift System](https://github.com/apple/swift-system)
 - [yyjson](https://github.com/ibireme/yyjson)
+
+The downloadable app also contains an offline Third-Party Notices document
+with the license texts and notices for the resolved versions.
 
 Apple, macOS, and related Apple technologies are trademarks of Apple Inc.
 

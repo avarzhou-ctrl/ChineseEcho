@@ -8,6 +8,7 @@
 import AVFoundation
 import SwiftUI
 
+#if DEBUG
 // Provides a standalone scratchpad for previewing Mandarin voices and speech tuning.
 struct SpeechTestView: View {
     // @State owns the observable engine for this scratchpad view.
@@ -183,3 +184,4 @@ struct SpeechTestView: View {
 #Preview {
     SpeechTestView()
 }
+#endif

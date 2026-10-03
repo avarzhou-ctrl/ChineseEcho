@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+#if DEBUG
 // Provides a developer scratchpad for sending prompts to the bundled local model.
 struct LLMTestView: View {
     @State private var prompt = "请用错词“坚持”写一个自然、简短的现代中文句子。"
@@ -157,3 +158,4 @@ struct LLMTestView: View {
 #Preview {
     LLMTestView()
 }
+#endif

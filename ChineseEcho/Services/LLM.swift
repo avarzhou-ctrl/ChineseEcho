@@ -15,8 +15,17 @@ import Tokenizers
 nonisolated enum LocalModelSpec {
     static let displayName = "Qwen 3 4B"
     static let repositoryID = "mlx-community/Qwen3-4B-4bit"
+    static let revision = "4dcb3d101c2a062e5c1d4bb173588c54ea6c4d25"
     static let cacheFolderName = "models--mlx-community--Qwen3-4B-4bit"
     static let estimatedDownloadByteCount: Int64 = 2_500_000_000
+    static let downloadSafetyMarginByteCount: Int64 = 500_000_000
+
+    static let configuration = ModelConfiguration(
+        id: repositoryID,
+        revision: revision,
+        defaultPrompt: "Why is the sky blue?",
+        extraEOSTokens: ["<|im_end|>"]
+    )
 
     static var estimatedDownloadSizeText: String {
         let formatter = ByteCountFormatter()
@@ -164,7 +173,7 @@ actor LocalLanguageModel {
         let container = try await MLXLMCommon.loadModelContainer(
             from: HuggingFaceDownloader(),
             using: HuggingFaceTokenizerLoader(),
-            configuration: LLMRegistry.qwen3_4b_4bit,
+            configuration: LocalModelSpec.configuration,
             progressHandler: progressHandler
         )
         modelContainer = container

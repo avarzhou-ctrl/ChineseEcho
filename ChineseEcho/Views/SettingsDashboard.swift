@@ -33,6 +33,7 @@ struct SettingsDashboard: View {
     @State private var isExportingBackup = false
     @State private var isImportingBackup = false
     @State private var isRestoringBackup = false
+    @State private var isShowingAcknowledgements = false
     @State private var backupMessage: String?
     @State private var backupError: String?
 
@@ -47,7 +48,6 @@ struct SettingsDashboard: View {
                     speechSection
                     localAISection
                     practiceAndBackupSection
-                    privacySection
                 }
                 .frame(maxWidth: 820)
                 .frame(maxWidth: .infinity)
@@ -114,6 +114,9 @@ struct SettingsDashboard: View {
                     onRestore: { restore(importedBackup) }
                 )
             }
+        }
+        .sheet(isPresented: $isShowingAcknowledgements) {
+            AcknowledgementsView()
         }
     }
 
@@ -216,48 +219,54 @@ struct SettingsDashboard: View {
             if let backupError, importedBackup == nil {
                 AccessibleErrorMessage(message: backupError)
             }
+
+            VStack(alignment: .leading, spacing: 14) {
+                Divider()
+
+                SettingsGroupHeading(title: "Privacy & Legal", symbol: "hand.raised.fill")
+                Label {
+                    Text(
+                        "Vocabulary, practice history, generated examples, and "
+                        + "preferences are stored locally and are not sent to ChineseEcho."
+                    )
+                    .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "internaldrive.fill")
+                        .foregroundStyle(TingXiePalette.accent)
+                }
+
+                Text(
+                    "If you enable Local AI, ChineseEcho downloads the model from "
+                    + "Hugging Face. Sentence generation then runs on this Mac."
+                )
+                .font(.system(size: 12))
+                .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                .fixedSize(horizontal: false, vertical: true)
+
+                Divider()
+
+                HStack(spacing: 10) {
+                    Link(destination: Self.privacyPolicyURL) {
+                        Label("View Privacy Policy", systemImage: "arrow.up.right.square")
+                    }
+                    .buttonStyle(
+                        TingXieButtonStyle(variant: .secondary, size: .compact)
+                    )
+
+                    Button("Acknowledgements & Licenses", systemImage: "doc.text") {
+                        isShowingAcknowledgements = true
+                    }
+                    .buttonStyle(
+                        TingXieButtonStyle(variant: .secondary, size: .compact)
+                    )
+                }
+            }
         }
     }
-    
+
     private static let privacyPolicyURL = URL(
         string: "https://avarzhou-ctrl.github.io/ChineseEcho/privacy/"
     )!
-
-    private var privacySection: some View {
-        SettingsSectionCard(
-            title: "Privacy",
-            symbol: "hand.raised.fill",
-            summary: "ChineseEcho keeps your learning data on this Mac."
-        ) {
-            Label {
-                Text(
-                    "Vocabulary, practice history, generated examples, and "
-                    + "preferences are stored locally and are not sent to ChineseEcho."
-                )
-                .fixedSize(horizontal: false, vertical: true)
-            } icon: {
-                Image(systemName: "internaldrive.fill")
-                    .foregroundStyle(TingXiePalette.accent)
-            }
-
-            Text(
-                "If you enable Local AI, ChineseEcho downloads the model from "
-                + "Hugging Face. Sentence generation then runs on this Mac."
-            )
-            .font(.system(size: 12))
-            .foregroundStyle(TingXiePalette.onSurfaceVariant)
-            .fixedSize(horizontal: false, vertical: true)
-
-            Divider()
-
-            Link(destination: Self.privacyPolicyURL) {
-                Label("View Privacy Policy", systemImage: "arrow.up.right.square")
-            }
-            .buttonStyle(
-                TingXieButtonStyle(variant: .secondary, size: .compact)
-            )
-        }
-    }
 
     private var localAISection: some View {
         SettingsSectionCard(
@@ -285,6 +294,18 @@ struct SettingsDashboard: View {
                     .frame(height: 28)
                     .background(localAIStateColor.opacity(0.1), in: Capsule())
             }
+
+            HStack(spacing: 7) {
+                Image(systemName: "internaldrive.fill")
+                    .foregroundStyle(TingXiePalette.accent)
+                Text(
+                    "Requires an Apple silicon Mac and about "
+                    + "\(LocalModelSpec.estimatedDownloadSizeText) of storage."
+                )
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(TingXiePalette.onSurfaceVariant)
 
             if modelDownloadCoordinator.phase == .downloading {
                 VStack(alignment: .leading, spacing: 7) {
