@@ -1,5 +1,7 @@
 # Changelog
 
+- **2026-10-04**: Added a repository README covering ChineseEcho features, requirements, unsigned installation, privacy, development setup, regression tests, a file-tree project structure diagram, and support links. Files added: `README.md`; file edited: `CHANGELOG.md`.
+
 - **2026-10-03**: Published ChineseEcho 1.0 as a versioned GitHub Release with the verified Apple-silicon ZIP and portable SHA-256 checksum, confirmed the live website download link, and redownloaded and validated both public assets. Files edited: `TODO.md`, `CHANGELOG.md`.
 
 - **2026-10-03**: Prepared the reproducible ChineseEcho 1.0 unsigned direct download, verified the final Apple-silicon archive and quarantined ZIP on real hardware, installed the extracted app in Applications, completed the download, Gatekeeper, checksum, manual-update, support, and release-note documentation, and kept the remaining clean-device, accessibility, model-failure, screenshot, and publication checks explicit. Files edited: `ChineseEcho/Views/SettingsDashboard.swift`, `docs/index.md`, `docs/support.md`, `docs/release-notes-1.0.md`, `TODO.md`, `CHANGELOG.md`; generated artifacts retained in `dist/`.
