@@ -1,5 +1,7 @@
 # Changelog
 
+- **2026-10-05**: Added release, macOS, Apple-silicon, Swift 6, SwiftUI, and local-first data badges beneath the README title. Files edited: `README.md`, `CHANGELOG.md`.
+
 - **2026-10-04**: Added a repository README covering ChineseEcho features, requirements, unsigned installation, privacy, development setup, regression tests, a file-tree project structure diagram, and support links. Files added: `README.md`; file edited: `CHANGELOG.md`.
 
 - **2026-10-03**: Published ChineseEcho 1.0 as a versioned GitHub Release with the verified Apple-silicon ZIP and portable SHA-256 checksum, confirmed the live website download link, and redownloaded and validated both public assets. Files edited: `TODO.md`, `CHANGELOG.md`.

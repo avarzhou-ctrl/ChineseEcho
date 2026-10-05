@@ -1,5 +1,11 @@
 # ChineseEcho
 
+[![Release](https://img.shields.io/github/v/release/avarzhou-ctrl/ChineseEcho?label=release&color=0E490E)](https://github.com/avarzhou-ctrl/ChineseEcho/releases/latest)
+![macOS 15.6+](https://img.shields.io/badge/macOS-15.6%2B-000000?logo=apple&logoColor=white)
+![Apple silicon](https://img.shields.io/badge/architecture-Apple%20silicon-0E490E)
+![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)
+![SwiftUI](https://img.shields.io/badge/UI-SwiftUI-0D96F6?logo=swift&logoColor=white)
+
 **Listen. Learn. Remember.**
 
 ChineseEcho is a native macOS app for practicing Chinese dictation, organizing
