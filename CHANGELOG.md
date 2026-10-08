@@ -1,5 +1,9 @@
 # Changelog
 
+- **2026-10-08**: Enlarged and simplified the homepage hero screenshot, removed the practice screenshot tilt, and moved the Vocabulary screenshot below the privacy text panel. Files edited: `docs/index.md`, `docs/assets/css/style.css`, `CHANGELOG.md`.
+
+- **2026-10-08**: Added real ChineseEcho screenshots throughout the homepage, replacing the hero app icon with the tilted Smart Dictation dashboard and illustrating the feature and privacy sections with practice and Vocabulary views. Files added: `docs/assets/images/smart-dictation-dashboard.png`, `docs/assets/images/practice-session.png`, `docs/assets/images/vocabulary-library.png`; files edited: `docs/index.md`, `docs/assets/css/style.css`, `CHANGELOG.md`.
+
 - **2026-10-08**: Restyled the homepage Privacy Policy link as a dark-green button with white text. Files edited: `docs/index.md`, `docs/assets/css/style.css`, `CHANGELOG.md`.
 
 - **2026-10-08**: Changed the Local AI status card close action to hide download progress without pausing model preparation, kept dismissed progress hidden while background updates continue, and retained Pause Download as an explicit Settings action. Files edited: `ChineseEcho/Services/ModelDownloadCoordinator.swift`, `ChineseEcho/Views/ModelDownloadStatusView.swift`, `CHANGELOG.md`.

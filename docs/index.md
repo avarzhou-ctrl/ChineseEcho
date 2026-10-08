@@ -18,8 +18,7 @@ description: Practice Chinese listening, vocabulary, and review in a private nat
   </div>
   <div class="hero-art">
     <div class="hero-icon-halo" aria-hidden="true"></div>
-    <img src="{{ '/assets/images/chineseecho-app-icon.png' | relative_url }}" alt="ChineseEcho app icon">
-    <p>Native on macOS.<br>Private by design.</p>
+    <img class="hero-screenshot" src="{{ '/assets/images/smart-dictation-dashboard.png' | relative_url }}" alt="ChineseEcho Smart Dictation dashboard showing due review and recent practice sets">
   </div>
 </section>
 
@@ -28,6 +27,9 @@ description: Practice Chinese listening, vocabulary, and review in a private nat
     <h2>From first listen to lasting recall.</h2>
     <p>ChineseEcho keeps practice, vocabulary, and review connected without turning learning into a dashboard of distractions.</p>
   </div>
+  <figure class="section-screenshot">
+    <img src="{{ '/assets/images/practice-session.png' | relative_url }}" alt="ChineseEcho practice session showing a Chinese flashcard with pronunciation and grading controls" loading="lazy" decoding="async">
+  </figure>
   <div class="feature-grid">
     <article class="feature-card"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 13v-2a8 8 0 0 1 16 0v2M4 13h3v7H5a1 1 0 0 1-1-1v-6Zm16 0h-3v7h2a1 1 0 0 0 1-1v-6Z"/></svg></div><h3>Smart Dictation</h3><p>Practice custom vocabulary with native Mandarin speech, flexible speed, and Mainland or Taiwanese pronunciation.</p></article>
     <article class="feature-card"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m4 17-.8 3.8L7 20l11.5-11.5-3-3L4 17Zm10-10 3 3M13 21h8"/></svg></div><h3>Paper-friendly sessions</h3><p>Run continuous dictation with repetition, writing time, pause, replay, and navigation controls.</p></article>
@@ -51,6 +53,9 @@ description: Practice Chinese listening, vocabulary, and review in a private nat
       </div>
     </div>
   </div>
+  <figure class="section-screenshot privacy-section-screenshot">
+    <img src="{{ '/assets/images/vocabulary-library.png' | relative_url }}" alt="ChineseEcho vocabulary library showing word details and bilingual example sentences" loading="lazy" decoding="async">
+  </figure>
 </section>
 
 <section class="home-section" id="install">
