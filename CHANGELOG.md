@@ -2,6 +2,8 @@
 
 - **2026-10-08**: Restyled the homepage Privacy Policy link as a dark-green button with white text. Files edited: `docs/index.md`, `docs/assets/css/style.css`, `CHANGELOG.md`.
 
+- **2026-10-08**: Changed the Local AI status card close action to hide download progress without pausing model preparation, kept dismissed progress hidden while background updates continue, and retained Pause Download as an explicit Settings action. Files edited: `ChineseEcho/Services/ModelDownloadCoordinator.swift`, `ChineseEcho/Views/ModelDownloadStatusView.swift`, `CHANGELOG.md`.
+
 - **2026-10-08**: Expanded the public privacy page into a complete written policy, replaced Support FAQ plus/minus indicators with rotating chevrons, and removed the visible SHA-256 value from the release notes download card. Files edited: `docs/privacy.md`, `docs/release-notes-1.0.md`, `docs/assets/css/style.css`, `CHANGELOG.md`.
 
 - **2026-10-08**: Refined the GitHub Pages design by simplifying the top navigation and section labels, using the real ChineseEcho app icon, replacing Chinese feature glyphs with interface symbols, removing the installation warning box, and rebuilding Support, Privacy, and Release Notes with matching responsive cards and page-specific layouts. File added: `docs/assets/images/chineseecho-app-icon.png`; files edited: `docs/_layouts/default.html`, `docs/assets/css/style.css`, `docs/index.md`, `docs/support.md`, `docs/privacy.md`, `docs/release-notes-1.0.md`, `CHANGELOG.md`.

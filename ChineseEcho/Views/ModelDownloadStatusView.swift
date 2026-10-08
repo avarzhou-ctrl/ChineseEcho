@@ -79,9 +79,7 @@ struct ModelDownloadStatusView: View {
     @ViewBuilder
     private var statusAction: some View {
         if coordinator.isPreparing {
-            Button {
-                Task { await coordinator.cancelPreparation() }
-            } label: {
+            Button(action: coordinator.hideStatus) {
                 Image(systemName: "xmark")
                     .frame(width: 24, height: 24)
             }
@@ -92,8 +90,8 @@ struct ModelDownloadStatusView: View {
                     isIconOnly: true
                 )
             )
-            .help("Pause Download")
-            .accessibilityLabel("Pause Local AI download")
+            .help("Hide Download Progress")
+            .accessibilityLabel("Hide Local AI download progress")
         } else if coordinator.canRetry {
             Button(action: coordinator.startPreparing) {
                 Image(systemName: "arrow.clockwise")

@@ -49,6 +49,7 @@ final class ModelDownloadCoordinator {
     @ObservationIgnored private var lastCompletedByteCount: Int64 = 0
     @ObservationIgnored private var smoothedBytesPerSecond: Double?
     @ObservationIgnored private var suppressesCachedPreparationStatus = false
+    @ObservationIgnored private var isStatusDismissed = false
 
     private init() {}
 
@@ -163,12 +164,14 @@ final class ModelDownloadCoordinator {
                     available: available
                 )
                 phase = .failed(error.localizedDescription)
+                isStatusDismissed = false
                 isStatusVisible = true
                 throw error
             }
         }
 
         resetProgressSamples()
+        isStatusDismissed = false
         suppressesCachedPreparationStatus = isFullyCached
         phase = .checking
         isStatusVisible = !isFullyCached
@@ -211,6 +214,7 @@ final class ModelDownloadCoordinator {
             } else {
                 phase = .failed(error.localizedDescription)
             }
+            isStatusDismissed = false
             isStatusVisible = true
             await refreshCachedByteCount()
             throw error
@@ -225,6 +229,7 @@ final class ModelDownloadCoordinator {
         self.preparationTask = nil
         estimatedSecondsRemaining = nil
         phase = .cancelled
+        isStatusDismissed = false
         isStatusVisible = true
         UserDefaults.standard.set(
             LocalAIDownloadChoice.notNow.rawValue,
@@ -242,6 +247,7 @@ final class ModelDownloadCoordinator {
         resetProgressSamples()
         cachedByteCount = 0
         phase = .idle
+        isStatusDismissed = false
         isStatusVisible = false
         suppressesCachedPreparationStatus = false
         UserDefaults.standard.set(
@@ -257,11 +263,13 @@ final class ModelDownloadCoordinator {
     }
 
     func showStatus() {
+        isStatusDismissed = false
         isStatusVisible = true
     }
 
     func hideStatus() {
-        guard !isPreparing else { return }
+        // Dismissing progress is visual only; Settings remains the explicit pause control.
+        isStatusDismissed = true
         isStatusVisible = false
     }
 
@@ -281,7 +289,7 @@ final class ModelDownloadCoordinator {
         } else {
             phase = .checking
         }
-        if !suppressesCachedPreparationStatus {
+        if !suppressesCachedPreparationStatus && !isStatusDismissed {
             isStatusVisible = true
         }
     }
@@ -316,7 +324,7 @@ final class ModelDownloadCoordinator {
         fractionCompleted = min(max(Double(completedByteCount) / Double(totalByteCount), 0), 1)
         updateEstimatedTime(completedByteCount: completedByteCount)
         phase = reportedCompletedByteCount >= totalByteCount ? .loading : .downloading
-        if !suppressesCachedPreparationStatus {
+        if !suppressesCachedPreparationStatus && !isStatusDismissed {
             isStatusVisible = true
         }
     }
@@ -366,6 +374,7 @@ final class ModelDownloadCoordinator {
     }
 
     private func scheduleReadyConfirmationDismissal() {
+        guard !isStatusDismissed else { return }
         isStatusVisible = true
         Task {
             try? await Task.sleep(for: .seconds(3))
