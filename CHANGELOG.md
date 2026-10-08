@@ -1,5 +1,7 @@
 # Changelog
 
+- **2026-10-08**: Rebuilt the ChineseEcho 1.0 Release archive, regenerated the complete ad-hoc-signed distribution ZIP and checksum, verified the archive and strict bundle signature, replaced the GitHub v1.0 assets, re-downloaded and validated the public files, and synchronized the published size and SHA-256 metadata. Files edited: `dist/ChineseEcho-1.0-macOS.zip`, `dist/ChineseEcho-1.0-macOS.zip.sha256`, `docs/support.md`, `docs/release-notes-1.0.md`, `TODO.md`, `CHANGELOG.md`.
+
 - **2026-10-08**: Fixed the unsigned release package being reported as damaged by Gatekeeper by adding reproducible ad-hoc bundle signing with the required sandbox entitlements before ZIP creation, regenerated the verified ZIP and checksum, updated their published metadata, and documented the corrected packaging and release-replacement workflow. Files added: `scripts/ChineseEcho.release.entitlements`, `scripts/package_unsigned_release.sh`; files edited: `README.md`, `docs/support.md`, `docs/release-notes-1.0.md`, `TODO.md`, `CHANGELOG.md`; generated artifacts replaced: `dist/ChineseEcho-1.0-macOS.zip`, `dist/ChineseEcho-1.0-macOS.zip.sha256`.
 
 - **2026-10-05**: Added release, macOS, Apple-silicon, Swift 6, SwiftUI, and local-first data badges beneath the README title. Files edited: `README.md`, `CHANGELOG.md`.

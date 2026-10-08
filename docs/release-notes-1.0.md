@@ -46,10 +46,10 @@ This release is not signed or notarized by Apple. Follow the one-time
 
 ## Download verification
 
-The release ZIP is 12,897,501 bytes. Its SHA-256 checksum is:
+The release ZIP is 12,897,505 bytes. Its SHA-256 checksum is:
 
 ```text
-f787ad129d52f11fe5d1c4a9b7486828aa56761487a899cfcb13274502684fa8
+c396dcfdc0e5812c28120a053706eb1be6fc06747c67b05f8dca5fefdc2353b1
 ```
 
 [Support](../support/) · [Privacy](../privacy/) · [Acknowledgements](../acknowledgements/)

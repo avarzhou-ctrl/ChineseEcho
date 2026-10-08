@@ -55,7 +55,7 @@ The result should say `ChineseEcho-1.0-macOS.zip: OK`. Delete the files and
 download them again from the official release if the check fails.
 
 For version 1.0, the expected SHA-256 value is
-`f787ad129d52f11fe5d1c4a9b7486828aa56761487a899cfcb13274502684fa8`.
+`c396dcfdc0e5812c28120a053706eb1be6fc06747c67b05f8dca5fefdc2353b1`.
 
 ### How do I update ChineseEcho manually?
 
