@@ -1,0 +1,9 @@
+title: ChineseEcho
+description: A private, native macOS workspace for Chinese listening, vocabulary, and review.
+url: https://avarzhou-ctrl.github.io
+baseurl: /ChineseEcho
+repository: avarzhou-ctrl/ChineseEcho
+markdown: kramdown
+permalink: pretty
+exclude:
+  - README.md

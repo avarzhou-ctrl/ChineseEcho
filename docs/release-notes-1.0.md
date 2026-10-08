@@ -2,54 +2,39 @@
 layout: default
 title: ChineseEcho 1.0 Release Notes
 permalink: /release-notes-1.0/
+description: Features, requirements, installation details, and verification information for ChineseEcho 1.0.
+wide: true
 ---
 
-# ChineseEcho 1.0
+<header class="page-hero release-hero">
+  <img class="release-icon" src="{{ '/assets/images/chineseecho-app-icon.png' | relative_url }}" alt="ChineseEcho app icon">
+  <div><p class="version-pill">Version 1.0</p><h1>The first ChineseEcho release.</h1><p>Focused Chinese dictation, connected vocabulary review, and optional on-device AI in a native macOS workspace.</p><p class="page-meta">Released October 3, 2026</p></div>
+</header>
 
-**Released October 3, 2026**
+<section class="document-section">
+  <h2>What’s included</h2>
+  <div class="highlight-grid">
+    <article><h3>Dictation that adapts</h3><p>Build custom sets and practice with native Mandarin speech, adjustable speed, replay, and flexible pronunciation.</p></article>
+    <article><h3>Continuous paper practice</h3><p>Use repetition, writing time, pause, previous, and next controls for handwritten sessions.</p></article>
+    <article><h3>Connected review</h3><p>Review with configurable cards, learner hints, missed-word sessions, and local five-box scheduling.</p></article>
+    <article><h3>Organized vocabulary</h3><p>Keep words, idioms, pinyin, meanings, tags, and contextual examples together.</p></article>
+    <article><h3>Portable local backups</h3><p>Export and restore a versioned JSON backup without creating an account.</p></article>
+    <article><h3>Optional Local AI</h3><p>Download Qwen 3 4B for private, on-device vocabulary details and bilingual examples.</p></article>
+  </div>
+</section>
 
-ChineseEcho 1.0 is the first public macOS release. It is a free, unsigned
-direct download for Apple-silicon Macs running macOS 15.6 or later.
+<section class="release-facts">
+  <div><span>Hardware</span><strong>Apple silicon</strong><small>M1 or newer</small></div>
+  <div><span>System</span><strong>macOS 15.6+</strong><small>Native Mac app</small></div>
+  <div><span>Local AI</span><strong>About 2.5 GB</strong><small>Optional download</small></div>
+</section>
 
-## Highlights
+<section class="document-section split-section">
+  <div><h2>Privacy</h2><p>Learning data, practice history, generated content, and preferences remain on your Mac. ChineseEcho has no account, advertising, tracking, or developer-operated analytics. The optional model is downloaded from Hugging Face and then runs locally.</p><a href="{{ '/privacy/' | relative_url }}">Read the Privacy Policy</a></div>
+  <div><h2>Installation</h2><p>Version 1.0 is not Developer ID-signed or notarized by Apple. Follow the one-time approval steps after downloading from the official GitHub release.</p><a href="{{ '/support/' | relative_url }}">View installation help</a></div>
+</section>
 
-- Build custom Chinese vocabulary sets and practice with native Mandarin speech.
-- Run continuous paper dictation with repetition, writing-time, pause, replay,
-  previous, and next controls.
-- Review vocabulary with configurable card layouts, learner hints, and focused
-  missed-word sessions.
-- Schedule due reviews using local five-box timing and optional macOS reminders.
-- Organize vocabulary, idioms, tags, meanings, pronunciation, and contextual examples.
-- Export and restore versioned local JSON backups.
-- Optionally download Qwen 3 4B for private, on-device vocabulary details and
-  bilingual contextual examples.
-
-## Privacy
-
-Learning data, practice history, generated content, and preferences remain on
-the Mac. ChineseEcho has no account, advertising, tracking, or
-developer-operated analytics. The optional model is downloaded from Hugging
-Face and then runs locally.
-
-## Requirements
-
-- Apple silicon (M1 or newer)
-- macOS 15.6 or later
-- About 2.5 GB of free storage for the optional Local AI model
-- Internet access only for the optional model download
-
-## Installation
-
-This release is not signed or notarized by Apple. Follow the one-time
-[installation instructions](../#install) after downloading it from the
-[official GitHub release](https://github.com/avarzhou-ctrl/ChineseEcho/releases/tag/v1.0).
-
-## Download verification
-
-The release ZIP is 12,897,505 bytes. Its SHA-256 checksum is:
-
-```text
-c396dcfdc0e5812c28120a053706eb1be6fc06747c67b05f8dca5fefdc2353b1
-```
-
-[Support](../support/) · [Privacy](../privacy/) · [Acknowledgements](../acknowledgements/)
+<section class="download-card">
+  <div><h2>Download ChineseEcho 1.0</h2><p>12,897,505 bytes · SHA-256 verification available</p></div>
+  <a class="button button-primary" href="https://github.com/avarzhou-ctrl/ChineseEcho/releases/download/v1.0/ChineseEcho-1.0-macOS.zip">Download for Apple silicon</a>
+</section>

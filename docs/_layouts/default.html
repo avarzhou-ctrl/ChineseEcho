@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#edf5ec" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#101712" media="(prefers-color-scheme: dark)">
+    <meta name="description" content="{{ page.description | default: site.description | escape }}">
+    <title>{% if page.title == "ChineseEcho" %}ChineseEcho — Listen. Learn. Remember.{% else %}{{ page.title }} · ChineseEcho{% endif %}</title>
+    <link rel="icon" href="{{ '/assets/images/chineseecho-app-icon.png' | relative_url }}">
+    <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+  </head>
+  <body class="{% if page.url == '/' %}home-page{% else %}content-page{% endif %}{% if page.wide %} wide-page{% endif %}">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="{{ '/' | relative_url }}" aria-label="ChineseEcho home">
+          <img class="brand-mark" src="{{ '/assets/images/chineseecho-app-icon.png' | relative_url }}" alt="">
+          <span class="brand-copy"><strong>ChineseEcho</strong><span>Listen. Learn. Remember.</span></span>
+        </a>
+        <nav class="site-nav" aria-label="Main navigation">
+          <a href="{{ '/support/' | relative_url }}"{% if page.url == '/support/' %} aria-current="page"{% endif %}>Support</a>
+          <a href="{{ '/privacy/' | relative_url }}"{% if page.url == '/privacy/' %} aria-current="page"{% endif %}>Privacy</a>
+          <a href="{{ '/release-notes-1.0/' | relative_url }}"{% if page.url == '/release-notes-1.0/' %} aria-current="page"{% endif %}>Release notes</a>
+        </nav>
+      </div>
+    </header>
+    <main id="main-content" class="site-main">{{ content }}</main>
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div><a class="footer-brand" href="{{ '/' | relative_url }}">ChineseEcho</a><p>A private Chinese-learning workspace for macOS.</p></div>
+        <nav aria-label="Footer navigation">
+          <a href="{{ '/support/' | relative_url }}">Support</a>
+          <a href="{{ '/privacy/' | relative_url }}">Privacy</a>
+          <a href="{{ '/acknowledgements/' | relative_url }}">Licenses</a>
+          <a href="https://github.com/avarzhou-ctrl/ChineseEcho">GitHub</a>
+        </nav>
+        <p class="footer-note">Local-first by design. No accounts, ads, or tracking.</p>
+      </div>
+    </footer>
+  </body>
+</html>

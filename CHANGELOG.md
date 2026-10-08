@@ -1,6 +1,14 @@
 # Changelog
 
+- **2026-10-08**: Restyled the homepage Privacy Policy link as a dark-green button with white text. Files edited: `docs/index.md`, `docs/assets/css/style.css`, `CHANGELOG.md`.
+
+- **2026-10-08**: Expanded the public privacy page into a complete written policy, replaced Support FAQ plus/minus indicators with rotating chevrons, and removed the visible SHA-256 value from the release notes download card. Files edited: `docs/privacy.md`, `docs/release-notes-1.0.md`, `docs/assets/css/style.css`, `CHANGELOG.md`.
+
+- **2026-10-08**: Refined the GitHub Pages design by simplifying the top navigation and section labels, using the real ChineseEcho app icon, replacing Chinese feature glyphs with interface symbols, removing the installation warning box, and rebuilding Support, Privacy, and Release Notes with matching responsive cards and page-specific layouts. File added: `docs/assets/images/chineseecho-app-icon.png`; files edited: `docs/_layouts/default.html`, `docs/assets/css/style.css`, `docs/index.md`, `docs/support.md`, `docs/privacy.md`, `docs/release-notes-1.0.md`, `CHANGELOG.md`.
+
 - **2026-10-08**: Rebuilt the ChineseEcho 1.0 Release archive, regenerated the complete ad-hoc-signed distribution ZIP and checksum, verified the archive and strict bundle signature, replaced the GitHub v1.0 assets, re-downloaded and validated the public files, and synchronized the published size and SHA-256 metadata. Files edited: `dist/ChineseEcho-1.0-macOS.zip`, `dist/ChineseEcho-1.0-macOS.zip.sha256`, `docs/support.md`, `docs/release-notes-1.0.md`, `TODO.md`, `CHANGELOG.md`.
+
+- **2026-10-08**: Redesigned the GitHub Pages site as a responsive, JavaScript-free macOS-style product experience with shared navigation and footer, light and dark themes, a CSS-rendered app preview, feature and privacy sections, clearer download and installation guidance, and polished documentation pages. Files added: `docs/_config.yml`, `docs/_layouts/default.html`, `docs/assets/css/style.css`; files edited: `docs/index.md`, `CHANGELOG.md`.
 
 - **2026-10-08**: Fixed the unsigned release package being reported as damaged by Gatekeeper by adding reproducible ad-hoc bundle signing with the required sandbox entitlements before ZIP creation, regenerated the verified ZIP and checksum, updated their published metadata, and documented the corrected packaging and release-replacement workflow. Files added: `scripts/ChineseEcho.release.entitlements`, `scripts/package_unsigned_release.sh`; files edited: `README.md`, `docs/support.md`, `docs/release-notes-1.0.md`, `TODO.md`, `CHANGELOG.md`; generated artifacts replaced: `dist/ChineseEcho-1.0-macOS.zip`, `dist/ChineseEcho-1.0-macOS.zip.sha256`.
 
