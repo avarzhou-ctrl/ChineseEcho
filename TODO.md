@@ -29,7 +29,7 @@ ChineseEcho will initially ship as a free, unsigned macOS download without an Ap
 
 - [x] In Xcode, select `My Mac`, choose **Product → Archive**, and confirm the Release archive succeeds.
 - [x] In Organizer, choose **Distribute App → Copy App** to export the unsigned `ChineseEcho.app`.
-- [x] Compress the exported app as `ChineseEcho-1.0-macOS.zip` while preserving the app bundle and executable permissions.
+- [x] Apply a complete ad-hoc signature to the exported app, preserving its sandbox entitlements, then compress it as `ChineseEcho-1.0-macOS.zip` while preserving the app bundle and executable permissions.
 - [x] Calculate a portable SHA-256 checksum file for the final ZIP.
 - [x] Confirm the extracted app can be moved to `/Applications` and launched after the required Gatekeeper approval.
 - [x] Keep the exact released ZIP so reported issues can be reproduced against the public build.
@@ -75,8 +75,10 @@ ChineseEcho will initially ship as a free, unsigned macOS download without an Ap
 ## Publish the Download
 
 - [x] Create the versioned `v1.0` release and upload the tested ZIP and checksum file.
+- [ ] Replace the `v1.0` ZIP and checksum assets with the corrected ad-hoc-signed package that passes strict bundle verification.
 - [x] Add release notes, supported macOS versions and architectures, file size, model-download requirements, SHA-256 checksum, and installation instructions.
 - [x] Download the public assets once more and verify the checksum, extracted architecture, and app version.
+- [ ] Download and verify the corrected public assets after replacing the `v1.0` files.
 - [x] Link the release from the live ChineseEcho website and support page.
 - [x] Keep older releases available when replacements are published; `v1.0` is the initial release.
 

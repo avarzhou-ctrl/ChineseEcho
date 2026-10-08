@@ -76,6 +76,18 @@ xcodebuild \
   build
 ```
 
+Before distributing an exported app, apply a complete ad-hoc signature and
+create the ZIP with the release packaging script. This keeps the app sandbox
+entitlements and prevents Gatekeeper from treating the partial linker signature
+as a damaged app bundle:
+
+```sh
+./scripts/package_unsigned_release.sh \
+  /path/to/ChineseEcho.app \
+  1.0 \
+  dist
+```
+
 ## Tests
 
 Run the focused regression scripts from the repository root:
