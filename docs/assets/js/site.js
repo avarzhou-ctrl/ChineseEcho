@@ -62,3 +62,57 @@ if (copyButton) {
     }, 1800);
   });
 }
+
+const themeToggle = document.querySelector("[data-theme-toggle]");
+
+if (themeToggle) {
+  const root = document.documentElement;
+  const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
+  const themeColors = { light: "#edf5ec", dark: "#101712" };
+
+  // Resolve the visible theme from an explicit choice, falling back to the system setting.
+  const currentTheme = () => root.dataset.theme || (systemDark.matches ? "dark" : "light");
+
+  const syncToggle = () => {
+    const theme = currentTheme();
+    const next = theme === "dark" ? "light" : "dark";
+    themeToggle.dataset.current = theme;
+    themeToggle.setAttribute("aria-label", `Switch to ${next} mode`);
+    themeToggle.title = `Switch to ${next} mode`;
+    // Keep the browser chrome in step with a forced theme.
+    if (root.dataset.theme) {
+      document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => meta.setAttribute("content", themeColors[theme]));
+    }
+  };
+
+  themeToggle.addEventListener("click", () => {
+    const next = currentTheme() === "dark" ? "light" : "dark";
+    root.dataset.theme = next;
+    try { localStorage.setItem("chineseecho-theme", next); } catch {}
+    syncToggle();
+  });
+
+  systemDark.addEventListener("change", syncToggle);
+  syncToggle();
+
+  // On phones the fixed toggle would sit over body text, so tuck it away while reading downward.
+  const narrowScreen = window.matchMedia("(max-width: 560px)");
+  let lastScrollY = window.scrollY;
+  window.addEventListener("scroll", () => {
+    const y = window.scrollY;
+    const nearEnd = window.innerHeight + y >= document.documentElement.scrollHeight - 80;
+    themeToggle.classList.toggle("is-tucked", narrowScreen.matches && y > lastScrollY && y > 120 && !nearEnd);
+    lastScrollY = y;
+  }, { passive: true });
+}
+
+// Open an FAQ answer when a link targets it directly.
+const openTargetedAnswer = () => {
+  const target = location.hash && document.getElementById(location.hash.slice(1));
+  if (!(target instanceof HTMLDetailsElement)) return;
+  target.open = true;
+  // Opening changes the layout after the browser's own jump, so align to the answer again.
+  requestAnimationFrame(() => target.scrollIntoView({ block: "start" }));
+};
+openTargetedAnswer();
+window.addEventListener("hashchange", openTargetedAnswer);

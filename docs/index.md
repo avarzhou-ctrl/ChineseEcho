@@ -17,7 +17,7 @@ description: Practice Chinese listening, vocabulary, and review in a private nat
         <code data-copy-source>xattr -cr /Applications/ChineseEcho.app</code>
         <button class="copy-command" type="button" data-copy-button aria-label="Copy Terminal command"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 8h10v12H9zM5 16H4V4h10v1"/></svg><span>Copy</span></button>
       </div>
-      <p class="command-note">If macOS still blocks ChineseEcho after installing, this removes the download quarantine flag from the app only; Gatekeeper stays on.</p>
+      <p class="command-note">If Open Anyway doesn’t work, run this after moving ChineseEcho to Applications; it only removes the downloaded-from-the-internet mark from this app, and macOS security stays on.</p>
       <p class="copy-status" role="status" aria-live="polite"></p>
     </div>
     <ul class="hero-meta" aria-label="Release details">
@@ -38,13 +38,28 @@ description: Practice Chinese listening, vocabulary, and review in a private nat
   <figure class="section-screenshot" data-reveal data-reveal-delay="1">
     <img src="{{ '/assets/images/practice-session.png' | relative_url }}" alt="ChineseEcho practice session showing a Chinese flashcard with pronunciation and grading controls" width="2480" height="1474" loading="lazy" decoding="async">
   </figure>
-  <div class="feature-grid" data-reveal data-reveal-delay="2">
-    <article class="feature-card"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 13v-2a8 8 0 0 1 16 0v2M4 13h3v7H5a1 1 0 0 1-1-1v-6Zm16 0h-3v7h2a1 1 0 0 0 1-1v-6Z"/></svg></div><h3>Smart Dictation</h3><p>Practice custom vocabulary with native Mandarin speech, flexible speed, and Mainland or Taiwanese pronunciation.</p></article>
-    <article class="feature-card"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m4 17-.8 3.8L7 20l11.5-11.5-3-3L4 17Zm10-10 3 3M13 21h8"/></svg></div><h3>Paper-friendly sessions</h3><p>Run continuous dictation with repetition, writing time, pause, replay, and navigation controls.</p></article>
-    <article class="feature-card"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v17H7.5A3.5 3.5 0 0 0 4 22V5.5Zm16 0A3.5 3.5 0 0 0 16.5 2H13v17h3.5A3.5 3.5 0 0 1 20 22V5.5Z"/></svg></div><h3>Vocabulary library</h3><p>Keep words, meanings, pinyin, tags, idioms, and optional learner hints organized in one place.</p></article>
-    <article class="feature-card"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 7v5l3 2M5.6 5.6A9 9 0 1 1 3 12M3 5v5h5"/></svg></div><h3>Scheduled review</h3><p>Return to missed and due words through a local five-box review system shaped by your results.</p></article>
-    <article class="feature-card"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 1.2 4.3L17 9l-3.8 1.7L12 15l-1.2-4.3L7 9l3.8-1.7L12 3ZM5 14l.8 2.2L8 17l-2.2.8L5 20l-.8-2.2L2 17l2.2-.8L5 14Zm14 0 .8 2.2 2.2.8-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14Z"/></svg></div><h3>Context that sticks</h3><p>Use optional Local AI to create modern bilingual examples privately on your Apple-silicon Mac.</p></article>
-    <article class="feature-card"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16v14H4V7Zm-1-4h18v4H3V3Zm6 9h6"/></svg></div><h3>Portable backups</h3><p>Export and restore a versioned JSON backup of your library, learning history, and preferences.</p></article>
+  <div class="learning-loop" data-reveal data-reveal-delay="2">
+    <article class="loop-step">
+      <h3>Listen <span lang="zh-Hans">听</span></h3>
+      <ul>
+        <li><strong>Smart Dictation</strong>Practice custom vocabulary with native Mandarin speech, flexible speed, and Mainland or Taiwanese pronunciation.</li>
+        <li><strong>Paper-friendly sessions</strong>Run continuous dictation with repetition, writing time, pause, replay, and navigation controls.</li>
+      </ul>
+    </article>
+    <article class="loop-step">
+      <h3>Review <span lang="zh-Hans">复习</span></h3>
+      <ul>
+        <li><strong>Scheduled review</strong>Return to missed and due words through a local five-box review system shaped by your results.</li>
+        <li><strong>Vocabulary library</strong>Keep words, meanings, pinyin, tags, idioms, and optional learner hints organized in one place.</li>
+      </ul>
+    </article>
+    <article class="loop-step">
+      <h3>Remember <span lang="zh-Hans">记住</span></h3>
+      <ul>
+        <li><strong>Context that sticks</strong>Use optional Local AI to create modern bilingual examples privately on your Apple-silicon Mac.</li>
+        <li><strong>Portable backups</strong>Export and restore a versioned JSON backup of your library, learning history, and preferences.</li>
+      </ul>
+    </article>
   </div>
 </section>
 
@@ -55,7 +70,7 @@ description: Practice Chinese listening, vocabulary, and review in a private nat
       <p>Vocabulary, practice history, generated examples, and preferences remain on your Mac. ChineseEcho has no account system, advertising, cross-app tracking, or developer-operated analytics.</p>
       <a class="button privacy-policy-button" href="{{ '/privacy/' | relative_url }}">Read the privacy policy</a>
       <div class="trust-list">
-        <div><strong>Local storage</strong><span>SwiftData on your Mac</span></div>
+        <div><strong>Local storage</strong><span>Stored only on your Mac</span></div>
         <div><strong>Native speech</strong><span>Powered by macOS</span></div>
         <div><strong>Optional AI</strong><span>Runs on-device after download</span></div>
       </div>
@@ -82,19 +97,13 @@ description: Practice Chinese listening, vocabulary, and review in a private nat
         <li>Download and unzip <strong>ChineseEcho-1.0-macOS.zip</strong>.</li>
         <li>Drag <strong>ChineseEcho.app</strong> into Applications.</li>
         <li>Try opening ChineseEcho once, then open <strong>System Settings → Privacy &amp; Security</strong>.</li>
-        <li>Select <strong>Open Anyway</strong>, authenticate if asked, and open ChineseEcho again.</li>
+        <li>Select <strong>Open Anyway</strong>, authenticate if asked, and open ChineseEcho again. If that doesn’t work, use the <a href="#terminal-fallback">Terminal command</a> under the first download button.</li>
       </ol>
       <div class="hero-actions">
-        <a class="button button-primary" href="https://github.com/avarzhou-ctrl/ChineseEcho/releases/download/v1.0/ChineseEcho-1.0-macOS.zip">Download version 1.0</a>
+        <a class="button button-primary" href="https://github.com/avarzhou-ctrl/ChineseEcho/releases/download/v1.0/ChineseEcho-1.0-macOS.zip">Download for Apple silicon</a>
         <a class="button button-secondary" href="{{ '/support/' | relative_url }}">Installation help</a>
       </div>
+      <p class="release-line">Version 1.0, released October 3, 2026. <a href="{{ '/release-notes-1.0/' | relative_url }}">Read the release notes</a></p>
     </div>
-  </div>
-</section>
-
-<section class="home-section">
-  <div class="release-strip" data-reveal>
-    <div><h2>ChineseEcho 1.0</h2><p>Released October 3, 2026 · Apple silicon · macOS 15.6 or later</p></div>
-    <a class="button button-secondary" href="{{ '/release-notes-1.0/' | relative_url }}">Read release notes</a>
   </div>
 </section>

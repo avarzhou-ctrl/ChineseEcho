@@ -42,6 +42,8 @@ Hugging Face for on-device example generation. The app pins model revision
 The resolved dependency graph also includes the following projects. Their
 copyright notices and license terms are available in their linked repositories:
 
+<div class="dependency-columns" markdown="1">
+
 - [EventSource](https://github.com/mattt/EventSource)
 - [MLX Swift](https://github.com/ml-explore/mlx-swift)
 - [Swift ASN.1](https://github.com/apple/swift-asn1)
@@ -54,6 +56,8 @@ copyright notices and license terms are available in their linked repositories:
 - [SwiftSyntax](https://github.com/swiftlang/swift-syntax)
 - [Swift System](https://github.com/apple/swift-system)
 - [yyjson](https://github.com/ibireme/yyjson)
+
+</div>
 
 The downloadable app also contains an offline Third-Party Notices document
 with the license texts and notices for the resolved versions.
