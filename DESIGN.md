@@ -172,7 +172,7 @@ Both summary word lists support a hover preview. Resting the pointer on a learne
 
 Save the answer sheet through one background SwiftData transaction, rolling back on failure. Persist draft selections and a stable submission timestamp before saving; retrying cannot advance review schedules or analytics twice. Backups preserve draft marking and analytics receipts. Completed submissions clear their checkpoint; interrupted listening and marking remain resumable.
 
-Vocab Review retains the existing reveal, learner hint, per-word Known/Missed grading, Undo, and summary flow. The Missed (X) and Known (→) buttons show their keys beneath them, Undo also responds to ⌘Z, and a failed save or undo raises an alert instead of failing silently. Existing saved flashcard sessions resume in their original mode. Scheduled due reviews retain their flashcard flow.
+Vocab Review retains the existing reveal, learner hint, per-word Known/Missed grading, Undo, and summary flow. Missed (X) and Known (Right Arrow) keep their keyboard shortcuts without on-screen key labels, Undo also responds to ⌘Z, and a failed save or undo raises an alert instead of failing silently. Existing saved flashcard sessions resume in their original mode. Scheduled due reviews retain their flashcard flow.
 
 If a filter has no matches, use **No Words in This Filter** with “Choose a different category to continue practicing.”
 

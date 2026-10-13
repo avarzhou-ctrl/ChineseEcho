@@ -1360,8 +1360,7 @@ private struct PracticeSessionView: View {
                         color: TingXiePalette.missed,
                         accessibilityLabel: "Missed it",
                         help: "Missed it (X)",
-                        shortcut: "x",
-                        shortcutLabel: "X"
+                        shortcut: "x"
                     ) {
                         gradeCurrentWord(asMissed: true)
                     }
@@ -1371,13 +1370,12 @@ private struct PracticeSessionView: View {
                         color: TingXiePalette.secondary,
                         accessibilityLabel: "Got it",
                         help: "Got it (Right Arrow)",
-                        shortcut: .rightArrow,
-                        shortcutLabel: "→"
+                        shortcut: .rightArrow
                     ) {
                         gradeCurrentWord(asMissed: false)
                     }
                 }
-                .frame(height: 84)
+                .frame(height: 74)
                 .opacity(canGradeCurrentCard ? 1 : 0)
                 .allowsHitTesting(canGradeCurrentCard)
                 .accessibilityHidden(!canGradeCurrentCard)
@@ -2539,26 +2537,17 @@ private struct PracticeGradeButton: View {
     let accessibilityLabel: String
     let help: String
     let shortcut: KeyEquivalent
-    let shortcutLabel: String
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 6) {
-                Image(systemName: symbol)
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(color)
-                    .frame(width: 58, height: 58)
-                    .background(color.opacity(0.06), in: Circle())
-                    .overlay { Circle().stroke(color.opacity(0.32), lineWidth: 1.5) }
-                    .contentShape(Circle())
-
-                // Shows the key so learners discover keyboard grading without opening Help.
-                Text(shortcutLabel)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.7))
-                    .accessibilityHidden(true)
-            }
+            Image(systemName: symbol)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(color)
+                .frame(width: 58, height: 58)
+                .background(color.opacity(0.06), in: Circle())
+                .overlay { Circle().stroke(color.opacity(0.32), lineWidth: 1.5) }
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .keyboardShortcut(shortcut, modifiers: [])
