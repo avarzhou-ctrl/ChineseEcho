@@ -14,10 +14,10 @@ description: Practice Chinese listening, vocabulary, and review in a private nat
     </div>
     <div class="terminal-command" id="terminal-fallback">
       <div class="command-row">
-        <code data-copy-source>xattr -cr /Applications/ChineseEcho.app</code>
+        <code data-copy-source>sudo xattr -dr com.apple.quarantine /Applications/ChineseEcho.app</code>
         <button class="copy-command" type="button" data-copy-button aria-label="Copy Terminal command"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 8h10v12H9zM5 16H4V4h10v1"/></svg><span>Copy</span></button>
       </div>
-      <p class="command-note">If Open Anyway doesn’t work, run this after moving ChineseEcho to Applications; it only removes the downloaded-from-the-internet mark from this app, and macOS security stays on.</p>
+      <p class="command-note">If Open Anyway doesn’t work, run this after moving ChineseEcho to Applications and enter your Mac password when asked; it only removes the downloaded-from-the-internet mark from this app, and macOS security stays on.</p>
       <p class="copy-status" role="status" aria-live="polite"></p>
     </div>
     <ul class="hero-meta" aria-label="Release details">
