@@ -12,25 +12,33 @@ description: Practice Chinese listening, vocabulary, and review in a private nat
       <a class="button button-primary" href="https://github.com/avarzhou-ctrl/ChineseEcho/releases/download/v1.0/ChineseEcho-1.0-macOS.zip">Download for Apple silicon <span aria-hidden="true">↓</span></a>
       <a class="button button-secondary" href="#features">Explore features</a>
     </div>
+    <div class="terminal-command" id="terminal-fallback">
+      <div class="command-row">
+        <code data-copy-source>xattr -cr /Applications/ChineseEcho.app</code>
+        <button class="copy-command" type="button" data-copy-button aria-label="Copy Terminal command"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 8h10v12H9zM5 16H4V4h10v1"/></svg><span>Copy</span></button>
+      </div>
+      <p class="command-note">If macOS still blocks ChineseEcho after installing, this removes the download quarantine flag from the app only; Gatekeeper stays on.</p>
+      <p class="copy-status" role="status" aria-live="polite"></p>
+    </div>
     <ul class="hero-meta" aria-label="Release details">
       <li>Version 1.0</li><li>macOS 15.6+</li><li>Free and local-first</li>
     </ul>
   </div>
   <div class="hero-art">
     <div class="hero-icon-halo" aria-hidden="true"></div>
-    <img class="hero-screenshot" src="{{ '/assets/images/smart-dictation-dashboard.png' | relative_url }}" alt="ChineseEcho Smart Dictation dashboard showing due review and recent practice sets">
+    <img class="hero-screenshot" src="{{ '/assets/images/smart-dictation-dashboard.png' | relative_url }}" alt="ChineseEcho Smart Dictation dashboard showing due review and recent practice sets" width="2480" height="1474" decoding="async" fetchpriority="high">
   </div>
 </section>
 
 <section class="home-section" id="features">
-  <div class="section-heading">
+  <div class="section-heading" data-reveal>
     <h2>From first listen to lasting recall.</h2>
     <p>ChineseEcho keeps practice, vocabulary, and review connected without turning learning into a dashboard of distractions.</p>
   </div>
-  <figure class="section-screenshot">
-    <img src="{{ '/assets/images/practice-session.png' | relative_url }}" alt="ChineseEcho practice session showing a Chinese flashcard with pronunciation and grading controls" loading="lazy" decoding="async">
+  <figure class="section-screenshot" data-reveal data-reveal-delay="1">
+    <img src="{{ '/assets/images/practice-session.png' | relative_url }}" alt="ChineseEcho practice session showing a Chinese flashcard with pronunciation and grading controls" width="2480" height="1474" loading="lazy" decoding="async">
   </figure>
-  <div class="feature-grid">
+  <div class="feature-grid" data-reveal data-reveal-delay="2">
     <article class="feature-card"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 13v-2a8 8 0 0 1 16 0v2M4 13h3v7H5a1 1 0 0 1-1-1v-6Zm16 0h-3v7h2a1 1 0 0 0 1-1v-6Z"/></svg></div><h3>Smart Dictation</h3><p>Practice custom vocabulary with native Mandarin speech, flexible speed, and Mainland or Taiwanese pronunciation.</p></article>
     <article class="feature-card"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m4 17-.8 3.8L7 20l11.5-11.5-3-3L4 17Zm10-10 3 3M13 21h8"/></svg></div><h3>Paper-friendly sessions</h3><p>Run continuous dictation with repetition, writing time, pause, replay, and navigation controls.</p></article>
     <article class="feature-card"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v17H7.5A3.5 3.5 0 0 0 4 22V5.5Zm16 0A3.5 3.5 0 0 0 16.5 2H13v17h3.5A3.5 3.5 0 0 1 20 22V5.5Z"/></svg></div><h3>Vocabulary library</h3><p>Keep words, meanings, pinyin, tags, idioms, and optional learner hints organized in one place.</p></article>
@@ -41,7 +49,7 @@ description: Practice Chinese listening, vocabulary, and review in a private nat
 </section>
 
 <section class="home-section">
-  <div class="privacy-panel">
+  <div class="privacy-panel" data-reveal>
     <div><h2>Your learning stays yours.</h2></div>
     <div>
       <p>Vocabulary, practice history, generated examples, and preferences remain on your Mac. ChineseEcho has no account system, advertising, cross-app tracking, or developer-operated analytics.</p>
@@ -53,13 +61,13 @@ description: Practice Chinese listening, vocabulary, and review in a private nat
       </div>
     </div>
   </div>
-  <figure class="section-screenshot privacy-section-screenshot">
-    <img src="{{ '/assets/images/vocabulary-library.png' | relative_url }}" alt="ChineseEcho vocabulary library showing word details and bilingual example sentences" loading="lazy" decoding="async">
+  <figure class="section-screenshot privacy-section-screenshot" data-reveal data-reveal-delay="1">
+    <img src="{{ '/assets/images/vocabulary-library.png' | relative_url }}" alt="ChineseEcho vocabulary library showing word details and bilingual example sentences" width="2480" height="1474" loading="lazy" decoding="async">
   </figure>
 </section>
 
 <section class="home-section" id="install">
-  <div class="install-grid">
+  <div class="install-grid" data-reveal>
     <div class="requirement-card">
       <h2>Built for modern Macs.</h2>
       <ul class="requirement-list">
@@ -85,7 +93,7 @@ description: Practice Chinese listening, vocabulary, and review in a private nat
 </section>
 
 <section class="home-section">
-  <div class="release-strip">
+  <div class="release-strip" data-reveal>
     <div><h2>ChineseEcho 1.0</h2><p>Released October 3, 2026 · Apple silicon · macOS 15.6 or later</p></div>
     <a class="button button-secondary" href="{{ '/release-notes-1.0/' | relative_url }}">Read release notes</a>
   </div>

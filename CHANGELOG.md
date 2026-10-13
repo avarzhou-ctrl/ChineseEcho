@@ -1,5 +1,23 @@
 # Changelog
 
+- **2026-10-13**: Kept the homepage copy-command confirmation from shifting the page by moving its status message into a screen-reader-only live region, leaving the button's Copied label as the visible feedback. Files edited: `docs/assets/css/style.css`, `CHANGELOG.md`.
+
+- **2026-10-13**: Removed the homepage Terminal fallback's window-controls title bar and tightened its padding, sentence spacing, and empty copy-status line so the command box takes less vertical space. Files edited: `docs/index.md`, `docs/assets/css/style.css`, `CHANGELOG.md`.
+
+- **2026-10-13**: Moved the homepage Terminal fallback out of the hero screenshot and directly beneath the Download for Apple silicon button, and reduced its copy to the command plus one sentence explaining that it clears the app's download quarantine flag while Gatekeeper stays on. Files edited: `docs/index.md`, `docs/assets/css/style.css`, `CHANGELOG.md`.
+
+- **2026-10-13**: Moved the black, copyable Terminal fallback into the opening hero beneath the main title and release details, leaving the lower installation section focused on the standard four-step flow. Files edited: `docs/index.md`, `docs/assets/css/style.css`, `CHANGELOG.md`.
+
+- **2026-10-13**: Restyled the homepage quarantine-removal fallback as a compact black macOS Terminal panel with window controls, high-contrast command text, and integrated copy feedback. Files edited: `docs/index.md`, `docs/assets/css/style.css`, `CHANGELOG.md`.
+
+- **2026-10-13**: Moved the copyable, app-scoped quarantine-removal Terminal fallback from Support into the homepage installation flow and kept Support linked to its new location. Files edited: `docs/index.md`, `docs/support.md`, `docs/assets/css/style.css`, `CHANGELOG.md`.
+
+- **2026-10-13**: Added a copyable, app-scoped Terminal fallback for clearing ChineseEcho quarantine metadata and introduced one-time, compositor-safe homepage section reveals with tuned easing, stagger, and reduced-motion behavior. Files added: `docs/assets/js/site.js`; files edited: `docs/_layouts/default.html`, `docs/index.md`, `docs/support.md`, `docs/assets/css/style.css`, `CHANGELOG.md`.
+
+- **2026-10-13**: Polished the GitHub Pages site with a grouped feature matrix, balanced typography, single-source elevation, intrinsic image sizing, themed selection and scrollbars, one restrained hero entrance, clearer callout geometry, and removal of obsolete preview styles. Files edited: `docs/_layouts/default.html`, `docs/index.md`, `docs/release-notes-1.0.md`, `docs/assets/css/style.css`, `CHANGELOG.md`.
+
+- **2026-10-13**: Refined the GitHub Pages site with a tighter above-the-fold layout, compact adaptive navigation, immediate press feedback, anchored scrolling, and reduced-motion, reduced-transparency, and increased-contrast treatments guided by Apple-style interaction principles. Files edited: `docs/_layouts/default.html`, `docs/assets/css/style.css`, `CHANGELOG.md`.
+
 - **2026-10-08**: Enlarged and simplified the homepage hero screenshot, removed the practice screenshot tilt, and moved the Vocabulary screenshot below the privacy text panel. Files edited: `docs/index.md`, `docs/assets/css/style.css`, `CHANGELOG.md`.
 
 - **2026-10-08**: Added real ChineseEcho screenshots throughout the homepage, replacing the hero app icon with the tilted Smart Dictation dashboard and illustrating the feature and privacy sections with practice and Vocabulary views. Files added: `docs/assets/images/smart-dictation-dashboard.png`, `docs/assets/images/practice-session.png`, `docs/assets/images/vocabulary-library.png`; files edited: `docs/index.md`, `docs/assets/css/style.css`, `CHANGELOG.md`.

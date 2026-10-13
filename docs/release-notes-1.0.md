@@ -7,7 +7,7 @@ wide: true
 ---
 
 <header class="page-hero release-hero">
-  <img class="release-icon" src="{{ '/assets/images/chineseecho-app-icon.png' | relative_url }}" alt="ChineseEcho app icon">
+  <img class="release-icon" src="{{ '/assets/images/chineseecho-app-icon.png' | relative_url }}" alt="ChineseEcho app icon" width="256" height="256">
   <div><p class="version-pill">Version 1.0</p><h1>The first ChineseEcho release.</h1><p>Focused Chinese dictation, connected vocabulary review, and optional on-device AI in a native macOS workspace.</p><p class="page-meta">Released October 3, 2026</p></div>
 </header>
 
