@@ -26,7 +26,7 @@ description: Practice Chinese listening, vocabulary, and review in a private nat
   </div>
   <div class="hero-art">
     <div class="hero-icon-halo" aria-hidden="true"></div>
-    <img class="hero-screenshot" src="{{ '/assets/images/smart-dictation-dashboard.png' | relative_url }}" alt="ChineseEcho Smart Dictation dashboard showing due review and recent practice sets" width="2480" height="1474" decoding="async" fetchpriority="high">
+    <img class="hero-screenshot" src="{{ '/assets/images/smart-dictation-dashboard.png' | relative_url }}" alt="ChineseEcho Smart Dictation dashboard showing due review and recent practice sets" width="2350" height="1434" decoding="async" fetchpriority="high">
   </div>
 </section>
 

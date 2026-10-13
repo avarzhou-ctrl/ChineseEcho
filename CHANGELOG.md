@@ -164,3 +164,5 @@
 - **2026-09-21**: Added a subtle full-row hover highlight to the Missed Words list while preserving its stronger selected-row treatment. Files edited: `ChineseEcho/Views/VocabularyHubView.swift`, `CHANGELOG.md`.
 
 - **2026-09-21**: Fixed Dictation Shuffle becoming unavailable after the first spoken word by allowing the unplayed queue to be reordered throughout listening and guaranteeing a visibly different order when multiple words remain. Files edited: `ChineseEcho/Views/ContinuousDictationView.swift`, `CHANGELOG.md`.
+
+- **2026-10-13**: Replaced the landing-page Smart Dictation hero screenshot and updated its intrinsic dimensions. Files edited: `docs/assets/images/smart-dictation-dashboard.png`, `docs/index.md`, `CHANGELOG.md`.
