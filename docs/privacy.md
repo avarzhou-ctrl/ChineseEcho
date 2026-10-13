@@ -22,7 +22,7 @@ wide: true
       <li><a href="#information-the-developer-collects">Information the developer collects</a></li>
       <li><a href="#local-storage-and-backups">Local storage and backups</a></li>
       <li><a href="#speech-and-notifications">Speech and notifications</a></li>
-      <li><a href="#optional-local-ai">Optional Local AI</a></li>
+      <li><a href="#optional-local-ai">Optional Local AI and update checks</a></li>
       <li><a href="#file-access-and-system-permissions">File access and system permissions</a></li>
       <li><a href="#sharing-and-sale-of-information">Sharing and sale of information</a></li>
       <li><a href="#retention-and-deletion">Retention and deletion</a></li>
@@ -59,9 +59,10 @@ wide: true
   </section>
 
   <section id="optional-local-ai">
-    <h2>5. Optional Local AI</h2>
+    <h2>5. Optional Local AI and update checks</h2>
     <p>Local AI is optional. If you choose to install it, ChineseEcho downloads model files from Hugging Face. The download request may provide Hugging Face with standard network information such as your IP address, request time, and user-agent information. Hugging Face handles that information under its own privacy terms.</p>
     <p>After the model is downloaded, ChineseEcho performs supported vocabulary enrichment and contextual-sentence generation on your Mac. The learning content submitted to the local model is not sent to the developer.</p>
+    <p>Separately from Local AI, once a day, ChineseEcho asks GitHub for the version number of the latest release so it can tell you when an update is available. The request contains no learning content or identifiers beyond standard network information such as your IP address and the app version. You can check manually or turn automatic checks off in <strong>Settings → Updates</strong>.</p>
   </section>
 
   <section id="file-access-and-system-permissions">

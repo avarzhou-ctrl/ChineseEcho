@@ -20,6 +20,10 @@ nonisolated enum AppPreferenceKey {
     static let activePracticeSession = "activePracticeSession"
     static let completedTutorialVersion = "completedTutorialVersion"
     static let localAIDownloadChoice = "localAIDownloadChoice"
+    static let automaticUpdateChecks = "automaticUpdateChecks"
+    static let lastUpdateCheck = "lastUpdateCheck"
+    static let latestKnownVersion = "latestKnownVersion"
+    static let dismissedUpdateVersion = "dismissedUpdateVersion"
 
     static let all = [
         voiceIdentifier,
@@ -35,7 +39,8 @@ nonisolated enum AppPreferenceKey {
         vocabularyCardLayout,
         reviewFrequencyPreset,
         customReviewSchedule,
-        reviewNotificationsEnabled
+        reviewNotificationsEnabled,
+        automaticUpdateChecks
     ]
 }
 
@@ -359,6 +364,7 @@ nonisolated enum AppPreferenceDefault {
     static let interWordPause = 1.25
     static let repeatCount = 1
     static let keepCardsRevealed = false
+    static let automaticUpdateChecks = true
     static let vocabularyCardLayout = VocabularyCardLayout.chineseFirst
     static let reviewFrequencyPreset = ReviewFrequencyPreset.balanced
     static let customReviewSchedule = ReviewScheduleConfiguration.balanced

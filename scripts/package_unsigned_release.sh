@@ -23,11 +23,20 @@ if [[ ! "$version" =~ ^[0-9]+([.][0-9]+)*$ ]]; then
     exit 64
 fi
 
+# The in-app update checker compares the release tag with this value, so they must agree.
+bundle_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$source_app/Contents/Info.plist")"
+if [[ "$bundle_version" != "$version" ]]; then
+    echo "App reports version $bundle_version but release version is $version" >&2
+    exit 65
+fi
+
 staging_root="$(mktemp -d /tmp/chineseecho-release.XXXXXX)"
 trap 'rm -rf "$staging_root"' EXIT
 
 staged_app="$staging_root/ChineseEcho.app"
-archive_name="ChineseEcho-${version}-macOS.zip"
+# An unversioned asset name keeps releases/latest/download/ChineseEcho-macOS.zip
+# pointing at the newest build without editing the website or README.
+archive_name="ChineseEcho-macOS.zip"
 archive_path="$output_directory/$archive_name"
 checksum_path="$archive_path.sha256"
 
@@ -57,5 +66,6 @@ ditto -c -k --norsrc --noextattr --keepParent "$staged_app" "$archive_path"
     shasum -a 256 "$archive_name" > "$(basename "$checksum_path")"
 )
 
-echo "Created $archive_path"
+echo "Created $archive_path for version $version"
+echo "Upload it to the v$version GitHub release with its .sha256 file."
 echo "Created $checksum_path"

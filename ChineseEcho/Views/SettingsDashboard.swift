@@ -25,6 +25,9 @@ struct SettingsDashboard: View {
     private var keepCardsRevealed = AppPreferenceDefault.keepCardsRevealed
     @State private var audioEngine = SpeechAudioEngine()
     @State private var modelDownloadCoordinator = ModelDownloadCoordinator.shared
+    @State private var updateChecker = AppUpdateChecker.shared
+    @AppStorage(AppPreferenceKey.automaticUpdateChecks)
+    private var automaticUpdateChecks = AppPreferenceDefault.automaticUpdateChecks
     @State private var isModelStorageLoading = true
     @State private var isConfirmingModelRemoval = false
     @State private var modelRemovalError: String?
@@ -48,6 +51,7 @@ struct SettingsDashboard: View {
                     speechSection
                     localAISection
                     practiceAndBackupSection
+                    updatesSection
                 }
                 .frame(maxWidth: 820)
                 .frame(maxWidth: .infinity)
@@ -237,7 +241,8 @@ struct SettingsDashboard: View {
 
                 Text(
                     "If you enable Local AI, ChineseEcho downloads the model from "
-                    + "Hugging Face. Sentence generation then runs on this Mac."
+                    + "Hugging Face. Sentence generation then runs on this Mac. "
+                    + "Update checks ask GitHub for the latest version number only."
                 )
                 .font(.system(size: 12))
                 .foregroundStyle(TingXiePalette.onSurfaceVariant)
@@ -261,6 +266,79 @@ struct SettingsDashboard: View {
                     )
                 }
             }
+        }
+    }
+
+    private var updatesSection: some View {
+        SettingsSectionCard(
+            title: "Updates",
+            symbol: "arrow.down.app.fill",
+            summary: "Check GitHub for newer versions of ChineseEcho."
+        ) {
+            HStack(alignment: .center, spacing: 14) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("ChineseEcho \(updateChecker.currentVersion)")
+                        .font(.system(size: 15, weight: .bold))
+                    Text(updateStatusText)
+                        .font(.system(size: 12))
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                if let update = updateChecker.availableUpdate {
+                    Link(destination: update.releaseNotesURL) {
+                        Text("What’s New")
+                    }
+                    .buttonStyle(TingXieButtonStyle(variant: .quiet, size: .compact))
+
+                    Link(destination: update.downloadURL) {
+                        Label("Download \(update.version)", systemImage: "arrow.down.circle.fill")
+                    }
+                    .buttonStyle(TingXieButtonStyle(size: .compact))
+                } else {
+                    Button {
+                        Task { await updateChecker.checkNow() }
+                    } label: {
+                        if updateChecker.phase == .checking {
+                            HStack(spacing: 6) {
+                                ProgressView().controlSize(.small)
+                                Text("Checking…")
+                            }
+                        } else {
+                            Label("Check Now", systemImage: "arrow.clockwise")
+                        }
+                    }
+                    .buttonStyle(TingXieButtonStyle(variant: .secondary, size: .compact))
+                    .disabled(updateChecker.phase == .checking)
+                }
+            }
+
+            if case .failed(let message) = updateChecker.phase {
+                AccessibleErrorMessage(message: message)
+            }
+
+            Toggle(isOn: $automaticUpdateChecks) {
+                Text("Check for updates automatically once a day")
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var updateStatusText: String {
+        switch updateChecker.phase {
+        case .available(let update):
+            return "Version \(update.version) is ready. Quit ChineseEcho, then replace it in "
+                + "Applications. Your library and settings stay in place."
+        case .checking:
+            return "Checking GitHub for a newer version…"
+        default:
+            guard let lastCheckedAt = updateChecker.lastCheckedAt else {
+                return "Not checked yet."
+            }
+            let relative = lastCheckedAt.formatted(.relative(presentation: .named))
+            return "You’re up to date. Last checked \(relative)."
         }
     }
 

@@ -9,7 +9,7 @@ description: Practice Chinese listening, vocabulary, and review in a private nat
     <h1>Listen. Learn. <span>Remember.</span></h1>
     <p class="hero-lede">Build stronger Chinese listening and recall with focused dictation, thoughtful review, and optional on-device AI—all in one calm workspace.</p>
     <div class="hero-actions">
-      <a class="button button-primary" href="https://github.com/avarzhou-ctrl/ChineseEcho/releases/download/v1.0/ChineseEcho-1.0-macOS.zip">Download for Apple silicon <span aria-hidden="true">↓</span></a>
+      <a class="button button-primary" href="https://github.com/avarzhou-ctrl/ChineseEcho/releases/latest/download/ChineseEcho-macOS.zip">Download for Apple silicon <span aria-hidden="true">↓</span></a>
       <a class="button button-secondary" href="#features">Explore features</a>
     </div>
     <div class="terminal-command" id="terminal-fallback">
@@ -94,13 +94,13 @@ description: Practice Chinese listening, vocabulary, and review in a private nat
     <div class="install-card">
       <h2>Install ChineseEcho</h2>
       <ol class="install-steps">
-        <li>Download and unzip <strong>ChineseEcho-1.0-macOS.zip</strong>.</li>
+        <li>Download and unzip <strong>ChineseEcho-macOS.zip</strong>.</li>
         <li>Drag <strong>ChineseEcho.app</strong> into Applications.</li>
         <li>Try opening ChineseEcho once, then open <strong>System Settings → Privacy &amp; Security</strong>.</li>
         <li>Select <strong>Open Anyway</strong>, authenticate if asked, and open ChineseEcho again. If that doesn’t work, use the <a href="#terminal-fallback">Terminal command</a> under the first download button.</li>
       </ol>
       <div class="hero-actions">
-        <a class="button button-primary" href="https://github.com/avarzhou-ctrl/ChineseEcho/releases/download/v1.0/ChineseEcho-1.0-macOS.zip">Download for Apple silicon</a>
+        <a class="button button-primary" href="https://github.com/avarzhou-ctrl/ChineseEcho/releases/latest/download/ChineseEcho-macOS.zip">Download for Apple silicon</a>
         <a class="button button-secondary" href="{{ '/support/' | relative_url }}">Installation help</a>
       </div>
       <p class="release-line">Version 1.0, released October 3, 2026. <a href="{{ '/release-notes-1.0/' | relative_url }}">Read the release notes</a></p>

@@ -28,6 +28,7 @@ struct ContentView: View {
     @State private var tutorialIsFirstRun = false
     @State private var isSidebarCollapsed = false
     @State private var modelDownloadCoordinator = ModelDownloadCoordinator.shared
+    @State private var updateChecker = AppUpdateChecker.shared
     @State private var sidebarWidth =
         UserDefaults.standard.object(forKey: "sidebarWidth") as? Double ?? 266.0
     @AppStorage("sidebarWidth") private var persistedSidebarWidth = 266.0
@@ -139,15 +140,31 @@ struct ContentView: View {
         .tint(TingXiePalette.accent)
         .background(TingXiePalette.workspace)
         .overlay(alignment: .bottomTrailing) {
-            if modelDownloadCoordinator.isStatusVisible && !isPracticePresented {
-                ModelDownloadStatusView(coordinator: modelDownloadCoordinator)
-                    .padding(.trailing, 20)
-                    .padding(.bottom, 20)
+            VStack(alignment: .trailing, spacing: 12) {
+                if let update = updateChecker.availableUpdate,
+                   updateChecker.shouldShowUpdateCard,
+                   !isPracticePresented,
+                   !isTutorialPresented {
+                    AppUpdateStatusView(
+                        update: update,
+                        currentVersion: updateChecker.currentVersion,
+                        onDismiss: updateChecker.dismissUpdateCard
+                    )
+                }
+                if modelDownloadCoordinator.isStatusVisible && !isPracticePresented {
+                    ModelDownloadStatusView(coordinator: modelDownloadCoordinator)
+                }
             }
+            .padding(.trailing, 20)
+            .padding(.bottom, 20)
         }
         .animation(
             TingXieMotion.contentChange(reduceMotion: reduceMotion),
             value: modelDownloadCoordinator.isStatusVisible
+        )
+        .animation(
+            TingXieMotion.contentChange(reduceMotion: reduceMotion),
+            value: updateChecker.shouldShowUpdateCard
         )
         .overlayPreferenceValue(TutorialTargetPreferenceKey.self) { anchors in
             GeometryReader { proxy in
@@ -189,6 +206,7 @@ struct ContentView: View {
             await verifyLibraryReadiness()
             await modelDownloadCoordinator.refreshCachedByteCount()
             await configureInitialExperience()
+            await updateChecker.checkIfDue()
         }
     }
 

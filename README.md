@@ -12,7 +12,7 @@ ChineseEcho is a native macOS app for practicing Chinese dictation, organizing
 vocabulary, reviewing missed words, and generating contextual examples with an
 optional on-device language model.
 
-[Download ChineseEcho 1.0](https://github.com/avarzhou-ctrl/ChineseEcho/releases/tag/v1.0)
+[Download ChineseEcho](https://github.com/avarzhou-ctrl/ChineseEcho/releases/latest/download/ChineseEcho-macOS.zip)
 · [Website](https://avarzhou-ctrl.github.io/ChineseEcho/)
 · [Support](https://avarzhou-ctrl.github.io/ChineseEcho/support/)
 
@@ -36,10 +36,10 @@ optional on-device language model.
 
 ## Install the current release
 
-ChineseEcho 1.0 is distributed as a free, unsigned direct download.
+ChineseEcho is distributed as a free, unsigned direct download.
 
-1. Download `ChineseEcho-1.0-macOS.zip` from the
-   [v1.0 release](https://github.com/avarzhou-ctrl/ChineseEcho/releases/tag/v1.0).
+1. Download `ChineseEcho-macOS.zip` from the
+   [latest release](https://github.com/avarzhou-ctrl/ChineseEcho/releases/latest).
 2. Unzip it and drag `ChineseEcho.app` to **Applications**.
 3. Try to open ChineseEcho once. macOS will block the unsigned app.
 4. Open **System Settings → Privacy & Security** and select **Open Anyway**.
@@ -87,6 +87,11 @@ as a damaged app bundle:
   1.0 \
   dist
 ```
+
+To publish, create a GitHub release tagged `v<version>` (matching the app's
+`CFBundleShortVersionString`) and upload `ChineseEcho-macOS.zip` and its
+`.sha256` file. The asset name never changes, so the website's download link
+and the in-app update check pick up the new release automatically.
 
 ## Tests
 
