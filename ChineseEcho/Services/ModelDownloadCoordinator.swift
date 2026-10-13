@@ -150,6 +150,16 @@ final class ModelDownloadCoordinator {
             return
         }
 
+        // Claim the slot before the first suspension so concurrent callers share one preparation.
+        let task = Task { try await performPreparation() }
+        preparationTask = task
+        defer {
+            if preparationTask == task { preparationTask = nil }
+        }
+        try await task.value
+    }
+
+    private func performPreparation() async throws {
         let isFullyCached = await Task.detached(priority: .utility) {
             ModelCacheStore.hasCompleteSelectedModel()
         }.value
@@ -182,23 +192,18 @@ final class ModelDownloadCoordinator {
         let preparationStartedAt = Date()
         temporaryObservationStartDate = preparationStartedAt
 
-        let task = Task {
+        startTemporaryProgressMonitoring()
+
+        do {
             try await LocalLanguageModel.shared.prepare { progress in
                 Task { @MainActor in
                     ModelDownloadCoordinator.shared.receive(progress)
                 }
             }
-        }
-        preparationTask = task
-        startTemporaryProgressMonitoring()
-
-        do {
-            try await task.value
             stopTemporaryProgressMonitoring()
             phase = .ready
             fractionCompleted = 1
             estimatedSecondsRemaining = nil
-            preparationTask = nil
             await refreshCachedByteCount()
             if suppressesCachedPreparationStatus {
                 isStatusVisible = false
@@ -207,9 +212,8 @@ final class ModelDownloadCoordinator {
             }
         } catch {
             stopTemporaryProgressMonitoring()
-            preparationTask = nil
             estimatedSecondsRemaining = nil
-            if task.isCancelled || error is CancellationError {
+            if Task.isCancelled || error is CancellationError {
                 phase = .cancelled
             } else {
                 phase = .failed(error.localizedDescription)

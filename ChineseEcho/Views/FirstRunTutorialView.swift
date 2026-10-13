@@ -100,7 +100,7 @@ struct FirstRunTutorialView: View {
             case .dictationNavigation:
                 "Create listening sets and review words when they’re due."
             case .createSet:
-                "Use this plus button to type Chinese words or import a list."
+                "Use New Set to type Chinese words or import a list."
             case .vocabularyNavigation:
                 "Vocabulary collects words from every set and flags the ones you miss."
             case .vocabularyFilters:

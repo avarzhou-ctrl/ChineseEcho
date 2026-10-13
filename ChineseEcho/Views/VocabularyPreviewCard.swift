@@ -155,7 +155,7 @@ private struct PreviewTagRow: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            if snapshot.isIdiom { TagLabel(text: "Idiom", color: .orange, compact: true) }
+            if snapshot.isIdiom { TagLabel(text: "Idiom", color: TingXiePalette.accent, compact: true) }
             if showsMissed || snapshot.isMissedWord {
                 TagLabel(text: "Missed", color: TingXiePalette.missed, compact: true)
             }

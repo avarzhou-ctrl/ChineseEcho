@@ -53,7 +53,6 @@ enum TingXieControlMetrics {
     static let compactHeight: CGFloat = 32
     static let regularHeight: CGFloat = 40
     static let fieldHeight: CGFloat = 44
-    static let iconHitTarget: CGFloat = 40
     static let sheetHeaderHeight: CGFloat = 70
     static let sheetFooterHeight: CGFloat = 76
     static let compactCornerRadius: CGFloat = 9
@@ -142,12 +141,6 @@ enum TingXieMotion {
             insertion: .move(edge: .top).combined(with: .opacity),
             removal: .scale(scale: 0.98).combined(with: .opacity)
         )
-    }
-
-    static func inspectorTransition(reduceMotion: Bool) -> AnyTransition {
-        reduceMotion
-            ? .opacity
-            : .opacity.combined(with: .scale(scale: 0.99))
     }
 
     private static func opposite(_ edge: Edge) -> Edge {

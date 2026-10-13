@@ -105,7 +105,6 @@ struct ContentView: View {
                                 activeSet: activeSet,
                                 isDueReviewActive: isDueReviewActive,
                                 onCreateSet: { isCreatingSet = true },
-                                onOpenVocabulary: { updateSelection(.vocabulary) },
                                 onOpenSet: openPractice,
                                 onOpenDueReview: openDueReview,
                                 onCloseSet: closePractice
@@ -143,7 +142,7 @@ struct ContentView: View {
             if modelDownloadCoordinator.isStatusVisible && !isPracticePresented {
                 ModelDownloadStatusView(coordinator: modelDownloadCoordinator)
                     .padding(.trailing, 20)
-                    .padding(.bottom, modelStatusBottomPadding)
+                    .padding(.bottom, 20)
             }
         }
         .animation(
@@ -199,11 +198,6 @@ struct ContentView: View {
 
     private var isPracticePresented: Bool {
         selection == .dictation && (activeSet != nil || isDueReviewActive)
-    }
-
-    private var modelStatusBottomPadding: CGFloat {
-        // The dictation home reserves 86 points for its floating action, plus a 16-point gap.
-        selection == .dictation && activeSet == nil ? 102 : 20
     }
 
     private func updateSelection(_ newSelection: AppSection) {

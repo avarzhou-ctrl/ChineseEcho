@@ -24,7 +24,7 @@ The primary audience is Chinese learners, including foreign-language learners an
 
 1. **Smart Dictation** is the lead experience.
 2. **Vocabulary** supports review and enrichment after practice.
-3. **Settings** exposes speech and local-language-model diagnostics.
+3. **Settings** holds speech, Local AI, practice, and backup preferences.
 
 Settings and technical model details must not compete visually with the practice loop.
 
@@ -80,7 +80,7 @@ The app uses a custom horizontal split shell with a branded sidebar and a single
 | Vocabulary | Search and revisit saved words | Filtered vocabulary list and word inspector |
 | Settings | Test supporting engines | Speech & Pronunciation and Local Language Model cards |
 
-An active dictation set appears beneath **Smart Dictation** in the sidebar. The sidebar may be resized from 220 to 420 points, collapsed to 64 points, and remembers its expanded width.
+The sidebar may be resized from 220 to 420 points, collapsed to 64 points, and remembers its expanded width.
 
 ## Screen Specifications
 
@@ -88,7 +88,7 @@ An active dictation set appears beneath **Smart Dictation** in the sidebar. The 
 
 Fresh windows open on Smart Dictation home even when an interrupted practice checkpoint exists. The checkpoint remains available and resumes only after the learner manually reopens its set or Due Review source.
 
-On a true first run, a versioned **Getting Started** spotlight tour runs over the real interface and automatically moves through Smart Dictation, Vocabulary, and Settings. Its solid pale-green card surface remains consistent with the app's tonal cards over the dimmed backdrop, which extends through the hidden macOS title bar for one continuous window treatment. Spotlight cutouts highlight the sidebar destinations, floating create-set button, vocabulary filters, and voice-preview control and block accidental interaction with the underlying library. The final step defaults to **Download Local AI** while requiring the learner to finish setup before download begins; **Not Now** keeps speech, manual set creation, practice, grading, and review fully usable. A learner may skip the feature tour directly to the required Local AI choice, step backward or forward with chevrons, and replay or close the tour from Settings. Spotlight and page transitions respect Reduce Motion.
+On a true first run, a versioned **Getting Started** spotlight tour runs over the real interface and automatically moves through Smart Dictation, Vocabulary, and Settings. Its solid pale-green card surface remains consistent with the app's tonal cards over the dimmed backdrop, which extends through the hidden macOS title bar for one continuous window treatment. Spotlight cutouts highlight the sidebar destinations, **New Set** button, vocabulary filters, and voice-preview control and block accidental interaction with the underlying library. The final step defaults to **Download Local AI** while requiring the learner to finish setup before download begins; **Not Now** keeps speech, manual set creation, practice, grading, and review fully usable. A learner may skip the feature tour directly to the required Local AI choice, step backward or forward with chevrons, and replay or close the tour from Settings. Spotlight and page transitions respect Reduce Motion.
 
 - Default window: 1180 × 720 points
 - Minimum window: 900 × 650 points
@@ -106,15 +106,14 @@ The sidebar contains:
 
 1. Product name: **ChineseEcho**
 2. **Smart Dictation**
-3. Active set title when applicable
-4. **Vocabulary**
-5. **Settings**
-6. Flexible space
-7. Word-of-the-day card, sourced from saved vocabulary
+3. **Vocabulary**
+4. **Settings**
+5. Flexible space
+6. Word-of-the-day card, sourced from saved vocabulary
 
 Use SF Symbols already established by the app:
 
-- Smart Dictation: `waveform.badge.microphone`
+- Smart Dictation: `headphones`
 - Vocabulary Hub: `character.book.closed.fill`
 - Settings: `gearshape.fill`
 - Collapse/expand: native macOS sidebar control
@@ -123,15 +122,11 @@ Use SF Symbols already established by the app:
 
 The workspace header reads **Smart Dictation**.
 
-When no sets exist, center the microphone symbol and show:
+When no sets exist, show only the pale-green introduction card: “Practice listening with your own words.”, “Create a set, then practice by dictation or with flashcards.”, and a primary **Create New Set** action (⌘N). The introduction disappears once the first set exists so returning learners start on their next action.
 
-- **No Sessions Yet**
-- “Create your first custom practice round to start testing your vocabulary.”
-- **Create New Set**
+When sets exist, show, in order: the **Due Review** card, the Study Streak, Characters Learned, and Accuracy metrics, then **Recent Dictation Practice** with a compact **New Set** action (⌘N) at the trailing end of its heading. Creation lives beside the list rather than in a floating button, so it never covers a row's overflow menu. The list is vertically divided. Each row shows the set's chosen SF Symbol or emoji on its selected accent-color treatment, the set title, and its creation date. Keep the newest set first. Reuse the same appearance in search results and beside the active practice-set title.
 
-When sets exist, replace the empty state with a vertically divided list. Each row shows the set's chosen SF Symbol or emoji on its selected accent-color treatment, the set title, and its creation date. Keep the newest set first. Reuse the same appearance in search results and beside the active practice-set title.
-
-Keep Word of the Day in the sidebar. Above **Recent Dictation Practice**, show a compact **Due Review** card. When words are due, elevate the card with an accent outline, filled icon, due-now badge, and **Start Review** action. Bold the dynamic word count or relative next-review time within its supporting sentence. When the learner is caught up, collapse it into a quieter status row showing the next scheduled review; before any word has been graded, explain that normal dictation practice starts the schedule. Use an explicitly pale-green gradient for the introductory listening-drills hero rather than a neutral gray surface.
+Keep Word of the Day in the sidebar. The **Due Review** card stays compact. When words are due, elevate the card with an accent outline, filled icon, due-now badge, and **Start Review** action. Bold the dynamic word count or relative next-review time within its supporting sentence. When the learner is caught up, collapse it into a quieter status row showing the next scheduled review; before any word has been graded, explain that normal dictation practice starts the schedule. Use an explicitly pale-green gradient for the introduction card rather than a neutral gray surface.
 
 ### Create New Set sheet
 
@@ -177,7 +172,7 @@ Both summary word lists support a hover preview. Resting the pointer on a learne
 
 Save the answer sheet through one background SwiftData transaction, rolling back on failure. Persist draft selections and a stable submission timestamp before saving; retrying cannot advance review schedules or analytics twice. Backups preserve draft marking and analytics receipts. Completed submissions clear their checkpoint; interrupted listening and marking remain resumable.
 
-Vocab Review retain the existing reveal, learner hint, per-word Known/Missed grading, Undo, and summary flow. Existing saved flashcard sessions resume in their original mode. Scheduled due reviews retain their flashcard flow.
+Vocab Review retains the existing reveal, learner hint, per-word Known/Missed grading, Undo, and summary flow. The Missed (X) and Known (→) buttons show their keys beneath them, Undo also responds to ⌘Z, and a failed save or undo raises an alert instead of failing silently. Existing saved flashcard sessions resume in their original mode. Scheduled due reviews retain their flashcard flow.
 
 If a filter has no matches, use **No Words in This Filter** with “Choose a different category to continue practicing.”
 
@@ -207,7 +202,7 @@ The inspector contains:
 
 - Chinese word at high visual prominence
 - Pinyin
-- **Idiom**, **Missed**, and set-name tags when applicable
+- **Idiom**, **Missed**, and set-name tags when applicable. In catalog rows the set name is plain metadata text; only Idiom (accent) and Missed (red) use capsules, and rows end with the overflow menu rather than a chevron.
 - English translation or **No translation yet**
 - **Contextual Sentences**
 - Regenerate control
@@ -249,9 +244,9 @@ Colors are defined in `ChineseEcho/Views/TingXieTheme.swift`.
 | `missed` | `#C41F23` | Missed state, destructive emphasis, and errors |
 | `tableStripe` | `#A5C6A2` at 40% | Alternating vocabulary rows |
 
-Structural tokens retain the original fixed ChineseEcho green palette in every appearance. Primary actions use solid accent fills, secondary actions use subtle tonal fills and outlines, search and filter controls use opaque palette surfaces, and content cards use the established light material treatment.
+Structural tokens retain the original fixed ChineseEcho green palette, and the window forces Light appearance so native controls, labels, and text fields stay dark on the pale surfaces even when macOS is in Dark Mode. Primary actions use solid accent fills, secondary actions use subtle tonal fills and outlines, search and filter controls use opaque palette surfaces, and content cards use the established light material treatment.
 
-Do not add decorative colors without a semantic need. Use semantic SwiftUI foreground styles for primary and secondary text so the app remains readable in Light and Dark appearance.
+Do not add decorative colors without a semantic need. Use palette foreground tokens for primary and secondary text; do not introduce Dark Mode styling without first adding a complete dark palette.
 
 ### Typography
 
@@ -325,7 +320,7 @@ Use semantic roles rather than choosing a style page by page:
 - **Destructive**: red outline and label for irreversible or removal actions.
 - **Icon-only**: use the same semantic variants with a square hit target that resolves to a circular capsule; always include an accessibility label and help text.
 
-Disabled controls retain their semantic color at reduced opacity, and pressed controls use a restrained tonal response. Use compact sizing in dense cards and toolbars, regular sizing in sheets and primary workflows, and prominent sizing only for floating creation actions. Text fields and text editors outside native grouped forms use the shared inset input surface. Modal editors use the shared header and footer geometry.
+Disabled controls retain their semantic color at reduced opacity, and pressed controls use a restrained tonal response. Use compact sizing in dense cards and toolbars, regular sizing in sheets and primary workflows, and prominent sizing only for exceptional, single-action surfaces. Text fields and text editors outside native grouped forms use the shared inset input surface. Modal editors use the shared header and footer geometry.
 
 ## Interaction and State
 
@@ -365,7 +360,7 @@ Disabled controls retain their semantic color at reduced opacity, and pressed co
 
 ## Accessibility
 
-- Maintain text and control contrast across Light and Dark appearance.
+- Maintain text and control contrast on every fixed palette surface; the app intentionally renders in Light appearance only.
 - Never communicate missed state with red alone; pair it with **Missed**, `flag.fill`, or another textual/symbolic cue.
 - Give every icon-only control an accessibility label and help text where appropriate.
 - Preserve full-row hit targets in navigation, filters, and vocabulary lists.
@@ -397,8 +392,6 @@ Disabled controls retain their semantic color at reduced opacity, and pressed co
 | Vocabulary review and Settings | `ChineseEcho/Views/VocabularyHubView.swift` |
 | Continuous dictation | `ChineseEcho/Views/ContinuousDictationView.swift` |
 | Compact word hover preview | `ChineseEcho/Views/VocabularyPreviewCard.swift` |
-| Speech diagnostic UI | `ChineseEcho/Views/SpeechTestView.swift` |
-| Local-model diagnostic UI | `ChineseEcho/Views/LLMTestView.swift` |
 | Set and word models | `ChineseEcho/Models/DictationSet.swift`, `ChineseEcho/Models/VocabularyWord.swift` |
 | Background persistence | `ChineseEcho/Services/DictationStore.swift` |
 | Review scheduling | `ChineseEcho/Services/ReviewScheduler.swift` |

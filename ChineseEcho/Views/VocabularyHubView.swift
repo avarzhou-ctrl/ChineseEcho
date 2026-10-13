@@ -453,11 +453,6 @@ private struct VocabularyRow: View {
                     }
 
                     Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.5))
-                        .padding(.trailing, 8)
                 }
                 .padding(.leading, 18)
                 .frame(maxWidth: .infinity, minHeight: 76)
@@ -938,11 +933,21 @@ private struct WordTags: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            if word.isIdiom { TagLabel(text: "Idiom", color: .orange, compact: compact) }
+            if word.isIdiom { TagLabel(text: "Idiom", color: TingXiePalette.accent, compact: compact) }
             if showsMissed ?? word.isMissedWord {
                 TagLabel(text: "Missed", color: TingXiePalette.missed, compact: compact)
             }
-            if let tag = word.tags.first { TagLabel(text: tag, color: TingXiePalette.secondary, compact: compact) }
+            if let tag = word.tags.first {
+                // In dense rows the set name is metadata, so only states like Idiom and Missed get capsules.
+                if compact {
+                    Text(tag)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.8))
+                        .lineLimit(1)
+                } else {
+                    TagLabel(text: tag, color: TingXiePalette.secondary, compact: compact)
+                }
+            }
         }
     }
 }

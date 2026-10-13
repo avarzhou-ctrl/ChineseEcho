@@ -15,7 +15,7 @@
 - Storage: Local persistence managed exclusively via **SwiftData**. No cloud backends.
 
 ### Design Style
-- **Theme:** Clean, native macOS desktop aesthetic (supports Light/Dark mode).
+- **Theme:** Clean, native macOS desktop aesthetic on a fixed light-green palette; the window forces Light appearance so native controls stay legible.
 - **Layout:** `NavigationSplitView` architecture featuring a standard Sidebar navigation and a Main workspace dashboard.
 
 ## Commands

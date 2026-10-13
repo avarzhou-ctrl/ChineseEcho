@@ -13,8 +13,9 @@ import OSLog
 @MainActor
 @Observable
 final class SpeechAudioEngine: NSObject, AVSpeechSynthesizerDelegate {
+    // Created on first playback because SwiftUI re-evaluates `@State` initial values on every view init.
     @ObservationIgnored
-    private var synthesizer: AVSpeechSynthesizer
+    private var synthesizer: AVSpeechSynthesizer?
     @ObservationIgnored private let makeSynthesizer: () -> AVSpeechSynthesizer
     private let startupTimeout: Double
     @ObservationIgnored private var activeUtterance: AVSpeechUtterance?
@@ -43,9 +44,7 @@ final class SpeechAudioEngine: NSObject, AVSpeechSynthesizerDelegate {
     ) {
         self.makeSynthesizer = makeSynthesizer
         self.startupTimeout = startupTimeout
-        synthesizer = makeSynthesizer()
         super.init()
-        synthesizer.delegate = self
         configureFromPreferences()
     }
 
@@ -64,6 +63,10 @@ final class SpeechAudioEngine: NSObject, AVSpeechSynthesizerDelegate {
 
     // Prefer the installed female Siri voice without depending on its localized display name.
     var defaultFemaleVoice: AVSpeechSynthesisVoice? {
+        Self.defaultFemaleVoice(in: voices)
+    }
+
+    private static func defaultFemaleVoice(in voices: [AVSpeechSynthesisVoice]) -> AVSpeechSynthesisVoice? {
         voices.first { $0.gender == .female && $0.identifier.contains(".siri_") }
             ?? voices.first { $0.name == "Tingting" }
             ?? AVSpeechSynthesisVoice(language: "zh-CN")
@@ -85,12 +88,14 @@ final class SpeechAudioEngine: NSObject, AVSpeechSynthesizerDelegate {
         let savedIdentifier = defaults.string(forKey: AppPreferenceKey.voiceIdentifier) ?? ""
         let profile = defaults.string(forKey: AppPreferenceKey.pronunciationProfile)
             ?? AppPreferenceDefault.pronunciationProfile
-        selectedVoice = voices.first { $0.identifier == savedIdentifier }
-            ?? voice(for: profile)
-            ?? defaultFemaleVoice
+        // Query the system voice list once; it is the expensive part of configuration.
+        let availableVoices = voices
+        selectedVoice = availableVoices.first { $0.identifier == savedIdentifier }
+            ?? Self.voice(for: profile, in: availableVoices)
+            ?? Self.defaultFemaleVoice(in: availableVoices)
     }
 
-    private func voice(for profile: String) -> AVSpeechSynthesisVoice? {
+    private static func voice(for profile: String, in voices: [AVSpeechSynthesisVoice]) -> AVSpeechSynthesisVoice? {
         let language = profile == "Taiwanese Mandarin" ? "zh-TW" : "zh-CN"
         return voices.first { $0.language == language && $0.gender == .female }
             ?? voices.first { $0.language == language }
@@ -122,14 +127,15 @@ final class SpeechAudioEngine: NSObject, AVSpeechSynthesizerDelegate {
         watchdog = nil
         activeUtterance = nil
         isSpeaking = false
-        synthesizer.delegate = nil
-        synthesizer.stopSpeaking(at: .immediate)
+        synthesizer?.delegate = nil
+        synthesizer?.stopSpeaking(at: .immediate)
     }
 
     private func begin(_ utterance: AVSpeechUtterance) {
         // A fresh synthesizer also makes manual replay recover from silent “success”.
-        synthesizer = makeSynthesizer()
+        let synthesizer = makeSynthesizer()
         synthesizer.delegate = self
+        self.synthesizer = synthesizer
         activeUtterance = utterance
         isSpeaking = true
         armWatchdog(seconds: startupTimeout)
@@ -178,7 +184,8 @@ final class SpeechAudioEngine: NSObject, AVSpeechSynthesizerDelegate {
         let utteranceID = ObjectIdentifier(utterance)
         Task { @MainActor [weak self] in
             guard let self, let current = self.activeUtterance,
-                  ObjectIdentifier(self.synthesizer) == senderID,
+                  let synthesizer = self.synthesizer,
+                  ObjectIdentifier(synthesizer) == senderID,
                   ObjectIdentifier(current) == utteranceID else { return }
             switch event {
             case .started:

@@ -50,6 +50,8 @@ struct ChineseEchoApp: App {
             NavigationStack {
                 ContentView()
             }
+            // The ChineseEcho palette is fixed light green, so native controls must stay in Light appearance to remain legible.
+            .preferredColorScheme(.light)
         }
         .modelContainer(sharedModelContainer)
         .defaultSize(width: 1180, height: 720)

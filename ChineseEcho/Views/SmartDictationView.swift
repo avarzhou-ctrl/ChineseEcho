@@ -13,7 +13,6 @@ struct SmartDictationView: View {
     let activeSet: DictationSet?
     let isDueReviewActive: Bool
     let onCreateSet: () -> Void
-    let onOpenVocabulary: () -> Void
     let onOpenSet: (DictationSet) -> Void
     let onOpenDueReview: () -> Void
     let onCloseSet: () -> Void
@@ -106,66 +105,56 @@ struct SmartDictationView: View {
                     )
                 )
             } else {
-                ZStack(alignment: .bottomTrailing) {
-                    VStack(spacing: 0) {
-                        WorkspaceHeader(
-                            title: "Smart Dictation",
-                            searchText: $searchText,
-                            searchPrompt: "Search sets or vocabulary…",
-                            searchAccessibilityLabel: "Search dictation sets and vocabulary",
-                            searchResults: searchResultsOverlay,
-                            searchResultsPresented: $isSearchResultsPresented,
-                            onSearchSubmit: openHighlightedSearchResult,
-                            onMoveSearchSelection: moveSearchSelection,
-                            info: WorkspaceInfo(
-                                title: "About Smart Dictation",
-                                symbol: "waveform",
-                                summary: "Create sets, listen to each word, and review anything you miss.",
-                                tips: [
-                                    "Use + to create or import a set.",
-                                    "Press Return to reveal a flashcard.",
-                                    "Missed words also appear in Vocabulary."
-                                ]
-                            )
+                VStack(spacing: 0) {
+                    WorkspaceHeader(
+                        title: "Smart Dictation",
+                        searchText: $searchText,
+                        searchPrompt: "Search sets or vocabulary…",
+                        searchAccessibilityLabel: "Search dictation sets and vocabulary",
+                        searchResults: searchResultsOverlay,
+                        searchResultsPresented: $isSearchResultsPresented,
+                        onSearchSubmit: openHighlightedSearchResult,
+                        onMoveSearchSelection: moveSearchSelection,
+                        info: WorkspaceInfo(
+                            title: "About Smart Dictation",
+                            symbol: "waveform",
+                            summary: "Create sets, listen to each word, and review anything you miss.",
+                            tips: [
+                                "Use New Set (⌘N) to create or import a set.",
+                                "Press Return to reveal a flashcard.",
+                                "Missed words also appear in Vocabulary."
+                            ]
                         )
+                    )
 
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: 30) {
-                                DictationHero(onOpenVocabulary: onOpenVocabulary)
-
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 30) {
+                            // The introduction only earns its space before the first set exists.
+                            if sets.isEmpty {
+                                DictationHero(onCreateSet: onCreateSet)
+                            } else {
                                 DueReviewCard(
                                     words: allWords,
                                     dueWords: dueWords,
                                     onStartReview: onOpenDueReview
                                 )
 
+                                DictationLearningMetrics(sets: sets)
+
                                 DictationSetCollection(
                                     sets: sets,
-                                    isSearching: false,
                                     onCreateSet: onCreateSet,
                                     onOpenSet: onOpenSet,
                                     onEditSet: { editingSet = $0 },
                                     onDuplicateSet: duplicateSet,
                                     onDeleteSet: { setPendingDeletion = $0 }
                                 )
-
-                                DictationLearningMetrics(sets: sets)
                             }
-                            .padding(.horizontal, 40)
-                            .padding(.bottom, 96)
                         }
-                        .onTapGesture { isSearchResultsPresented = false }
+                        .padding(.horizontal, 40)
+                        .padding(.bottom, 40)
                     }
-
-                    Button(action: onCreateSet) {
-                        Image(systemName: "plus")
-                    }
-                    .buttonStyle(TingXieButtonStyle(size: .prominent, isIconOnly: true))
-                    .tutorialTarget(.createSetButton)
-                    .help("Create New Set")
-                    .accessibilityLabel("Create New Set")
-                    .padding(.trailing, 32)
-                    .padding(.bottom, 30)
+                    .onTapGesture { isSearchResultsPresented = false }
                 }
                 .transition(
                     TingXieMotion.directionalTransition(
@@ -458,7 +447,7 @@ private struct DictationSearchResultRow: View {
 
 // Introduces the dictation workspace and links learners to saved vocabulary.
 private struct DictationHero: View {
-    let onOpenVocabulary: () -> Void
+    let onCreateSet: () -> Void
 
     var body: some View {
         HStack(spacing: 28) {
@@ -475,13 +464,12 @@ private struct DictationHero: View {
                     .frame(maxWidth: 510, alignment: .leading)
                     .padding(.top, 12)
 
-                HStack(spacing: 12) {
-                    Button(action: onOpenVocabulary) {
-                        Label("View Vocabulary", systemImage: "character.book.closed")
-                    }
-                    .buttonStyle(TingXieButtonStyle(variant: .secondary))
-                }
-                .padding(.top, 22)
+                Button("Create New Set", systemImage: "plus", action: onCreateSet)
+                    .buttonStyle(TingXieButtonStyle())
+                    .keyboardShortcut("n", modifiers: .command)
+                    .tutorialTarget(.createSetButton)
+                    .help("Create New Set (⌘N)")
+                    .padding(.top, 22)
             }
 
             Spacer(minLength: 10)
@@ -779,7 +767,6 @@ private struct CustomReviewScheduleEditor: View {
 // Switches between the empty state and the learner's saved set list.
 private struct DictationSetCollection: View {
     let sets: [DictationSet]
-    let isSearching: Bool
     let onCreateSet: () -> Void
     let onOpenSet: (DictationSet) -> Void
     let onEditSet: (DictationSet) -> Void
@@ -788,40 +775,29 @@ private struct DictationSetCollection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Recent Dictation Practice")
-                .font(TingXieTypography.sectionTitle)
+            HStack(alignment: .firstTextBaseline) {
+                Text("Recent Dictation Practice")
+                    .font(TingXieTypography.sectionTitle)
 
-            if sets.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: isSearching ? "magnifyingglass" : "waveform.badge.plus")
-                        .font(.system(size: 34, weight: .medium))
-                        .foregroundStyle(TingXiePalette.secondary.opacity(0.7))
-                    Text(isSearching ? "No matching sets" : "No Sessions Yet")
-                        .font(TingXieTypography.sectionTitle)
-                    Text(isSearching ? "Try a different set name or vocabulary word." : "Create a set to start practicing.")
-                        .font(TingXieTypography.body)
-                        .foregroundStyle(TingXiePalette.onSurfaceVariant)
-                        .multilineTextAlignment(.center)
-                    if !isSearching {
-                        Button("Create New Set", systemImage: "plus", action: onCreateSet)
-                            .buttonStyle(TingXieButtonStyle())
-                    }
-                }
-                .padding(.horizontal, 32)
-                .padding(.vertical, 28)
-                .frame(maxWidth: .infinity, minHeight: 180)
-                .tonalCard(fill: TingXiePalette.lightGreenSurface)
-            } else {
-                LazyVStack(spacing: 12) {
-                    ForEach(sets) { set in
-                        DictationSetRow(
-                            set: set,
-                            onOpen: { onOpenSet(set) },
-                            onEdit: { onEditSet(set) },
-                            onDuplicate: { onDuplicateSet(set) },
-                            onDelete: { onDeleteSet(set) }
-                        )
-                    }
+                Spacer()
+
+                // Lives beside the list it adds to, so it never covers a row's overflow menu.
+                Button("New Set", systemImage: "plus", action: onCreateSet)
+                    .buttonStyle(TingXieButtonStyle(variant: .secondary, size: .compact))
+                    .keyboardShortcut("n", modifiers: .command)
+                    .tutorialTarget(.createSetButton)
+                    .help("Create New Set (⌘N)")
+            }
+
+            LazyVStack(spacing: 12) {
+                ForEach(sets) { set in
+                    DictationSetRow(
+                        set: set,
+                        onOpen: { onOpenSet(set) },
+                        onEdit: { onEditSet(set) },
+                        onDuplicate: { onDuplicateSet(set) },
+                        onDelete: { onDeleteSet(set) }
+                    )
                 }
             }
         }
@@ -1065,6 +1041,7 @@ private struct PracticeSessionView: View {
     @State private var savedContinuousSession: SavedPracticeSession?
     @State private var gradeHistory: [PracticeGradeAction] = []
     @State private var isUpdatingGrade = false
+    @State private var gradeError: String?
     @State private var hasGradedCurrentCard = false
     @State private var hasInitializedQueue = false
     @State private var isQueueShuffled = false
@@ -1260,6 +1237,17 @@ private struct PracticeSessionView: View {
         } message: {
             Text("This discards the saved queue and completed grading for this session. Your overall learning progress and missed-word status stay recorded.")
         }
+        .alert(
+            "Couldn’t Save Your Answer",
+            isPresented: Binding(
+                get: { gradeError != nil },
+                set: { if !$0 { gradeError = nil } }
+            )
+        ) {
+            Button("OK") { gradeError = nil }
+        } message: {
+            Text(gradeError ?? "Please try again.")
+        }
     }
 
     private var practiceContent: some View {
@@ -1293,7 +1281,8 @@ private struct PracticeSessionView: View {
                     Spacer()
 
                     Button("Undo", systemImage: "arrow.uturn.backward", action: undoLastGrade)
-                        .help("Undo the last grading decision")
+                        .keyboardShortcut("z", modifiers: .command)
+                        .help("Undo the last grading decision (⌘Z)")
                         .foregroundStyle(
                             canUndoLastGrade
                                 ? TingXiePalette.onSurfaceVariant
@@ -1371,7 +1360,8 @@ private struct PracticeSessionView: View {
                         color: TingXiePalette.missed,
                         accessibilityLabel: "Missed it",
                         help: "Missed it (X)",
-                        shortcut: "x"
+                        shortcut: "x",
+                        shortcutLabel: "X"
                     ) {
                         gradeCurrentWord(asMissed: true)
                     }
@@ -1381,12 +1371,13 @@ private struct PracticeSessionView: View {
                         color: TingXiePalette.secondary,
                         accessibilityLabel: "Got it",
                         help: "Got it (Right Arrow)",
-                        shortcut: .rightArrow
+                        shortcut: .rightArrow,
+                        shortcutLabel: "→"
                     ) {
                         gradeCurrentWord(asMissed: false)
                     }
                 }
-                .frame(height: 74)
+                .frame(height: 84)
                 .opacity(canGradeCurrentCard ? 1 : 0)
                 .allowsHitTesting(canGradeCurrentCard)
                 .accessibilityHidden(!canGradeCurrentCard)
@@ -1835,7 +1826,8 @@ private struct PracticeSessionView: View {
                     presentSummary()
                 }
             } catch {
-                // Keep the current card available when persistence fails.
+                // The card stays on screen so the learner can grade it again.
+                gradeError = error.localizedDescription
             }
             isUpdatingGrade = false
         }
@@ -1848,10 +1840,17 @@ private struct PracticeSessionView: View {
         stopPlayback()
 
         Task {
+            // Every exit path must re-enable grading, Undo, and Shuffle.
+            defer { isUpdatingGrade = false }
             do {
                 guard let word = source.words.first(where: {
                     $0.persistentModelID == action.wordID
-                }) else { return }
+                }) else {
+                    // The word was deleted elsewhere, so its grade can no longer be reversed.
+                    gradeHistory.removeLast()
+                    gradeError = "That word was removed from your library, so its answer can’t be undone."
+                    return
+                }
                 try await store.restorePracticeResult(
                     PracticeResultRestoreRequest(
                         wordRecordID: word.recordID,
@@ -1876,9 +1875,9 @@ private struct PracticeSessionView: View {
                 persistSession()
                 scheduleAutomaticPlayback()
             } catch {
-                // Leave history intact so Undo can be retried.
+                // History stays intact so Undo can be retried.
+                gradeError = error.localizedDescription
             }
-            isUpdatingGrade = false
         }
     }
 
@@ -2395,8 +2394,10 @@ private struct PracticeFlipCard: View {
         ZStack {
             Button(action: flip) {
                 ZStack {
+                    // Shadowing only the card shape keeps glyphs from casting a soft halo.
                     RoundedRectangle(cornerRadius: 28)
                         .fill(TingXiePalette.lightGreenSurface)
+                        .shadow(color: TingXiePalette.accent.opacity(0.11), radius: 28, y: 16)
 
                     cardFace(isAnswer: false)
                         .opacity(isFlipped ? 0 : 1)
@@ -2407,7 +2408,6 @@ private struct PracticeFlipCard: View {
                 }
                 .contentShape(RoundedRectangle(cornerRadius: 28))
                 .overlay { RoundedRectangle(cornerRadius: 28).stroke(.white.opacity(0.8), lineWidth: 1) }
-                .shadow(color: TingXiePalette.accent.opacity(0.11), radius: 28, y: 16)
                 .rotation3DEffect(
                     .degrees(isFlipped ? 180 : 0),
                     axis: (x: 0, y: 1, z: 0),
@@ -2539,17 +2539,26 @@ private struct PracticeGradeButton: View {
     let accessibilityLabel: String
     let help: String
     let shortcut: KeyEquivalent
+    let shortcutLabel: String
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(color)
-                .frame(width: 58, height: 58)
-                .background(color.opacity(0.06), in: Circle())
-                .overlay { Circle().stroke(color.opacity(0.32), lineWidth: 1.5) }
-                .contentShape(Circle())
+            VStack(spacing: 6) {
+                Image(systemName: symbol)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(color)
+                    .frame(width: 58, height: 58)
+                    .background(color.opacity(0.06), in: Circle())
+                    .overlay { Circle().stroke(color.opacity(0.32), lineWidth: 1.5) }
+                    .contentShape(Circle())
+
+                // Shows the key so learners discover keyboard grading without opening Help.
+                Text(shortcutLabel)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(TingXiePalette.onSurfaceVariant.opacity(0.7))
+                    .accessibilityHidden(true)
+            }
         }
         .buttonStyle(.plain)
         .keyboardShortcut(shortcut, modifiers: [])
@@ -3604,7 +3613,7 @@ private struct DraftVocabularyDropDelegate: DropDelegate {
 #Preview("Smart Dictation — Empty") {
     SmartDictationView(
         sets: [], activeSet: nil, isDueReviewActive: false,
-        onCreateSet: {}, onOpenVocabulary: {}, onOpenSet: { _ in },
+        onCreateSet: {}, onOpenSet: { _ in },
         onOpenDueReview: {}, onCloseSet: {}
     )
     .modelContainer(for: [DictationSet.self, VocabularyWord.self], inMemory: true)
@@ -3615,7 +3624,7 @@ private struct DraftVocabularyDropDelegate: DropDelegate {
     let idiomSet = DictationSet(title: "Everyday idioms", dateCreated: Date.now.addingTimeInterval(-172_800))
     SmartDictationView(
         sets: [hskSet, idiomSet], activeSet: nil, isDueReviewActive: false,
-        onCreateSet: {}, onOpenVocabulary: {}, onOpenSet: { _ in },
+        onCreateSet: {}, onOpenSet: { _ in },
         onOpenDueReview: {}, onCloseSet: {}
     )
     .modelContainer(for: [DictationSet.self, VocabularyWord.self], inMemory: true)
@@ -3636,7 +3645,7 @@ private struct DraftVocabularyDropDelegate: DropDelegate {
     set.vocabularyWords.append(word)
     return SmartDictationView(
         sets: [set], activeSet: nil, isDueReviewActive: false,
-        onCreateSet: {}, onOpenVocabulary: {}, onOpenSet: { _ in },
+        onCreateSet: {}, onOpenSet: { _ in },
         onOpenDueReview: {}, onCloseSet: {}
     )
     .modelContainer(for: [DictationSet.self, VocabularyWord.self], inMemory: true)
@@ -3655,7 +3664,7 @@ private func smartDictationPracticePreview() -> some View {
     words.forEach { word in word.session = set; set.vocabularyWords.append(word) }
     return SmartDictationView(
         sets: [set], activeSet: set, isDueReviewActive: false,
-        onCreateSet: {}, onOpenVocabulary: {}, onOpenSet: { _ in },
+        onCreateSet: {}, onOpenSet: { _ in },
         onOpenDueReview: {}, onCloseSet: {}
     )
     .modelContainer(for: [DictationSet.self, VocabularyWord.self], inMemory: true)

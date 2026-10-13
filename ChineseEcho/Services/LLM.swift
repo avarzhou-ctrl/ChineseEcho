@@ -131,6 +131,8 @@ actor LocalLanguageModel {
     static let shared = LocalLanguageModel()
 
     private var modelContainer: ModelContainer?
+    // Shared by concurrent callers so the model is never loaded into memory twice.
+    private var loadingTask: Task<ModelContainer, Error>?
 
     func generate(prompt: String) async throws -> String {
         let container = try await loadContainer()
@@ -159,6 +161,8 @@ actor LocalLanguageModel {
     }
 
     func unload() {
+        loadingTask?.cancel()
+        loadingTask = nil
         modelContainer = nil
     }
 
@@ -169,15 +173,41 @@ actor LocalLanguageModel {
             return modelContainer
         }
 
-        // The model is downloaded once and cached by the Hugging Face integration.
-        let container = try await MLXLMCommon.loadModelContainer(
-            from: HuggingFaceDownloader(),
-            using: HuggingFaceTokenizerLoader(),
-            configuration: LocalModelSpec.configuration,
-            progressHandler: progressHandler
-        )
-        modelContainer = container
-        return container
+        let task: Task<ModelContainer, Error>
+        if let loadingTask {
+            task = loadingTask
+        } else {
+            // The model is downloaded once and cached by the Hugging Face integration.
+            task = Task {
+                try await MLXLMCommon.loadModelContainer(
+                    from: HuggingFaceDownloader(),
+                    using: HuggingFaceTokenizerLoader(),
+                    configuration: LocalModelSpec.configuration,
+                    progressHandler: progressHandler
+                )
+            }
+            loadingTask = task
+        }
+
+        let container: ModelContainer
+        do {
+            // Forward cancellation so pausing the download still stops the shared load.
+            container = try await withTaskCancellationHandler {
+                try await task.value
+            } onCancel: {
+                task.cancel()
+            }
+        } catch {
+            // A failed or cancelled load must not be reused by the next attempt.
+            if loadingTask == task { loadingTask = nil }
+            throw error
+        }
+        // Another caller may have finished or unloaded while this one was suspended.
+        if loadingTask == task {
+            loadingTask = nil
+            modelContainer = container
+        }
+        return modelContainer ?? container
     }
 }
 
